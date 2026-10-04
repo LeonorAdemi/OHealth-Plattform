@@ -19,8 +19,8 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 11 | Persönliches Profil | Mehr Nähe in den Gruppen: Profilbild, Kurztext, Sportarten und Stadt; Profilbild oben rechts, Verlauf und Einstellungen im Profil | Erledigt (Migration profile_details, Test 17) |
 | 12 | Gemeinsame Grundlage für Chats | Ein Datenmodell für Event-, Community- und später Privatchats, mit „gelesen bis" je Person | Erledigt (Migration chats, Test 18): Event-Chat entsteht mit der ersten Zusage, Community-Chat mit der Community (nicht bei Coaching), bisherige Nachrichten übernommen |
 | 13 | Tab „Chats" | Neue Nachrichten unten rechts statt an der Glocke; die Glocke zeigt nur noch Zusagen, neue Trainings und Erinnerungen | Erledigt (Migration chat_inbox, Test 19): Chat-Liste mit ungelesenen Nachrichten, Event- und Community-Chats unter /chats, Push öffnet den Chat |
-| 14 | Event-Chat unter jedem Event | Entsteht, sobald jemand zusagt; nur wer dabei ist, liest und schreibt | Offen |
-| 15 | Chat je Community | Alle Mitglieder schreiben; Grenze von 30 Nachrichten pro Minute, Verwaltung kann löschen, Push anfangs aus | Offen |
+| 14 | Event-Chat unter jedem Event | Entsteht, sobald jemand zusagt; nur wer dabei ist, liest und schreibt | Erledigt: Chat-Zeile unter jedem Training auf Pinnwand und in „Gemeinsam trainieren“, ohne Zusage „Chat nach Zusage“ |
+| 15 | Chat je Community | Alle Mitglieder schreiben; Grenze von 30 Nachrichten pro Minute, Verwaltung kann löschen, Push anfangs aus | Erledigt (Migration community_chat, Test 20). Coaching-Gruppen ohne Chat |
 | 16 | Freundschaften und Privatchats | Anfrage senden und annehmen, erst danach privat schreiben; blockieren | Offen |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.

@@ -425,6 +425,7 @@ export type Database = {
       notification_prefs: {
         Row: {
           cancelled: boolean
+          community_message: boolean
           joined: boolean
           message: boolean
           new_training_private: boolean
@@ -435,6 +436,7 @@ export type Database = {
         }
         Insert: {
           cancelled?: boolean
+          community_message?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean
@@ -445,6 +447,7 @@ export type Database = {
         }
         Update: {
           cancelled?: boolean
+          community_message?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean

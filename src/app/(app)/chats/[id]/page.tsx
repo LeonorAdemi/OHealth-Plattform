@@ -24,6 +24,7 @@ async function chatHeader(chat: { kind: "meetup" | "community"; meetupId: string
         .map((p) => (p.isMe ? "Du" : p.name))
         .join(", ")}`,
       emptyHint: "Noch keine Nachrichten. Schreib den anderen, zum Beispiel wo ihr euch genau trefft.",
+      canModerate: false,
     };
   }
   if (chat.groupId) {
@@ -35,6 +36,8 @@ async function chatHeader(chat: { kind: "meetup" | "community"; meetupId: string
       title: community.name,
       detail: `${community.memberCount} ${community.memberCount === 1 ? "Mitglied" : "Mitglieder"}`,
       emptyHint: "Noch keine Nachrichten. Alle Mitglieder der Community lesen hier mit.",
+      // Die Verwaltung darf jede Nachricht löschen (Migration community_chat)
+      canModerate: community.role === "admin" || community.role === "coach",
     };
   }
   return null;
@@ -73,6 +76,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
         messages={chat.messages}
         now={new Date().toISOString()}
         emptyHint={header.emptyHint}
+        canModerate={header.canModerate}
       />
     </div>
   );

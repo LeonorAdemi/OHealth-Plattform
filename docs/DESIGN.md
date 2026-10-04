@@ -156,9 +156,15 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 
 Unter „Chats“ stehen alle Chats als Zeilen, die neueste Nachricht zuerst:
 
-- Links beim Training ein Datumsblock (Tag und Monat, gerahmt, 8 px Rundung), bei einer Community die Initialen im runden Feld wie beim Profilbild.
+- Links beim Training derselbe Datumsblock wie auf der Pinnwand, bei einer Community die Initialen im runden Feld wie beim Profilbild.
 - Titel in Text, darunter die letzte Nachricht in Klein mit Namen davor („Du: …“), eine Zeile, gekürzt.
 - Rechts oben der Zeitpunkt (heute die Uhrzeit, gestern „Gestern“, sonst das Datum), darunter die Zahl ungelesener Nachrichten in einem Kreis in Eisen. Mit ungelesenen Nachrichten stehen Zeitpunkt und Vorschau in Eisen statt Stein. Kein Moos.
+
+### Chat-Zeilen
+
+- Auf der Community-Seite steht über den Reitern eine Zeile „Chat der Community“ mit Sprechblasen-Icon, letzter Nachricht und Zahl ungelesener Nachrichten. Dieselbe Zeile führt auf der Seite eines Trainings zu seinem Chat.
+- In Listen von Trainings (Pinnwand, „Gemeinsam trainieren“) steht unter Titel und Angaben eine kurze Chat-Zeile in Klein: Icon (16 px), letzte Nachricht, Zahl ungelesener Nachrichten. Wer nicht zugesagt hat, liest dort „Chat nach Zusage“.
+- In einem Community-Chat kann die Verwaltung auch fremde Nachrichten antippen und löschen. Das „Nachricht löschen“ steht dann unter der Blase auf der Seite der Blase.
 
 ### Chat
 

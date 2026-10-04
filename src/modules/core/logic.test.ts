@@ -219,6 +219,12 @@ describe("Push", () => {
     });
     expect(pushContent({ ...base, kind: "message", latest: "Um 9", count: 3 }).body).toBe("Ben: Um 9 (3 neue)");
     expect(pushContent({ ...base, kind: "message", latest: "Um 9", chatId: "c1" }).url).toBe("/chats/c1");
+    expect(pushContent({ ...base, kind: "community_message", title: "Lauftreff", latest: "Wer kommt?", chatId: "c2", meetupId: null })).toEqual({
+      title: "Lauftreff",
+      body: "Ben: Wer kommt?",
+      url: "/chats/c2",
+      tag: "chat-c2",
+    });
   });
 
   it("nimmt sonst den Satz der Mitteilung", () => {

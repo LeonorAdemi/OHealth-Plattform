@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { berlinLocalToDate, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
+import { berlinLocalToDate, CHAT_NOTIFICATION_KINDS, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -468,6 +468,16 @@ export async function markChatRead(chatId: string): Promise<void> {
   if (!id.success) return;
   const supabase = await createClient();
   await supabase.rpc("mark_chat_read", { cid: id.data });
+
+  // Die Push-Mitteilungen zu diesem Chat gelten damit ebenfalls als gelesen.
+  const { data: chat } = await supabase.from("chats").select("meetup_id, group_id").eq("id", id.data).maybeSingle();
+  if (!chat) return;
+  const unread = supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .is("read_at", null);
+  if (chat.meetup_id) await unread.eq("kind", "message").eq("meetup_id", chat.meetup_id);
+  else if (chat.group_id) await unread.eq("kind", "community_message").eq("group_id", chat.group_id);
 }
 
 /** Zahl der Chats mit ungelesenen Nachrichten, für die Zahl am Tab. */
@@ -485,7 +495,7 @@ export async function fetchUnreadCount(): Promise<number> {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .neq("kind", "message")
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .is("read_at", null);
   return error ? 0 : (count ?? 0);
 }
@@ -497,7 +507,7 @@ export async function markAllNotificationsRead(): Promise<void> {
   await supabase
     .from("notifications")
     .update({ read_at: new Date().toISOString() })
-    .neq("kind", "message")
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .is("read_at", null);
 }
 
@@ -531,6 +541,7 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
     message: on("message"),
     cancelled: on("cancelled"),
     reminder: on("reminder"),
+    community_message: on("communityMessage"),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };

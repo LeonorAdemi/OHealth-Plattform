@@ -9,7 +9,7 @@ import type { AgentClient } from "@/lib/supabase/agent";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 
-import { communityKind, toNotificationKind } from "./logic";
+import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind } from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
@@ -158,6 +158,28 @@ export async function getMyChats(limit = 50) {
   }));
 }
 
+/**
+ * Kurzfassung der eigenen Chats je Training und je Community: ID, letzte Nachricht, ungelesen.
+ * Für die Chat-Zeilen auf Pinnwand und Community-Seite. Je Anfrage nur einmal geladen.
+ */
+export const getChatSummaries = cache(async () => {
+  const chats = await getMyChats(200);
+  const byMeetup: Record<string, ChatSummary> = {};
+  const byGroup: Record<string, ChatSummary> = {};
+  for (const c of chats) {
+    const summary = {
+      id: c.id,
+      unread: c.unread,
+      preview: c.last ? `${c.last.isMe ? "Du" : c.last.name}: ${c.last.body}` : null,
+    };
+    if (c.meetupId) byMeetup[c.meetupId] = summary;
+    if (c.groupId) byGroup[c.groupId] = summary;
+  }
+  return { byMeetup, byGroup };
+});
+
+export type ChatSummary = { id: string; unread: number; preview: string | null };
+
 /** Zahl der Chats mit ungelesenen Nachrichten (für den Tab). */
 export async function getUnreadChatCount() {
   const { supabase } = await requireUser();
@@ -291,7 +313,7 @@ export async function getMeetups(
 
 /**
  * Ein geplantes Training mit Teilnehmern, den Communities, in denen ich es sehe (alle, wenn es
- * meins ist), und dem Chat, wenn ich dabei bin. null, wenn ich es nicht sehen darf.
+ * meins ist), und der ID seines Chats, wenn ich dabei bin. null, wenn ich es nicht sehen darf.
  */
 export async function getMeetup(meetupId: string) {
   const { supabase, userId } = await requireUser();
@@ -315,24 +337,12 @@ export async function getMeetup(meetupId: string) {
   ]);
   if (people.error || shares.error || chatRow.error) throw new Error("Das Training konnte nicht geladen werden.");
   const chatId = chatRow.data?.id ?? null;
-  const chat = chatId
-    ? await supabase.rpc("chat_messages_page", { cid: chatId })
-    : { data: [], error: null };
-  if (chat.error) throw new Error("Das Training konnte nicht geladen werden.");
 
   return {
     ...meetup,
     participants: people.data.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
     sharedWith: shares.data.map((s) => s.group_id),
     chatId,
-    messages: chat.data.map((m) => ({
-      id: m.id,
-      userId: m.user_id,
-      name: m.display_name,
-      body: m.body,
-      createdAt: m.created_at,
-      isMe: m.user_id === userId,
-    })),
   };
 }
 
@@ -345,7 +355,7 @@ export async function getNotifications(limit = 50) {
     .from("notifications")
     .select("id, kind, meetup_id, group_id, actor_name, title, count, created_at, read_at")
     // Chat-Nachrichten zählt der Tab „Chats“; als Mitteilung dienen sie nur noch dem Push.
-    .neq("kind", "message")
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error("Mitteilungen konnten nicht geladen werden.");
@@ -368,7 +378,7 @@ export async function getUnreadNotificationCount() {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .neq("kind", "message")
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .is("read_at", null);
   if (error) return 0;
   return count ?? 0;
@@ -381,6 +391,7 @@ export const NOTIFICATION_DEFAULTS = {
   message: true,
   cancelled: true,
   reminder: true,
+  communityMessage: false,
 };
 
 /** Eigene Einstellungen für Mitteilungen. Ohne gespeicherte Zeile gelten die Voreinstellungen. */
@@ -388,7 +399,7 @@ export async function getNotificationPrefs() {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notification_prefs")
-    .select("new_training_private, new_training_public, joined, message, cancelled, reminder")
+    .select("new_training_private, new_training_public, joined, message, cancelled, reminder, community_message")
     .maybeSingle();
   if (error) throw new Error("Einstellungen konnten nicht geladen werden.");
   if (!data) return NOTIFICATION_DEFAULTS;
@@ -399,6 +410,7 @@ export async function getNotificationPrefs() {
     message: data.message,
     cancelled: data.cancelled,
     reminder: data.reminder,
+    communityMessage: data.community_message,
   };
 }
 

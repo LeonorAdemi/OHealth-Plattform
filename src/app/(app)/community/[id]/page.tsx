@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/button";
 import { TabLinks } from "@/components/ui/tab-links";
 import { requestOrigin } from "@/lib/request-origin";
 import { LeaveCommunity, ReportCommunity } from "@/modules/core/components/community-forms";
+import { ChatRow } from "@/modules/core/components/chat-link";
 import { InviteShare } from "@/modules/core/components/invite-share";
 import { MeetupList } from "@/modules/core/components/meetup-list";
 import { COMMUNITY_KIND_HINT, COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
-import { getGroupMembers, getMeetups, getMyCommunity, requireUser } from "@/modules/core/queries";
+import {
+  type ChatSummary,
+  getChatSummaries,
+  getGroupMembers,
+  getMeetups,
+  getMyCommunity,
+  requireUser,
+} from "@/modules/core/queries";
 import { Leaderboard } from "@/modules/workouts/components/leaderboard";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { isoWeek } from "@/modules/workouts/logic";
@@ -32,8 +40,10 @@ export default async function CommunityDetailPage({
   const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const community = await getMyCommunity(id);
+  const [community, chats] = await Promise.all([getMyCommunity(id), getChatSummaries()]);
   if (!community) notFound();
+  // Coaching-Gruppen haben keinen gemeinsamen Chat (Migration chats)
+  const chat = chats.byGroup[id];
 
   const tab: Tab = TABS.find((t) => t === rawTab) ?? "pinnwand";
   const origin = await requestOrigin();
@@ -61,6 +71,12 @@ export default async function CommunityDetailPage({
         </div>
       </div>
 
+      {chat && (
+        <div className="mt-4 max-w-2xl">
+          <ChatRow chat={chat} label="Chat der Community" emptyText="Noch keine Nachrichten. Alle Mitglieder lesen mit." />
+        </div>
+      )}
+
       <div className="mt-6 max-w-2xl">
         <TabLinks
           label="Bereiche der Community"
@@ -74,7 +90,7 @@ export default async function CommunityDetailPage({
       </div>
 
       <div className="max-w-2xl">
-        {tab === "pinnwand" && <BoardTab id={id} />}
+        {tab === "pinnwand" && <BoardTab id={id} chats={chats.byMeetup} />}
         {tab === "rangliste" && <RankingTab id={id} isPublic={community.kind === "public"} />}
         {tab === "info" && <InfoTab community={community} inviteUrl={inviteUrl} />}
       </div>
@@ -82,7 +98,7 @@ export default async function CommunityDetailPage({
   );
 }
 
-async function BoardTab({ id }: { id: string }) {
+async function BoardTab({ id, chats }: { id: string; chats: Record<string, ChatSummary> }) {
   const meetups = await getMeetups("board", { groupId: id, from: new Date() });
 
   return (
@@ -92,7 +108,7 @@ async function BoardTab({ id }: { id: string }) {
           Noch keine geplanten Trainings. Plane deins und teile es hier, dann können andere mitmachen.
         </p>
       ) : (
-        <MeetupList label="Geplante Trainings" meetups={meetups} />
+        <MeetupList label="Geplante Trainings" meetups={meetups} chats={chats} />
       )}
       <Button asChild className="mt-6 w-full md:w-auto">
         <Link href={`/plan/neu?community=${id}`}>Training planen</Link>

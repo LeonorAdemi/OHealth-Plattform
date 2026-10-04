@@ -2,7 +2,8 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 
 import { describeMeetupCount, formatMeetupWhen, isMeetupFull, meetupDateBlock } from "../logic";
-import type { Meetup } from "../queries";
+import type { ChatSummary, Meetup } from "../queries";
+import { ChatLine } from "./chat-link";
 import { MeetupToggle } from "./meetup-forms";
 
 /** Datumsblock: Tag groß und schmal, Monat klein darunter. */
@@ -27,8 +28,18 @@ function Joined() {
 
 /**
  * Geplante Trainings als Zeilen, nächstes zuerst. Zweite Zeile: wer plant, wann, wo, wie viele dabei.
+ * Mit chats steht darunter der Chat des Trainings: für alle, die dabei sind, mit letzter Nachricht;
+ * sonst der Hinweis, dass der Chat nach der Zusage offen ist.
  */
-export function MeetupList({ label, meetups }: { label: string; meetups: readonly Meetup[] }) {
+export function MeetupList({
+  label,
+  meetups,
+  chats,
+}: {
+  label: string;
+  meetups: readonly Meetup[];
+  chats?: Record<string, ChatSummary>;
+}) {
   return (
     <ul aria-label={label}>
       {meetups.map((m) => {
@@ -43,12 +54,16 @@ export function MeetupList({ label, meetups }: { label: string; meetups: readonl
         return (
           <li key={m.id} className="flex min-h-16 items-center gap-4 border-b py-3">
             <MeetupDate startsAt={m.startsAt} />
-            <Link href={`/plan/${m.id}`} className="group min-w-0 flex-1">
-              <span className="line-clamp-2 block font-medium break-words group-hover:underline group-hover:underline-offset-4">
-                {m.title}
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-sm">{meta.join(" · ")}</span>
-            </Link>
+            <div className="min-w-0 flex-1">
+              <Link href={`/plan/${m.id}`} className="group block">
+                <span className="line-clamp-2 block font-medium break-words group-hover:underline group-hover:underline-offset-4">
+                  {m.title}
+                </span>
+                <span className="text-muted-foreground mt-0.5 block text-sm">{meta.join(" · ")}</span>
+              </Link>
+              {chats && m.isJoined && chats[m.id] && <ChatLine chat={chats[m.id]} title={m.title} />}
+              {chats && !m.isJoined && <p className="text-muted-foreground mt-1 text-sm">Chat nach Zusage</p>}
+            </div>
             <span className="shrink-0">
               {m.isJoined ? (
                 <Joined />

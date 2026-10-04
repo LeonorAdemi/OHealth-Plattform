@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { badgeCount, chatListTime, meetupDateBlock } from "@/modules/core/logic";
+import { MeetupDate } from "@/modules/core/components/meetup-list";
+import { badgeCount, chatListTime } from "@/modules/core/logic";
 import { getMyChats } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Chats" };
@@ -30,7 +31,6 @@ export default async function ChatsPage() {
       ) : (
         <ul className="mt-4 max-w-2xl" aria-label="Deine Chats">
           {chats.map((chat) => {
-            const block = chat.kind === "meetup" && chat.startsAt ? meetupDateBlock(chat.startsAt) : null;
             const preview = chat.last
               ? `${chat.last.isMe ? "Du" : chat.last.name}: ${chat.last.body}`
               : chat.kind === "meetup"
@@ -43,14 +43,8 @@ export default async function ChatsPage() {
                   href={`/chats/${chat.id}`}
                   className="hover:bg-accent -mx-2 flex min-h-18 items-center gap-3 rounded-lg px-2 py-3 transition-colors duration-150 ease-out"
                 >
-                  {block ? (
-                    <span
-                      aria-hidden
-                      className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border leading-none"
-                    >
-                      <span className="num text-base font-semibold">{block.day}</span>
-                      <span className="text-muted-foreground text-xs">{block.month}</span>
-                    </span>
+                  {chat.kind === "meetup" && chat.startsAt ? (
+                    <MeetupDate startsAt={chat.startsAt} />
                   ) : (
                     <Avatar path={null} name={chat.title} />
                   )}
@@ -73,7 +67,10 @@ export default async function ChatsPage() {
                     </span>
                     <span className="mt-0.5 flex items-center gap-2">
                       <span
-                        className={cn("min-w-0 flex-1 truncate text-sm", unread ? "text-foreground" : "text-muted-foreground")}
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-sm",
+                          unread ? "text-foreground" : "text-muted-foreground",
+                        )}
                       >
                         {preview}
                       </span>

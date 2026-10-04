@@ -266,10 +266,17 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
 
 // ---------- Mitteilungen ----------
 
-export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder";
+export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder" | "community_message";
+
+/** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
+export const CHAT_NOTIFICATION_KINDS = ["message", "community_message"] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
-  return value === "joined" || value === "message" || value === "cancelled" || value === "reminder"
+  return value === "joined" ||
+    value === "message" ||
+    value === "cancelled" ||
+    value === "reminder" ||
+    value === "community_message"
     ? value
     : "new_training";
 }
@@ -289,6 +296,10 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return `${n.actorName} hat „${n.title}“ abgesagt`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
+    case "community_message":
+      return n.count > 1
+        ? `${n.count} neue Nachrichten in „${n.title}“, zuletzt von ${n.actorName}`
+        : `${n.actorName} hat in „${n.title}“ geschrieben`;
   }
 }
 
@@ -306,19 +317,19 @@ export function pushContent(p: {
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
   const url =
-    p.kind === "message" && p.chatId
+    (p.kind === "message" || p.kind === "community_message") && p.chatId
       ? `/chats/${p.chatId}`
       : p.meetupId
         ? p.kind === "message"
           ? `/plan/${p.meetupId}/chat`
           : `/plan/${p.meetupId}`
         : "/mitteilungen";
-  if (p.kind === "message" && p.latest) {
+  if ((p.kind === "message" || p.kind === "community_message") && p.latest) {
     return {
       title: p.title,
       body: p.count > 1 ? `${p.actorName}: ${p.latest} (${p.count} neue)` : `${p.actorName}: ${p.latest}`,
       url,
-      tag: `chat-${p.meetupId}`,
+      tag: `chat-${p.chatId ?? p.meetupId}`,
     };
   }
   return { title: "OHealth", body: describeNotification(p), url, tag: `${p.kind}-${p.meetupId ?? p.title}` };

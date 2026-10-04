@@ -77,7 +77,8 @@ export default function PrivacyPage() {
           <strong>Geplante Trainings und Chat:</strong> Trainings, die du
           planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
           Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
-          du zugesagt hast, deine Nachrichten im Chat eines Trainings und bis
+          du zugesagt hast, deine Nachrichten im Chat eines Trainings oder
+          einer Community und bis
           wann du einen Chat gelesen hast, damit wir ungelesene Nachrichten
           zählen können.
         </li>
@@ -165,9 +166,17 @@ export default function PrivacyPage() {
         Training, wird der Chat mit gelöscht.
       </p>
       <p>
+        Jede Community außer Coaching-Communities hat einen Chat. Ihn lesen und
+        schreiben alle Mitglieder, auch den Verlauf von vor deinem Beitritt.
+        Wer austritt, sieht ihn nicht mehr. Wer die Community verwaltet, kann
+        Nachrichten darin löschen.
+      </p>
+      <p>
         Mitteilungen siehst nur du. Sie entstehen, wenn jemand in deinen
-        Communities ein Training teilt, bei deinem Training zusagt, im Chat
-        schreibt oder ein Training absagt. In den Einstellungen deines Profils legst du fest, welche du
+        Communities ein Training teilt, bei deinem Training zusagt oder ein
+        Training absagt. Neue Chat-Nachrichten zeigt der Bereich „Chats“; als
+        Push kommen sie nur, wenn du das eingeschaltet hast, für
+        Community-Chats ist das anfangs aus. In den Einstellungen deines Profils legst du fest, welche du
         bekommst; neue Trainings aus öffentlichen Communities sind anfangs
         aus. Etwa eine Stunde vor einem Training, bei dem du dabei bist,
         erinnern wir dich, wenn du das nicht ausschaltest.
@@ -176,8 +185,8 @@ export default function PrivacyPage() {
         Push aufs Handy schaltest du je Gerät in den Einstellungen ein und dort auch
         wieder aus. Zugestellt wird über den Push-Dienst deines Browsers oder
         Geräts (zum Beispiel Apple, Google oder Mozilla), der auch außerhalb
-        der EU sitzen kann. Der Inhalt (Titel des Trainings, Name und bei Chat
-        die letzte Nachricht) ist dabei verschlüsselt, sodass der Push-Dienst
+        der EU sitzen kann. Der Inhalt (Titel des Trainings oder Name der
+        Community, Name und bei Chat die letzte Nachricht) ist dabei verschlüsselt, sodass der Push-Dienst
         ihn nicht lesen kann.
       </p>
 

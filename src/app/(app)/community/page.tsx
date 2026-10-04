@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { JoinPublicButton, JoinWithCodeForm } from "@/modules/core/components/community-forms";
 import { MeetupList } from "@/modules/core/components/meetup-list";
 import { COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
-import { getMeetups, getMyCommunities, searchCommunities } from "@/modules/core/queries";
+import { getChatSummaries, getMeetups, getMyCommunities, searchCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Community" };
 
@@ -16,10 +16,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const { q } = await searchParams;
   const query = (q ?? "").trim().slice(0, 60);
   const now = new Date();
-  const [mine, meetups, found] = await Promise.all([
+  const [mine, meetups, found, chats] = await Promise.all([
     getMyCommunities(),
     getMeetups("communities", { from: now, limit: 5 }),
     searchCommunities(query, 20),
+    getChatSummaries(),
   ]);
   const discover = found.filter((c) => !c.isMember);
 
@@ -38,7 +39,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
             </p>
           ) : (
             <div className="mt-2">
-              <MeetupList label="Gemeinsam trainieren" meetups={meetups} />
+              <MeetupList label="Gemeinsam trainieren" meetups={meetups} chats={chats.byMeetup} />
             </div>
           )}
         </section>

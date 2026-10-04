@@ -32,8 +32,7 @@ async function squareImage(file: File): Promise<Blob> {
   context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
   bitmap.close();
 
-  const encode = (type: string) =>
-    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
+  const encode = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
   const webp = await encode("image/webp");
   if (webp?.type === "image/webp") return webp;
   const jpeg = await encode("image/jpeg");
@@ -79,7 +78,10 @@ export function AvatarPicker({ path, name }: { path: string | null; name: string
         return;
       }
       const data = new FormData();
-      data.set("avatar", new File([blob], blob.type === "image/webp" ? "avatar.webp" : "avatar.jpg", { type: blob.type }));
+      data.set(
+        "avatar",
+        new File([blob], blob.type === "image/webp" ? "avatar.webp" : "avatar.jpg", { type: blob.type }),
+      );
       setState(await uploadAvatar(data));
     });
   }
@@ -132,7 +134,8 @@ export function ProfileForm({
 
   const options = uniqueSports([...SPORT_SUGGESTIONS, ...profile.sports, ...sports]);
   const full = sports.length >= MAX_SPORTS;
-  const isSelected = (sport: string) => sports.some((s) => s.toLocaleLowerCase("de-DE") === sport.toLocaleLowerCase("de-DE"));
+  const isSelected = (sport: string) =>
+    sports.some((s) => s.toLocaleLowerCase("de-DE") === sport.toLocaleLowerCase("de-DE"));
 
   function toggle(sport: string) {
     setSports((current) =>
@@ -205,7 +208,9 @@ export function ProfileForm({
                   className={cn(
                     "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out disabled:opacity-50 md:min-h-9",
                     "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-                    selected ? "border-foreground text-foreground font-medium" : "border-input text-muted-foreground hover:bg-accent",
+                    selected
+                      ? "border-foreground text-foreground font-medium"
+                      : "border-input text-muted-foreground hover:bg-accent",
                   )}
                 >
                   {selected && <Check size={16} strokeWidth={1.5} aria-hidden />}
