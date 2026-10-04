@@ -128,9 +128,9 @@ from public.workouts w
 join public.workout_sets s on s.workout_id = w.id
 group by w.user_id, s.exercise_id, w.id, w.performed_at;
 
--- Für "Zuletzt" und den Verlauf: Sätze einer Übung schnell über ihre Workouts finden
+-- Für "Zuletzt" und den Verlauf: Sätze einer Übung schnell über ihre Workouts finden.
+-- workout_sets_exercise_idx ist damit überflüssig und kann in einer späteren Migration weg.
 create index workout_sets_exercise_workout_idx on public.workout_sets (exercise_id, workout_id);
-drop index public.workout_sets_exercise_idx;
 
 -- Je Person und Übung nur das neueste Workout: die Grundlage für "Zuletzt" und die Vorbelegung.
 create view public.v_exercise_last_sessions with (security_invoker = true) as
