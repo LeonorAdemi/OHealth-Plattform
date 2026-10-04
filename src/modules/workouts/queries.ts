@@ -64,7 +64,7 @@ export async function getRecentWorkouts(limit = 20) {
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
+      "id, title, performed_at, started_at, finished_at, workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
     )
     .eq("user_id", userId)
     .order("performed_at", { ascending: false })
@@ -73,6 +73,37 @@ export async function getRecentWorkouts(limit = 20) {
 
   if (error) throw new Error("Workouts konnten nicht geladen werden.");
   return data;
+}
+
+/**
+ * Die letzten Workouts der Mitglieder einer Gruppe, neueste zuerst. Sichtbar ist nur, was die
+ * Zugriffsregeln erlauben: In Freundesgruppen alle Mitglieder, in Coaching-Gruppen nur der
+ * Coach alle, in Communities niemand (dort gibt es nur die Rangliste).
+ */
+export async function getGroupActivity(groupId: string, limit = 10) {
+  const { supabase, userId } = await requireUser();
+  const members = await getGroupMembers(groupId);
+  if (members.length === 0) return [];
+  const names = new Map(members.map((m) => [m.userId, m.name]));
+
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, user_id, title, performed_at, started_at, finished_at, workout_sets(count)")
+    .in("user_id", members.map((m) => m.userId))
+    .order("performed_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error("Die Aktivität der Gruppe konnte nicht geladen werden.");
+  return data.map((workout) => ({
+    id: workout.id,
+    isMe: workout.user_id === userId,
+    name: names.get(workout.user_id) ?? "Unbekannt",
+    title: workout.title,
+    performedAt: workout.performed_at,
+    startedAt: workout.started_at,
+    finishedAt: workout.finished_at,
+    setCount: workout.workout_sets[0]?.count ?? 0,
+  }));
 }
 
 /**

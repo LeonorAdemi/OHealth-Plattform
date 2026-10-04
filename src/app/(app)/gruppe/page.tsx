@@ -8,8 +8,9 @@ import { InviteShare } from "@/modules/core/components/invite-share";
 import { getMyGroups } from "@/modules/core/queries";
 import { BestRanking } from "@/modules/workouts/components/best-ranking";
 import { Leaderboard } from "@/modules/workouts/components/leaderboard";
+import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { isoWeek } from "@/modules/workouts/logic";
-import { getGroupBests, getLeaderboard } from "@/modules/workouts/queries";
+import { getGroupActivity, getGroupBests, getLeaderboard } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Gruppe" };
 
@@ -37,9 +38,10 @@ export default async function GroupPage({
 
   const now = new Date();
   const group = groups.find((entry) => entry.id === g) ?? groups[0];
-  const [rows, bests, requestHeaders] = await Promise.all([
+  const [rows, bests, activity, requestHeaders] = await Promise.all([
     getLeaderboard(group.id, now),
     getGroupBests(group.id, u),
+    getGroupActivity(group.id),
     headers(),
   ]);
 
@@ -80,6 +82,17 @@ export default async function GroupPage({
           <Leaderboard rows={rows} />
         </div>
       </section>
+
+      {activity.length > 0 && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="aktivitaet">
+          <h2 id="aktivitaet" className="text-xl font-semibold">
+            Zuletzt trainiert
+          </h2>
+          <div className="mt-2">
+            <WorkoutFeed label="Zuletzt trainiert" now={now} workouts={activity} />
+          </div>
+        </section>
+      )}
 
       <section className="mt-10 max-w-2xl" aria-labelledby="bestwerte">
         <h2 id="bestwerte" className="text-xl font-semibold">

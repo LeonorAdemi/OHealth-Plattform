@@ -822,3 +822,18 @@ export function formatSessionSummary(row: ExerciseSessionRow, measure: ExerciseM
 export function formatLastSets(sets: readonly StoredSet[]): string {
   return sets.map(formatSetLine).join(", ");
 }
+
+// ---------- Letzte Workouts ----------
+
+const whenDay = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
+const whenTime = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+
+/** Wann ein Workout war: "Heute, 13:42", "Gestern, 09:10" oder "Mo., 28. Sept., 18:05". */
+export function formatWorkoutWhen(performedAt: string, now: Date): string {
+  const date = new Date(performedAt);
+  const time = whenTime.format(date);
+  const day = dayKey(date);
+  if (day === dayKey(now)) return `Heute, ${time}`;
+  if (day === dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000))) return `Gestern, ${time}`;
+  return `${whenDay.format(date)}, ${time}`;
+}
