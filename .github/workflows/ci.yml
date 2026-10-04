@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  database:
+    name: Datenbanktests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Läuft erst, wenn `supabase init` ausgeführt wurde und config.toml im Repo liegt.
+      - id: check
+        run: echo "ready=$([ -f supabase/config.toml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - if: steps.check.outputs.ready == 'true'
+        run: supabase db start
+
+      - if: steps.check.outputs.ready == 'true'
+        run: supabase test db
+
+  app:
+    name: App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Läuft erst, wenn das App-Gerüst mit package.json im Repo liegt.
+      - id: check
+        run: echo "ready=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm ci
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm run typecheck
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm run lint
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm test
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm run build
+        env:
+          # Der Build braucht nur gültig geformte Werte, keine echte Verbindung.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
