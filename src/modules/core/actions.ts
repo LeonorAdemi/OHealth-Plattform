@@ -9,6 +9,8 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
+import { berlinLocalToDate, groupTypeFor } from "./logic";
+
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
   password: z.string().min(8, "Das Passwort braucht mindestens 8 Zeichen."),
@@ -77,14 +79,346 @@ export async function signOut() {
   redirect("/login");
 }
 
-const groupName = z
-  .string()
-  .trim()
-  .min(1, "Gib der Gruppe einen Namen.")
-  .max(60, "Der Name darf höchstens 60 Zeichen haben.");
+const communitySchema = z
+  .object({
+    name: z.string().trim().min(1, "Gib der Community einen Namen.").max(60, "Der Name darf höchstens 60 Zeichen haben."),
+    kind: z.enum(["public", "private", "coaching"]),
+    sport: z.string().trim().max(40, "Die Sportart darf höchstens 40 Zeichen haben."),
+    city: z.string().trim().max(60, "Die Stadt darf höchstens 60 Zeichen haben."),
+    description: z.string().trim().max(200, "Die Beschreibung darf höchstens 200 Zeichen haben."),
+  })
+  .refine((c) => c.kind !== "public" || c.name.length >= 3, {
+    message: "Eine öffentliche Community braucht einen Namen mit mindestens 3 Zeichen.",
+  })
+  .refine((c) => c.kind !== "public" || c.name.length <= 40, {
+    message: "Der Name einer öffentlichen Community darf höchstens 40 Zeichen haben.",
+  });
 
-export async function createGroup(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = groupName.safeParse(formData.get("name"));
+const COMMUNITY_SAVE_FAILED = "Die Community konnte nicht erstellt werden. Versuch es erneut.";
+
+/** Legt eine Community an. Wer sie erstellt, verwaltet sie (Admin bzw. Coach). */
+export async function createCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = communitySchema.safeParse({
+    name: formData.get("name") ?? "",
+    kind: formData.get("kind") ?? "",
+    sport: formData.get("sport") ?? "",
+    city: formData.get("city") ?? "",
+    description: formData.get("description") ?? "",
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data, error } = await supabase
+    .from("groups")
+    .insert({
+      name: parsed.data.name,
+      type: groupTypeFor(parsed.data.kind),
+      created_by: userId,
+      sport: parsed.data.sport || null,
+      city: parsed.data.city || null,
+      description: parsed.data.description || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.message.includes("Höchstens drei Communities")) {
+      return { error: "Du hast schon drei öffentliche Communities. Mehr sind nicht möglich." };
+    }
+    return { error: COMMUNITY_SAVE_FAILED };
+  }
+
+  revalidatePath("/community");
+  redirect(`/community/${data.id}`);
+}
+
+/** Tritt einer öffentlichen Community bei. Private Communities gehen nur über den Link. */
+export async function joinPublicCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Diese Community gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase.from("group_members").insert({ group_id: id.data, user_id: userId });
+  // 23505: schon Mitglied, das ist kein Fehler.
+  if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/community");
+  redirect(`/community/${id.data}`);
+}
+
+/** Tritt mit einem Einladungscode bei (eingetippt statt über den Link). */
+export async function joinWithCode(_prev: FormState, formData: FormData): Promise<FormState> {
+  const code = z.string().trim().min(1).safeParse(formData.get("code"));
+  if (!code.success) return { error: "Gib den Einladungscode ein." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
+
+  revalidatePath("/community");
+  redirect(`/community/${data}`);
+}
+
+/**
+ * Verlässt eine Community (leave_group). Wer sie als Einziger verwaltet, übergibt die Verwaltung
+ * an das Mitglied, das am längsten dabei ist. Ist man das letzte Mitglied oder der einzige Coach,
+ * wird sie gelöscht, wie beim Löschen des Kontos (delete_own_account).
+ */
+export async function leaveCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Diese Community gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("leave_group", { gid: id.data });
+  if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/community");
+  redirect("/community");
+}
+
+/** Meldet eine Community, zum Beispiel wegen eines unpassenden Namens. Der Betreiber prüft. */
+export async function reportCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({
+      id: z.uuid(),
+      reason: z.string().trim().min(1, "Schreib kurz, was nicht passt.").max(500, "Höchstens 500 Zeichen."),
+    })
+    .safeParse({ id: formData.get("id"), reason: formData.get("reason") ?? "" });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("reports").insert({ group_id: parsed.data.id, reason: parsed.data.reason });
+  if (error) return { error: "Die Meldung konnte nicht gesendet werden. Versuch es erneut." };
+
+  return { message: "Danke, die Meldung ist eingegangen. Wir sehen sie uns an." };
+}
+
+// ---------- Geplante Trainings ----------
+
+const meetupSchema = z.object({
+  title: z.string().trim().max(80, "Höchstens 80 Zeichen für den Titel."),
+  templateId: z.union([z.literal(""), z.uuid()]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Wähl einen Tag."),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Wähl eine Uhrzeit."),
+  place: z.string().trim().max(80, "Höchstens 80 Zeichen für den Treffpunkt."),
+  max: z.union([
+    z.literal(""),
+    z.coerce.number().int("Die Höchstzahl ist eine ganze Zahl.").min(2, "Mindestens 2 Plätze.").max(500, "Höchstens 500 Plätze."),
+  ]),
+  note: z.string().trim().max(300, "Höchstens 300 Zeichen für die Notiz."),
+  shareWith: z.array(z.uuid()).max(20),
+});
+
+const MEETUP_FAILED = "Das hat nicht geklappt. Prüf deine Verbindung und versuch es erneut.";
+
+function shareIds(formData: FormData) {
+  return [...new Set(formData.getAll("shareWith").map(String))];
+}
+
+/**
+ * Plant ein Training. Ohne Teilen bleibt es privat, sonst erscheint es auf der Pinnwand der
+ * gewählten Communities. Wer plant, ist automatisch dabei (Trigger).
+ */
+export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = meetupSchema.safeParse({
+    title: formData.get("title") ?? "",
+    templateId: formData.get("templateId") ?? "",
+    date: formData.get("date") ?? "",
+    time: formData.get("time") ?? "",
+    place: formData.get("place") ?? "",
+    max: formData.get("max") ?? "",
+    note: formData.get("note") ?? "",
+    shareWith: shareIds(formData),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const startsAt = berlinLocalToDate(parsed.data.date, parsed.data.time);
+  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." };
+  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  // Ohne eigenen Titel heißt das Training wie die Vorlage.
+  let title = parsed.data.title;
+  if (!title && parsed.data.templateId) {
+    const { data: template } = await supabase
+      .from("workout_templates")
+      .select("name")
+      .eq("id", parsed.data.templateId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    title = template?.name ?? "";
+  }
+  if (!title) return { error: "Wähl eine Vorlage oder schreib, was du vorhast." };
+
+  const { data, error } = await supabase
+    .from("meetups")
+    .insert({
+      created_by: userId,
+      title: title.slice(0, 80),
+      template_id: parsed.data.templateId || null,
+      starts_at: startsAt.toISOString(),
+      place: parsed.data.place || null,
+      max_participants: parsed.data.max === "" ? null : parsed.data.max,
+      note: parsed.data.note || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.message.includes("Höchstens 30")) {
+      return { error: "Du hast schon 30 geplante Trainings. Warte, bis eins vorbei ist." };
+    }
+    return { error: MEETUP_FAILED };
+  }
+
+  if (parsed.data.shareWith.length > 0) {
+    const { error: shareError } = await supabase
+      .from("meetup_shares")
+      .insert(parsed.data.shareWith.map((groupId) => ({ meetup_id: data.id, group_id: groupId })));
+    if (shareError) {
+      // Ganz oder gar nicht: ohne Teilen soll kein halbes Training stehen bleiben.
+      await supabase.from("meetups").delete().eq("id", data.id);
+      return { error: "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?" };
+    }
+  }
+
+  revalidatePath("/", "layout");
+  redirect(`/plan/${data.id}`);
+}
+
+const meetupId = z.uuid();
+
+/** Legt fest, mit welchen Communities ein eigenes Training geteilt ist. */
+export async function updateMeetupShares(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  const wanted = z.array(z.uuid()).max(20).safeParse(shareIds(formData));
+  if (!id.success || !wanted.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: current, error } = await supabase.from("meetup_shares").select("group_id").eq("meetup_id", id.data);
+  if (error) return { error: MEETUP_FAILED };
+
+  const have = new Set(current.map((s) => s.group_id));
+  const add = wanted.data.filter((g) => !have.has(g));
+  const remove = [...have].filter((g) => !wanted.data.includes(g));
+
+  if (add.length > 0) {
+    const { error: addError } = await supabase
+      .from("meetup_shares")
+      .insert(add.map((groupId) => ({ meetup_id: id.data, group_id: groupId })));
+    if (addError) return { error: MEETUP_FAILED };
+  }
+  if (remove.length > 0) {
+    const { error: removeError } = await supabase
+      .from("meetup_shares")
+      .delete()
+      .eq("meetup_id", id.data)
+      .in("group_id", remove);
+    if (removeError) return { error: MEETUP_FAILED };
+  }
+
+  revalidatePath("/", "layout");
+  return { message: wanted.data.length === 0 ? "Jetzt privat" : "Gespeichert" };
+}
+
+/** Nimmt ein Training von der Pinnwand einer Community, die ich verwalte. */
+export async function removeMeetupShare(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({ meetupId: z.uuid(), groupId: z.uuid() })
+    .safeParse({ meetupId: formData.get("meetupId"), groupId: formData.get("groupId") });
+  if (!parsed.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("meetup_shares")
+    .delete()
+    .eq("meetup_id", parsed.data.meetupId)
+    .eq("group_id", parsed.data.groupId)
+    .select("group_id");
+  if (error || data.length === 0) return { error: "Das hat nicht geklappt. Verwaltest du diese Community?" };
+
+  revalidatePath("/", "layout");
+  redirect(`/community/${parsed.data.groupId}`);
+}
+
+/** Sagt für ein Training zu ("Ich bin dabei"). */
+export async function joinMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase.from("meetup_participants").insert({ meetup_id: id.data, user_id: userId });
+  // 23505: schon dabei, das ist kein Fehler.
+  if (error && error.code !== "23505") {
+    if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
+    if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
+    return { error: MEETUP_FAILED };
+  }
+
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Sagt für ein Training ab. Damit schließt sich auch der Chat. */
+export async function leaveMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase
+    .from("meetup_participants")
+    .delete()
+    .eq("meetup_id", id.data)
+    .eq("user_id", userId);
+  if (error) return { error: MEETUP_FAILED };
+
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Entfernt ein eigenes Training, für alle. */
+export async function deleteMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("meetups").delete().eq("id", id.data).select("id");
+  if (error || data.length === 0) return { error: "Das Training konnte nicht entfernt werden." };
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+// ---------- Chat ----------
+
+/** Schreibt eine Nachricht in den Chat eines Trainings. Nur wer zugesagt hat (RLS). */
+export async function sendMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({
+      meetupId: z.uuid(),
+      body: z.string().trim().min(1, "Schreib eine Nachricht.").max(1000, "Höchstens 1000 Zeichen."),
+    })
+    .safeParse({ meetupId: formData.get("meetupId"), body: formData.get("body") ?? "" });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
@@ -93,24 +427,87 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
   const { error } = await supabase
-    .from("groups")
-    .insert({ name: parsed.data, type: "friends", created_by: userId });
-  if (error) return { error: "Die Gruppe konnte nicht erstellt werden. Versuch es erneut." };
+    .from("meetup_messages")
+    .insert({ meetup_id: parsed.data.meetupId, user_id: userId, body: parsed.data.body });
+  if (error) {
+    if (error.message.includes("Zu viele")) return { error: "Zu viele Nachrichten. Warte einen Moment." };
+    if (error.code === "42501") return { error: "Schreiben können nur alle, die dabei sind." };
+    return { error: "Die Nachricht wurde nicht gesendet. Versuch es erneut." };
+  }
 
-  revalidatePath("/gruppe");
+  revalidatePath(`/plan/${parsed.data.meetupId}`);
+  return { message: "sent" };
+}
+
+/** Löscht eine eigene Nachricht. */
+export async function deleteMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({ id: z.uuid(), meetupId: z.uuid() })
+    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId") });
+  if (!parsed.success) return { error: "Diese Nachricht gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("meetup_messages").delete().eq("id", parsed.data.id);
+  if (error) return { error: "Die Nachricht konnte nicht gelöscht werden." };
+
+  revalidatePath(`/plan/${parsed.data.meetupId}`);
   return {};
 }
 
-export async function joinGroup(_prev: FormState, formData: FormData): Promise<FormState> {
-  const code = z.string().trim().min(1).safeParse(formData.get("code"));
-  if (!code.success) return { error: "Gib den Einladungscode ein." };
+// ---------- Mitteilungen ----------
 
+/** Zahl der ungelesenen Mitteilungen, für die Glocke (fragt regelmäßig nach). */
+export async function fetchUnreadCount(): Promise<number> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("join_group", { code: code.data });
-  if (error) return { error: "Dieser Einladungscode ist ungültig." };
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  return error ? 0 : (count ?? 0);
+}
 
-  revalidatePath("/gruppe");
-  return {};
+/** Markiert alle eigenen Mitteilungen als gelesen, etwa beim Öffnen der Mitteilungen. */
+export async function markAllNotificationsRead(): Promise<void> {
+  const supabase = await createClient();
+  // Ohne Neuladen: Die offene Seite zeigt "Neu" noch für diesen Besuch, die Glocke setzt sich selbst zurück.
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+}
+
+/** Markiert die Mitteilungen zu einem Training als gelesen, sobald man es ansieht. */
+export async function markMeetupNotificationsRead(meetupId: string): Promise<void> {
+  const id = z.uuid().safeParse(meetupId);
+  if (!id.success) return;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("meetup_id", id.data)
+    .is("read_at", null)
+    .select("id");
+  if (data && data.length > 0) revalidatePath("/", "layout");
+}
+
+/** Speichert, welche Mitteilungen man bekommen will. */
+export async function updateNotificationPrefs(_prev: FormState, formData: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const on = (name: string) => formData.get(name) === "on";
+  const { error } = await supabase.from("notification_prefs").upsert({
+    user_id: userId,
+    new_training_private: on("newTrainingPrivate"),
+    new_training_public: on("newTrainingPublic"),
+    joined: on("joined"),
+    message: on("message"),
+    cancelled: on("cancelled"),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
+
+  revalidatePath("/profil");
+  return { message: "Gespeichert" };
 }
 
 // ---------- Passwort zurücksetzen ----------
@@ -174,7 +571,10 @@ export async function updateDisplayName(_prev: FormState, formData: FormData): P
 
 // ---------- Einladung ----------
 
-/** Tritt der Gruppe aus einem Einladungslink bei. Läuft erst nach ausdrücklicher Bestätigung. */
+/**
+ * Tritt einer Community aus einem Teilen-Link bei. Läuft nach ausdrücklicher Bestätigung oder,
+ * wer vor der Registrierung „Beitreten" gewählt hat, direkt nach der Anmeldung.
+ */
 export async function acceptInvite(_prev: FormState, formData: FormData): Promise<FormState> {
   const code = z.string().trim().min(1).safeParse(formData.get("code"));
   if (!code.success) return { error: "Dieser Einladungslink ist ungültig." };
@@ -183,8 +583,8 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
 
-  revalidatePath("/gruppe");
-  redirect(`/gruppe?g=${data}`);
+  revalidatePath("/community");
+  redirect(`/community/${data}`);
 }
 
 // ---------- Konto löschen ----------

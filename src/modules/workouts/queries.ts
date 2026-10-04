@@ -75,6 +75,103 @@ export async function getRecentWorkouts(limit = 20) {
   return data;
 }
 
+/** Eigene Workouts in einem Zeitraum, für den Wochenplan. */
+export async function getMyWorkoutsBetween(from: Date, to: Date) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, title, performed_at, workout_sets(count)")
+    .eq("user_id", userId)
+    .gte("performed_at", from.toISOString())
+    .lt("performed_at", to.toISOString())
+    .order("performed_at")
+    .limit(100);
+
+  if (error) throw new Error("Workouts konnten nicht geladen werden.");
+  return data.map((w) => ({
+    id: w.id,
+    title: w.title,
+    performedAt: w.performed_at,
+    setCount: w.workout_sets[0]?.count ?? 0,
+  }));
+}
+
+// ---------- Öffentliche Community ----------
+// Mitglieder sehen hier nur Namen, Trainingstage und Bestwerte der anderen, keine Workouts.
+// Beides liefern Datenbankfunktionen, die nur Mitgliedern antworten (Migration 0012).
+
+/** Konstanz-Rangliste einer öffentlichen Community für die laufende Woche. */
+export async function getCommunityLeaderboard(groupId: string, now: Date) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.rpc("community_training_days", {
+    gid: groupId,
+    from_day: weekKeys(now)[0],
+  });
+  if (error) throw new Error("Die Rangliste konnte nicht geladen werden.");
+
+  const members = new Map<string, string>();
+  const days: { userId: string; day: string }[] = [];
+  for (const row of data) {
+    members.set(row.user_id, row.display_name);
+    if (row.day) days.push({ userId: row.user_id, day: row.day });
+  }
+  return buildLeaderboard(
+    Array.from(members, ([memberId, name]) => ({ userId: memberId, name })),
+    days,
+    userId,
+    now,
+  );
+}
+
+/** Bestwerte je Übung in einer öffentlichen Community, nach denselben Regeln wie in Gruppen. */
+export async function getCommunityBests(groupId: string, selectedExerciseId?: string) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.rpc("community_bests", { gid: groupId });
+  if (error) throw new Error("Die Bestwerte konnten nicht geladen werden.");
+
+  const members = new Map<string, string>();
+  const byExercise = new Map<string, BestRow[]>();
+  for (const row of data) {
+    members.set(row.user_id, row.display_name);
+    const list = byExercise.get(row.exercise_id) ?? [];
+    list.push({
+      userId: row.user_id,
+      bestE1rmKg: row.best_e1rm_kg,
+      maxWeightKg: row.max_weight_kg,
+      maxReps: row.max_reps,
+      maxDurationSeconds: row.max_duration_seconds,
+      totalDistanceM: row.total_distance_m,
+    });
+    byExercise.set(row.exercise_id, list);
+  }
+  if (byExercise.size === 0) return { exercises: [], selected: null, ranking: [] };
+
+  // Eigene Übungen anderer Mitglieder sind nicht sichtbar und fallen hier weg.
+  const { data: names, error: namesError } = await supabase
+    .from("exercises")
+    .select("id, name, measure")
+    .in("id", Array.from(byExercise.keys()))
+    .limit(500);
+  if (namesError) throw new Error("Die Übungen konnten nicht geladen werden.");
+
+  const exercises = names
+    .map((exercise) => ({
+      id: exercise.id,
+      name: exercise.name,
+      measure: toExerciseMeasure(exercise.measure),
+      participants: byExercise.get(exercise.id)?.length ?? 0,
+    }))
+    .sort((a, b) => b.participants - a.participants || a.name.localeCompare(b.name, "de"));
+
+  const selected = exercises.find((e) => e.id === selectedExerciseId) ?? exercises[0] ?? null;
+  const memberList = Array.from(members, ([memberId, name]) => ({ userId: memberId, name }));
+  const ranking = selected
+    ? buildBestRanking(memberList, byExercise.get(selected.id) ?? [], selected.measure, userId)
+    : [];
+
+  return { exercises, selected, ranking };
+}
+
 /**
  * Die letzten Workouts der Mitglieder einer Gruppe, neueste zuerst. Sichtbar ist nur, was die
  * Zugriffsregeln erlauben: In Freundesgruppen alle Mitglieder, in Coaching-Gruppen nur der

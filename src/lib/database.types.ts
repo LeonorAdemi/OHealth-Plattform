@@ -100,6 +100,7 @@ export type Database = {
       }
       groups: {
         Row: {
+          city: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -107,9 +108,11 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          sport: string | null
           type: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -117,9 +120,11 @@ export type Database = {
           id?: string
           invite_code?: string
           name: string
+          sport?: string | null
           type?: string
         }
         Update: {
+          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -127,12 +132,288 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          sport?: string | null
           type?: string
         }
         Relationships: [
           {
             foreignKeyName: "groups_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetup_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          meetup_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          meetup_id: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          meetup_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_messages_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetup_participants: {
+        Row: {
+          created_at: string
+          meetup_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          meetup_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          meetup_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_participants_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetup_shares: {
+        Row: {
+          created_at: string
+          group_id: string
+          meetup_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          meetup_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          meetup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_shares_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_shares_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetups: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string | null
+          id: string
+          max_participants: number | null
+          note: string | null
+          place: string | null
+          starts_at: string
+          template_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          group_id?: string | null
+          id?: string
+          max_participants?: number | null
+          note?: string | null
+          place?: string | null
+          starts_at: string
+          template_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string | null
+          id?: string
+          max_participants?: number | null
+          note?: string | null
+          place?: string | null
+          starts_at?: string
+          template_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_prefs: {
+        Row: {
+          cancelled: boolean
+          joined: boolean
+          message: boolean
+          new_training_private: boolean
+          new_training_public: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled?: boolean
+          joined?: boolean
+          message?: boolean
+          new_training_private?: boolean
+          new_training_public?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          cancelled?: boolean
+          joined?: boolean
+          message?: boolean
+          new_training_private?: boolean
+          new_training_public?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          actor_name: string
+          count: number
+          created_at: string
+          group_id: string | null
+          id: string
+          kind: string
+          meetup_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name: string
+          count?: number
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind: string
+          meetup_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string
+          count?: number
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind?: string
+          meetup_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -595,11 +876,38 @@ export type Database = {
       community_directory: {
         Args: { max_rows?: number; search?: string }
         Returns: {
+          city: string
           description: string
           id: string
           is_member: boolean
           member_count: number
           name: string
+          sport: string
+        }[]
+      }
+      community_link_preview: {
+        Args: { code: string }
+        Returns: {
+          city: string
+          description: string
+          id: string
+          is_member: boolean
+          member_count: number
+          name: string
+          sport: string
+          type: string
+        }[]
+      }
+      community_search: {
+        Args: { max_rows?: number; search?: string }
+        Returns: {
+          city: string
+          description: string
+          id: string
+          is_member: boolean
+          member_count: number
+          name: string
+          sport: string
         }[]
       }
       community_training_days: {
@@ -625,6 +933,7 @@ export type Database = {
         }[]
       }
       join_group: { Args: { code: string }; Returns: string }
+      leave_group: { Args: { gid: string }; Returns: undefined }
       log_training: {
         Args: {
           p_finished_at: string
@@ -644,6 +953,62 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      meetup_chat: {
+        Args: { max_rows?: number; mid: string }
+        Returns: {
+          body: string
+          created_at: string
+          display_name: string
+          id: string
+          user_id: string
+        }[]
+      }
+      meetup_feed: {
+        Args: {
+          from_ts?: string
+          gid?: string
+          max_rows?: number
+          mid?: string
+          scope: string
+          to_ts?: string
+        }
+        Returns: {
+          creator_name: string
+          id: string
+          is_joined: boolean
+          is_mine: boolean
+          max_participants: number
+          note: string
+          participant_count: number
+          place: string
+          share_count: number
+          starts_at: string
+          template_id: string
+          title: string
+        }[]
+      }
+      meetup_participant_names: {
+        Args: { mid: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
+      my_communities: {
+        Args: never
+        Returns: {
+          city: string
+          description: string
+          id: string
+          invite_code: string
+          joined_at: string
+          member_count: number
+          name: string
+          role: string
+          sport: string
+          type: string
+        }[]
       }
       save_template: {
         Args: {
@@ -678,12 +1043,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -707,11 +1072,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -732,11 +1097,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -757,11 +1122,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -774,11 +1139,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

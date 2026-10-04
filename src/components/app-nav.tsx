@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
   { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
-  { href: "/gruppe", label: "Gruppe", icon: Users },
+  { href: "/community", label: "Community", icon: Users },
   { href: "/verlauf", label: "Verlauf", icon: History },
 ] as const;
 
 function isActive(pathname: string, href: string) {
   if (href === "/") {
-    return pathname === "/" || ["/workouts", "/training", "/uebungen"].some((p) => pathname.startsWith(p));
+    return pathname === "/" || ["/workouts", "/training", "/uebungen", "/plan"].some((p) => pathname.startsWith(p));
   }
   return pathname.startsWith(href);
 }

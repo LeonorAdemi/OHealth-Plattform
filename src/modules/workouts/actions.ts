@@ -105,7 +105,7 @@ export async function saveTraining(input: unknown): Promise<Result<{ id: string 
 function revalidateWorkoutViews(id?: string) {
   revalidatePath("/");
   revalidatePath("/verlauf");
-  revalidatePath("/gruppe");
+  revalidatePath("/community", "layout");
   if (id) revalidatePath(`/workouts/${id}`);
 }
 

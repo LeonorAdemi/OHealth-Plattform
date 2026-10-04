@@ -64,8 +64,20 @@ export default function PrivacyPage() {
           Übungen, Zielwerten, Sichtbarkeit und dem Verlauf früherer Versionen.
         </li>
         <li>
-          <strong>Gruppen:</strong> in welchen Gruppen du Mitglied bist, seit
+          <strong>Communities:</strong> in welchen Communities du Mitglied bist, seit
           wann und in welcher Rolle.
+        </li>
+        <li>
+          <strong>Geplante Trainings und Chat:</strong> Trainings, die du
+          planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
+          Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
+          du zugesagt hast und deine Nachrichten im Chat eines Trainings.
+        </li>
+        <li>
+          <strong>Mitteilungen:</strong> Hinweise in der App, etwa dass jemand
+          ein Training geteilt, bei deinem zugesagt oder im Chat geschrieben
+          hat, mit Anzeigename, Titel und Zeitpunkt, ob du sie gelesen hast,
+          und welche Mitteilungen du bekommen willst.
         </li>
         <li>
           <strong>Technische Daten:</strong> beim Aufruf der App fallen bei
@@ -82,7 +94,7 @@ export default function PrivacyPage() {
       <p>
         Wir verwenden deine Daten, um dir die App bereitzustellen: anmelden,
         Workouts und Vorlagen speichern und anzeigen, Ranglisten in deinen
-        Gruppen berechnen.
+        Communities berechnen.
         Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1
         Buchstabe b DSGVO). Protokolldaten dienen dem sicheren und stabilen
         Betrieb (Art. 6 Abs. 1 Buchstabe f DSGVO).
@@ -90,19 +102,54 @@ export default function PrivacyPage() {
 
       <h2>Wer deine Trainingsdaten sieht</h2>
       <ul>
-        <li>Ohne Gruppe siehst nur du deine Workouts.</li>
+        <li>Ohne Community siehst nur du deine Workouts.</li>
         <li>
-          In einer Freundesgruppe sehen alle Mitglieder gegenseitig
+          In einer privaten Community sehen alle Mitglieder gegenseitig
           Anzeigenamen, Trainingstage, Workouts und Bestwerte.
         </li>
         <li>
-          In einer Coaching-Gruppe sieht nur der Coach deine Workouts. Die
+          In einer öffentlichen Community sehen die Mitglieder deinen
+          Anzeigenamen, deine Trainingstage und Bestwerte, aber keine einzelnen
+          Workouts oder Sätze.
+        </li>
+        <li>
+          In einer Coaching-Community sieht nur der Coach deine Workouts. Die
           anderen Mitglieder sehen sie nicht.
         </li>
       </ul>
       <p>
         Vor jedem Beitritt zeigt dir die App, wer deine Daten sehen wird. Du
-        entscheidest selbst, welchen Gruppen du beitrittst.
+        entscheidest selbst, welchen Communities du beitrittst, und kannst sie
+        jederzeit wieder verlassen.
+      </p>
+      <p>
+        Öffentliche Communities mit Name, Beschreibung, Sportart, Ort und
+        Mitgliederzahl kann jede angemeldete Person finden. Wer den Teilen-Link
+        einer Community hat, sieht diese Angaben auch ohne Konto, aber nie die
+        Namen der Mitglieder. Wenn du eine Community meldest, speichern wir
+        deine Meldung mit deinem Konto, damit wir sie prüfen können.
+      </p>
+      <p>
+        Ein geplantes Training siehst nur du, solange du es mit keiner
+        Community teilst. Teilst du es, sehen es die Mitglieder dieser
+        Communities, auch in öffentlichen Communities nur die Mitglieder: wer
+        es plant, wann und wo, und wer zugesagt hat, jeweils mit Anzeigenamen.
+        Die verknüpfte Vorlage sehen andere nicht. Gib als Treffpunkt einen
+        öffentlichen Ort an, keine Privatadresse. Wer eine Community verwaltet,
+        kann ein Training von ihrer Pinnwand nehmen.
+      </p>
+      <p>
+        Den Chat eines Trainings lesen und schreiben nur die, die zugesagt
+        haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
+        kannst du jederzeit löschen. Entfernt die planende Person das
+        Training, wird der Chat mit gelöscht.
+      </p>
+      <p>
+        Mitteilungen siehst nur du. Sie entstehen, wenn jemand in deinen
+        Communities ein Training teilt, bei deinem Training zusagt, im Chat
+        schreibt oder ein Training absagt. Im Profil stellst du ein, welche du
+        bekommst; neue Trainings aus öffentlichen Communities sind anfangs
+        aus.
       </p>
 
       <h2>Wer deine Vorlagen sieht</h2>
@@ -197,7 +244,10 @@ export default function PrivacyPage() {
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
-        Versionen und alle Mitgliedschaften sofort entfernt.
+        Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
+        Chat-Nachrichten und Mitteilungen sofort entfernt. Communities, die
+        du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
+        Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>
 
       <h2>Deine Rechte</h2>

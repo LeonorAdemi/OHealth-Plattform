@@ -27,3 +27,254 @@ export function passkeysEnabled(raw: string | undefined): boolean {
 export function withNext(path: string, next: string): string {
   return next === "/" ? path : `${path}?next=${encodeURIComponent(next)}`;
 }
+
+// ---------- Community ----------
+
+/** Art einer Community in der App. In der Datenbank: community, friends, coaching. */
+export type CommunityKind = "public" | "private" | "coaching";
+
+export function communityKind(type: string): CommunityKind {
+  if (type === "community") return "public";
+  if (type === "coaching") return "coaching";
+  return "private";
+}
+
+export function groupTypeFor(kind: CommunityKind): "community" | "friends" | "coaching" {
+  return kind === "public" ? "community" : kind === "coaching" ? "coaching" : "friends";
+}
+
+export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
+  public: "Öffentlich",
+  private: "Privat",
+  coaching: "Coaching",
+};
+
+/** Was Mitglieder voneinander sehen, je nach Art. Steht beim Erstellen und in der Community. */
+export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
+  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Workouts.",
+  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Workouts.",
+  coaching: "Beitritt nur über den Link. Der Coach sieht die Workouts aller Mitglieder, sie sehen einander nicht.",
+};
+
+/** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
+export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
+  public: "Wenn du beitrittst, sehen die Mitglieder deinen Namen, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
+  private: "Wenn du beitrittst, sehen die Mitglieder deine Workouts und du ihre.",
+  coaching: "Wenn du beitrittst, sieht der Coach deine Workouts. Die anderen Mitglieder sehen sie nicht.",
+};
+
+/** Vorschläge für die Sportart. Frei eintippen geht trotzdem. */
+export const SPORT_SUGGESTIONS = [
+  "Laufen",
+  "Krafttraining",
+  "Radfahren",
+  "Schwimmen",
+  "Wandern",
+  "Yoga",
+  "Calisthenics",
+  "CrossFit",
+  "Klettern",
+  "Fußball",
+] as const;
+
+/** Kurzbeschreibung für Listen und Link-Vorschauen: "Laufen · München · 12 Mitglieder". */
+export function describeCommunity(c: { sport: string | null; city: string | null; memberCount: number }): string {
+  const members = `${c.memberCount}\u00a0${c.memberCount === 1 ? "Mitglied" : "Mitglieder"}`;
+  return [c.sport, c.city, members].filter(Boolean).join(" · ");
+}
+
+/** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */
+export function joinAfterAuthPath(code: string): string {
+  return `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
+}
+
+// ---------- Treffen ----------
+
+export const APP_TIME_ZONE = "Europe/Berlin";
+
+/** Abstand der deutschen Zeit zu UTC in Minuten zu einem Zeitpunkt (Sommerzeit: 120). */
+function berlinOffsetMinutes(at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIME_ZONE,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+  return Math.round((asUtc - Math.floor(at.getTime() / 60000) * 60000) / 60000);
+}
+
+/**
+ * Datum und Uhrzeit, wie sie jemand in Deutschland eingibt ("2026-10-10", "09:00"),
+ * als Zeitpunkt. null bei ungültiger Eingabe.
+ */
+export function berlinLocalToDate(date: string, time: string): Date | null {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const t = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!d || !t) return null;
+  const [y, mo, da, h, mi] = [d[1], d[2], d[3], t[1], t[2]].map(Number);
+  if (mo < 1 || mo > 12 || da < 1 || da > 31 || h > 23 || mi > 59) return null;
+  const naive = Date.UTC(y, mo - 1, da, h, mi);
+  // Zweimal korrigieren, damit auch Tage mit Zeitumstellung stimmen.
+  let result = naive - berlinOffsetMinutes(new Date(naive)) * 60000;
+  result = naive - berlinOffsetMinutes(new Date(result)) * 60000;
+  const check = new Date(result);
+  return Number.isNaN(check.getTime()) ? null : check;
+}
+
+/** Tag und Uhrzeit in deutscher Zeit für Formularfelder: { date: "2026-10-10", time: "09:00" }. */
+export function berlinDateTimeParts(at: Date): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(at);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}
+
+export type PlanDay = { date: string; weekday: string; label: string; isToday: boolean };
+
+const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
+
+/**
+ * Kalenderwoche in deutscher Zeit, Montag bis Sonntag. offset verschiebt um ganze Wochen.
+ * from und to begrenzen die Woche als Zeitpunkte (to ist der folgende Montag, 0 Uhr).
+ */
+export function berlinWeek(now: Date, offset = 0): { days: PlanDay[]; from: Date; to: Date } {
+  const today = berlinDateTimeParts(now).date;
+  const [y, m, d] = today.split("-").map(Number);
+  const todayUtc = Date.UTC(y, m - 1, d);
+  const mondayIndex = (new Date(todayUtc).getUTCDay() + 6) % 7;
+  const monday = todayUtc - mondayIndex * 86400000 + offset * 7 * 86400000;
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+  const days = WEEKDAYS.map((weekday, i) => {
+    const date = iso(monday + i * 86400000);
+    const [, mm, dd] = date.split("-").map(Number);
+    return { date, weekday, label: `${weekday} ${dd}.${mm}.`, isToday: date === today };
+  });
+  return {
+    days,
+    from: berlinLocalToDate(days[0].date, "00:00") as Date,
+    to: berlinLocalToDate(iso(monday + 7 * 86400000), "00:00") as Date,
+  };
+}
+
+const dayNumber = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric" });
+const monthShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, month: "short" });
+const weekdayShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short" });
+const timeShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "numeric", minute: "2-digit" });
+
+/** Datumsblock in der Liste: Tag groß, Monat klein, z. B. { day: "11", month: "Okt" }. */
+export function meetupDateBlock(startsAt: string): { day: string; month: string } {
+  const date = new Date(startsAt);
+  return { day: dayNumber.format(date).replace(".", ""), month: monthShort.format(date).replace(".", "") };
+}
+
+/** Wochentag und Uhrzeit, z. B. "Sa 9:00". */
+export function formatMeetupWhen(startsAt: string): string {
+  const date = new Date(startsAt);
+  return `${weekdayShort.format(date).replace(".", "")} ${timeShort.format(date)}`;
+}
+
+/** Zusagen: "8 dabei" oder, mit Höchstzahl, "5 von 12". */
+export function describeMeetupCount(count: number, max: number | null): string {
+  return max === null ? `${count}\u00a0dabei` : `${count} von ${max}`;
+}
+
+/** Ist ein Treffen voll? */
+export function isMeetupFull(count: number, max: number | null): boolean {
+  return max !== null && count >= max;
+}
+
+/** Kalendereintrag (iCalendar) für ein geplantes Training, mit zwei Stunden Dauer. */
+export function buildMeetupIcs(meetup: {
+  id: string;
+  title: string;
+  startsAt: string;
+  place: string | null;
+  url: string;
+}): string {
+  const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const escape = (text: string) => text.replace(/\\/g, "\\\\").replace(/[;,]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+  const start = new Date(meetup.startsAt);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//OHealth//Treffen//DE",
+    "BEGIN:VEVENT",
+    `UID:${meetup.id}@ohealth`,
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${stamp(start)}`,
+    `DTEND:${stamp(end)}`,
+    `SUMMARY:${escape(meetup.title)}`,
+    ...(meetup.place ? [`LOCATION:${escape(meetup.place)}`] : []),
+    "DESCRIPTION:Geplant mit OHealth",
+    `URL:${meetup.url}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
+}
+
+/** Die ersten n einer Rangliste, dazu die eigene Zeile, falls sie weiter hinten steht. */
+export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: number): { row: T; rank: number }[] {
+  const ranked = rows.map((row, i) => ({ row, rank: i + 1 }));
+  const top = ranked.slice(0, n);
+  const me = ranked.find((r) => r.row.isMe);
+  return me && me.rank > n ? [...top, me] : top;
+}
+
+// ---------- Mitteilungen ----------
+
+export type NotificationKind = "new_training" | "joined" | "message" | "cancelled";
+
+export function toNotificationKind(value: string): NotificationKind {
+  return value === "joined" || value === "message" || value === "cancelled" ? value : "new_training";
+}
+
+/** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
+export function describeNotification(n: { kind: NotificationKind; actorName: string; title: string; count: number }): string {
+  switch (n.kind) {
+    case "new_training":
+      return `${n.actorName} plant „${n.title}“`;
+    case "joined":
+      return `${n.actorName} ist bei „${n.title}“ dabei`;
+    case "message":
+      return n.count > 1
+        ? `${n.count} neue Nachrichten zu „${n.title}“, zuletzt von ${n.actorName}`
+        : `${n.actorName} hat zu „${n.title}“ geschrieben`;
+    case "cancelled":
+      return `${n.actorName} hat „${n.title}“ abgesagt`;
+  }
+}
+
+/** Wann, relativ zu jetzt: "gerade eben", "vor 5 Min.", "vor 3 Std.", sonst Datum. */
+export function formatAgo(at: string, now: Date): string {
+  const minutes = Math.floor((now.getTime() - new Date(at).getTime()) / 60000);
+  if (minutes < 1) return "gerade eben";
+  if (minutes < 60) return `vor ${minutes}\u00a0Min.`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `vor ${hours}\u00a0Std.`;
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "short" }).format(
+    new Date(at),
+  );
+}
+
+/** Zähler an der Glocke: ab 10 nur noch "9+". */
+export function badgeCount(count: number): string {
+  return count > 9 ? "9+" : String(count);
+}
+
+/** Wie lange vorher ein Training unter "Gleich" erscheint. */
+export const REMINDER_HOURS = 3;

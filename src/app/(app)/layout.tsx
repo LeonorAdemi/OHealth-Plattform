@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
-import { getProfile } from "@/modules/core/queries";
+import { NotificationBell } from "@/modules/core/components/notification-bell";
+import { getProfile, getUnreadNotificationCount } from "@/modules/core/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const profile = await getProfile();
+  const [profile, unread] = await Promise.all([getProfile(), getUnreadNotificationCount()]);
 
   return (
     <div className="min-h-dvh md:flex">
@@ -16,6 +17,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav aria-label="Hauptnavigation" className="mt-8">
           <AppNav variant="side" />
         </nav>
+        <div className="mt-6">
+          <NotificationBell initialCount={unread} variant="side" />
+        </div>
         <Link
           href="/profil"
           className="hover:bg-accent mt-auto flex min-h-10 items-center rounded-lg px-3 transition-colors duration-150 ease-out"
@@ -24,7 +28,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
       </aside>
 
-      <main className="min-w-0 flex-1 px-5 pt-8 pb-28 md:px-10 md:py-10">
+      <main className="relative min-w-0 flex-1 px-5 pt-8 pb-28 md:px-10 md:py-10">
+        <div className="absolute top-3 right-3 md:hidden">
+          <NotificationBell initialCount={unread} variant="icon" />
+        </div>
         <div className="max-w-[960px]">{children}</div>
         <p className="mt-16 md:hidden">
           <Link
