@@ -43,12 +43,17 @@ insert into public.template_versions (id, template_id, version_number) values
 insert into public.template_version_exercises (version_id, exercise_id, position)
 select '50000000-0000-0000-0000-00000000000a', e.id, 1 from public.exercises e where e.name = 'Bankdrücken';
 
--- Ben plant in der Crew ein Treffen, Anna sagt zu
-insert into public.meetups (id, group_id, created_by, title, starts_at, place) values
-  ('60000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-000000000001',
-   '00000000-0000-0000-0000-00000000000b', 'Lauf', now() + interval '1 day', 'Isar');
+-- Ben plant ein Training und teilt es mit der Crew, Anna sagt zu und schreibt im Chat.
+-- Anna plant selbst ein privates Training.
+insert into public.meetups (id, created_by, title, starts_at, place) values
+  ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b', 'Lauf', now() + interval '1 day', 'Isar'),
+  ('60000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', 'Beine', now() + interval '2 days', null);
+insert into public.meetup_shares (meetup_id, group_id) values
+  ('60000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-000000000001');
 insert into public.meetup_participants (meetup_id, user_id) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a');
+insert into public.meetup_messages (meetup_id, user_id, body) values
+  ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', 'Bin dabei');
 
 -- ---------- ohne Anmeldung ----------
 set local role anon;
@@ -71,9 +76,11 @@ select is(
   + (select count(*)::int from public.group_members where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.workout_templates where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.template_versions where template_id = '40000000-0000-0000-0000-00000000000a')
-  + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a'),
+  + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.meetups where created_by = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze, Mitgliedschaften und Vorlagen mit Versionen sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Chat-Nachrichten sind vollständig weg');
 
 select results_eq(
   $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,

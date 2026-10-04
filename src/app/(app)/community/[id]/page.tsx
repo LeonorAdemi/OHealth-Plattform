@@ -10,7 +10,7 @@ import { LeaveCommunity, ReportCommunity } from "@/modules/core/components/commu
 import { InviteShare } from "@/modules/core/components/invite-share";
 import { MeetupList } from "@/modules/core/components/meetup-list";
 import { COMMUNITY_KIND_HINT, COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
-import { getGroupMembers, getUpcomingMeetups, getMyCommunity, requireUser } from "@/modules/core/queries";
+import { getGroupMembers, getMeetups, getMyCommunity, requireUser } from "@/modules/core/queries";
 import { Leaderboard } from "@/modules/workouts/components/leaderboard";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { isoWeek } from "@/modules/workouts/logic";
@@ -18,7 +18,7 @@ import { getCommunityLeaderboard, getGroupActivity, getLeaderboard } from "@/mod
 
 export const metadata: Metadata = { title: "Community" };
 
-const TABS = ["treffen", "rangliste", "info"] as const;
+const TABS = ["pinnwand", "rangliste", "info"] as const;
 type Tab = (typeof TABS)[number];
 const LEADERBOARD_SIZE = 20;
 
@@ -35,7 +35,7 @@ export default async function CommunityDetailPage({
   const community = await getMyCommunity(id);
   if (!community) notFound();
 
-  const tab: Tab = TABS.find((t) => t === rawTab) ?? "treffen";
+  const tab: Tab = TABS.find((t) => t === rawTab) ?? "pinnwand";
   const origin = await requestOrigin();
   const inviteUrl = `${origin}/beitreten/${community.inviteCode}`;
 
@@ -66,7 +66,7 @@ export default async function CommunityDetailPage({
           label="Bereiche der Community"
           active={tab}
           tabs={[
-            { key: "treffen", label: "Treffen", href: `/community/${id}` },
+            { key: "pinnwand", label: "Pinnwand", href: `/community/${id}` },
             { key: "rangliste", label: "Rangliste", href: `/community/${id}?tab=rangliste` },
             { key: "info", label: "Info", href: `/community/${id}?tab=info` },
           ]}
@@ -74,7 +74,7 @@ export default async function CommunityDetailPage({
       </div>
 
       <div className="max-w-2xl">
-        {tab === "treffen" && <MeetupsTab id={id} />}
+        {tab === "pinnwand" && <BoardTab id={id} />}
         {tab === "rangliste" && <RankingTab id={id} isPublic={community.kind === "public"} />}
         {tab === "info" && <InfoTab community={community} inviteUrl={inviteUrl} />}
       </div>
@@ -82,20 +82,20 @@ export default async function CommunityDetailPage({
   );
 }
 
-async function MeetupsTab({ id }: { id: string }) {
-  const meetups = await getUpcomingMeetups(new Date(), { groupId: id });
+async function BoardTab({ id }: { id: string }) {
+  const meetups = await getMeetups("board", { groupId: id, from: new Date() });
 
   return (
-    <section aria-label="Treffen" className="mt-2">
+    <section aria-label="Pinnwand" className="mt-2">
       {meetups.length === 0 ? (
         <p className="text-muted-foreground py-4">
-          Noch keine Treffen geplant. Sag Bescheid, wann du trainierst, und andere schließen sich an.
+          Noch keine geplanten Trainings. Plane deins und teile es hier, dann können andere mitmachen.
         </p>
       ) : (
-        <MeetupList label="Kommende Treffen" meetups={meetups} />
+        <MeetupList label="Geplante Trainings" meetups={meetups} />
       )}
       <Button asChild className="mt-6 w-full md:w-auto">
-        <Link href={`/community/${id}/treffen/neu`}>Treffen planen</Link>
+        <Link href={`/plan/neu?community=${id}`}>Training planen</Link>
       </Button>
     </section>
   );

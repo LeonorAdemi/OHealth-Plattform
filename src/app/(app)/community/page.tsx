@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { JoinPublicButton, JoinWithCodeForm } from "@/modules/core/components/community-forms";
 import { MeetupList } from "@/modules/core/components/meetup-list";
 import { COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
-import { getMyCommunities, getUpcomingMeetups, searchCommunities } from "@/modules/core/queries";
+import { getMeetups, getMyCommunities, searchCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Community" };
 
@@ -18,7 +18,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const now = new Date();
   const [mine, meetups, found] = await Promise.all([
     getMyCommunities(),
-    getUpcomingMeetups(now, { limit: 5 }),
+    getMeetups("communities", { from: now, limit: 5 }),
     searchCommunities(query, 20),
   ]);
   const discover = found.filter((c) => !c.isMember);
@@ -30,15 +30,15 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
       {mine.length > 0 && (
         <section className="mt-8 max-w-2xl" aria-labelledby="treffen">
           <h2 id="treffen" className="text-xl font-semibold">
-            Nächste Treffen
+            Gemeinsam trainieren
           </h2>
           {meetups.length === 0 ? (
             <p className="text-muted-foreground mt-2">
-              Noch keine Treffen in deinen Communities. Plane eins in einer Community, andere sagen zu.
+              Noch keine geteilten Trainings in deinen Communities. Plane eins und teile es, dann können andere mitmachen.
             </p>
           ) : (
             <div className="mt-2">
-              <MeetupList label="Nächste Treffen" meetups={meetups} showCommunity />
+              <MeetupList label="Gemeinsam trainieren" meetups={meetups} />
             </div>
           )}
         </section>

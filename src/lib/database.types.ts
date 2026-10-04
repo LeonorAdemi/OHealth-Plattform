@@ -145,6 +145,45 @@ export type Database = {
           },
         ]
       }
+      meetup_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          meetup_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          meetup_id: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          meetup_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_messages_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetup_participants: {
         Row: {
           created_at: string
@@ -178,38 +217,74 @@ export type Database = {
           },
         ]
       }
+      meetup_shares: {
+        Row: {
+          created_at: string
+          group_id: string
+          meetup_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          meetup_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          meetup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_shares_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_shares_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetups: {
         Row: {
           created_at: string
           created_by: string
-          group_id: string
+          group_id: string | null
           id: string
           max_participants: number | null
           note: string | null
-          place: string
+          place: string | null
           starts_at: string
+          template_id: string | null
           title: string
         }
         Insert: {
           created_at?: string
           created_by?: string
-          group_id: string
+          group_id?: string | null
           id?: string
           max_participants?: number | null
           note?: string | null
-          place: string
+          place?: string | null
           starts_at: string
+          template_id?: string | null
           title: string
         }
         Update: {
           created_at?: string
           created_by?: string
-          group_id?: string
+          group_id?: string | null
           id?: string
           max_participants?: number | null
           note?: string | null
-          place?: string
+          place?: string | null
           starts_at?: string
+          template_id?: string | null
           title?: string
         }
         Relationships: [
@@ -225,6 +300,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -762,6 +844,40 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      meetup_chat: {
+        Args: { max_rows?: number; mid: string }
+        Returns: {
+          body: string
+          created_at: string
+          display_name: string
+          id: string
+          user_id: string
+        }[]
+      }
+      meetup_feed: {
+        Args: {
+          from_ts?: string
+          gid?: string
+          max_rows?: number
+          mid?: string
+          scope: string
+          to_ts?: string
+        }
+        Returns: {
+          creator_name: string
+          id: string
+          is_joined: boolean
+          is_mine: boolean
+          max_participants: number
+          note: string
+          participant_count: number
+          place: string
+          share_count: number
+          starts_at: string
+          template_id: string
+          title: string
+        }[]
       }
       meetup_participant_names: {
         Args: { mid: string }

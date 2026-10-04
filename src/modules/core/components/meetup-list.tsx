@@ -26,30 +26,24 @@ function Joined() {
 }
 
 /**
- * Treffen als Zeilen. Mit showCommunity steht die Community statt des Treffpunkts in der
- * zweiten Zeile (Übersicht über alle Communities).
+ * Geplante Trainings als Zeilen, nächstes zuerst. Zweite Zeile: wer plant, wann, wo, wie viele dabei.
  */
-export function MeetupList({
-  label,
-  meetups,
-  showCommunity = false,
-}: {
-  label: string;
-  meetups: readonly (Meetup & { communityName: string })[];
-  showCommunity?: boolean;
-}) {
+export function MeetupList({ label, meetups }: { label: string; meetups: readonly Meetup[] }) {
   return (
     <ul aria-label={label}>
       {meetups.map((m) => {
         const full = isMeetupFull(m.count, m.maxParticipants);
-        const meta = showCommunity
-          ? [m.communityName, formatMeetupWhen(m.startsAt)]
-          : [formatMeetupWhen(m.startsAt), m.place, describeMeetupCount(m.count, m.maxParticipants)];
+        const meta = [
+          m.isMine ? "Du" : m.creatorName,
+          formatMeetupWhen(m.startsAt),
+          m.place,
+          describeMeetupCount(m.count, m.maxParticipants),
+        ].filter(Boolean);
 
         return (
           <li key={m.id} className="flex min-h-16 items-center gap-4 border-b py-3">
             <MeetupDate startsAt={m.startsAt} />
-            <Link href={`/community/${m.groupId}/treffen/${m.id}`} className="group min-w-0 flex-1">
+            <Link href={`/plan/${m.id}`} className="group min-w-0 flex-1">
               <span className="line-clamp-2 block font-medium break-words group-hover:underline group-hover:underline-offset-4">
                 {m.title}
               </span>
@@ -61,7 +55,7 @@ export function MeetupList({
               ) : full ? (
                 <span className="text-muted-foreground text-sm">Voll</span>
               ) : (
-                <MeetupToggle meetupId={m.id} groupId={m.groupId} joined={false} title={m.title} />
+                <MeetupToggle meetupId={m.id} joined={false} title={m.title} />
               )}
             </span>
           </li>

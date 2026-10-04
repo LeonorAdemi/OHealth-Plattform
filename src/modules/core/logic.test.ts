@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   berlinDateTimeParts,
+  berlinWeek,
   berlinLocalToDate,
   buildMeetupIcs,
   describeMeetupCount,
@@ -120,13 +121,16 @@ describe("Treffen", () => {
       title: "Lauf, locker",
       startsAt: "2026-10-10T07:00:00Z",
       place: "Reichenbachbrücke",
-      communityName: "Laufen München",
       url: "https://example.com/community/x/treffen/m1",
     });
     expect(ics).toContain("DTSTART:20261010T070000Z\r\n");
     expect(ics).toContain("DTEND:20261010T090000Z\r\n");
     expect(ics).toContain("SUMMARY:Lauf\\, locker\r\n");
+    expect(ics).toContain("LOCATION:Reichenbachbrücke\r\n");
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+    expect(buildMeetupIcs({ id: "m2", title: "Beine", startsAt: "2026-10-10T07:00:00Z", place: null, url: "x" })).not.toContain(
+      "LOCATION",
+    );
   });
 });
 
@@ -141,5 +145,26 @@ describe("Rangliste kürzen", () => {
 
   it("zeigt die eigene Zeile nicht doppelt", () => {
     expect(topWithMe(rows, 25)).toHaveLength(25);
+  });
+});
+
+describe("Wochenplan", () => {
+  it("liefert Montag bis Sonntag in deutscher Zeit", () => {
+    // Sonntag, 4. Oktober 2026, 23:30 Uhr in Berlin
+    const week = berlinWeek(new Date("2026-10-04T21:30:00Z"));
+    expect(week.days.map((d) => d.date)).toEqual([
+      "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+    ]);
+    expect(week.days[6]).toMatchObject({ label: "So 4.10.", isToday: true });
+    expect(week.from.toISOString()).toBe("2026-09-27T22:00:00.000Z");
+    expect(week.to.toISOString()).toBe("2026-10-04T22:00:00.000Z");
+  });
+
+  it("verschiebt um ganze Wochen, auch über die Zeitumstellung", () => {
+    const week = berlinWeek(new Date("2026-10-04T10:00:00Z"), 1);
+    expect(week.days[0].date).toBe("2026-10-05");
+    expect(week.to.toISOString()).toBe("2026-10-11T22:00:00.000Z");
+    const later = berlinWeek(new Date("2026-10-04T10:00:00Z"), 4);
+    expect(later.from.toISOString()).toBe("2026-10-25T23:00:00.000Z");
   });
 });

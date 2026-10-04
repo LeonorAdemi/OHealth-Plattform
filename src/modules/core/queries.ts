@@ -159,85 +159,99 @@ export async function getCommunityPreview(code: string) {
   };
 }
 
-// ---------- Treffen ----------
+// ---------- Geplante Trainings ----------
 
-type MeetupRow = {
+type FeedScope = "board" | "mine" | "communities" | "single";
+
+type FeedRow = {
   id: string;
-  group_id: string;
-  created_by: string;
   title: string;
   starts_at: string;
-  place: string;
+  place: string | null;
   max_participants: number | null;
   note: string | null;
-  meetup_participants: { count: number }[];
+  template_id: string | null;
+  creator_name: string;
+  participant_count: number;
+  is_joined: boolean;
+  is_mine: boolean;
+  share_count: number;
 };
 
-const MEETUP_COLUMNS =
-  "id, group_id, created_by, title, starts_at, place, max_participants, note, meetup_participants(count)";
-
-function toMeetup(row: MeetupRow, joined: ReadonlySet<string>, userId: string) {
+function toMeetup(row: FeedRow) {
   return {
     id: row.id,
-    groupId: row.group_id,
     title: row.title,
     startsAt: row.starts_at,
     place: row.place,
     maxParticipants: row.max_participants,
     note: row.note,
-    count: row.meetup_participants[0]?.count ?? 0,
-    isJoined: joined.has(row.id),
-    isMine: row.created_by === userId,
+    templateId: row.template_id,
+    creatorName: row.creator_name,
+    count: row.participant_count,
+    isJoined: row.is_joined,
+    isMine: row.is_mine,
+    shareCount: row.share_count,
   };
 }
 
 export type Meetup = ReturnType<typeof toMeetup>;
 
 /**
- * Kommende Treffen, nächstes zuerst: einer Community oder, ohne groupId, aus allen eigenen
- * Communities. Treffen sehen nur Mitglieder (RLS).
+ * Geplante Trainings, nächstes zuerst (meetup_feed):
+ * board = Pinnwand einer Community, mine = selbst geplant oder zugesagt,
+ * communities = geteilt in eine meiner Communities.
  */
-export async function getUpcomingMeetups(now: Date, { groupId, limit = 50 }: { groupId?: string; limit?: number } = {}) {
-  const { supabase, userId } = await requireUser();
-  let query = supabase
-    .from("meetups")
-    .select(`${MEETUP_COLUMNS}, groups(name)`)
-    .gt("starts_at", now.toISOString())
-    .order("starts_at")
-    .limit(limit);
-  if (groupId) query = query.eq("group_id", groupId);
-  const { data, error } = await query;
-  if (error) throw new Error("Treffen konnten nicht geladen werden.");
-
-  const ids = data.map((m) => m.id);
-  const { data: mine, error: mineError } = ids.length
-    ? await supabase.from("meetup_participants").select("meetup_id").eq("user_id", userId).in("meetup_id", ids)
-    : { data: [], error: null };
-  if (mineError) throw new Error("Treffen konnten nicht geladen werden.");
-
-  const joined = new Set(mine.map((p) => p.meetup_id));
-  return data.map((row) => ({ ...toMeetup(row, joined, userId), communityName: row.groups?.name ?? "" }));
+export async function getMeetups(
+  scope: Exclude<FeedScope, "single">,
+  { groupId, from, to, limit = 50 }: { groupId?: string; from: Date; to?: Date; limit?: number },
+) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("meetup_feed", {
+    scope,
+    gid: groupId,
+    from_ts: from.toISOString(),
+    to_ts: to?.toISOString(),
+    max_rows: limit,
+  });
+  if (error) throw new Error("Trainings konnten nicht geladen werden.");
+  return data.map(toMeetup);
 }
 
-/** Ein Treffen mit den Namen aller, die dabei sind. null, wenn es das Treffen (für mich) nicht gibt. */
+/**
+ * Ein geplantes Training mit Teilnehmern, den Communities, in denen ich es sehe (alle, wenn es
+ * meins ist), und dem Chat, wenn ich dabei bin. null, wenn ich es nicht sehen darf.
+ */
 export async function getMeetup(meetupId: string) {
   const { supabase, userId } = await requireUser();
-  const { data, error } = await supabase
-    .from("meetups")
-    .select(`${MEETUP_COLUMNS}, groups(name)`)
-    .eq("id", meetupId)
-    .maybeSingle();
-  if (error) throw new Error("Das Treffen konnte nicht geladen werden.");
-  if (!data) return null;
+  const { data, error } = await supabase.rpc("meetup_feed", {
+    scope: "single",
+    mid: meetupId,
+    from_ts: "-infinity",
+  });
+  if (error) throw new Error("Das Training konnte nicht geladen werden.");
+  const row = data[0];
+  if (!row) return null;
+  const meetup = toMeetup(row);
 
-  const { data: people, error: peopleError } = await supabase.rpc("meetup_participant_names", { mid: meetupId });
-  if (peopleError) throw new Error("Das Treffen konnte nicht geladen werden.");
+  const [people, shares, chat] = await Promise.all([
+    supabase.rpc("meetup_participant_names", { mid: meetupId }),
+    supabase.from("meetup_shares").select("group_id").eq("meetup_id", meetupId).limit(100),
+    meetup.isJoined ? supabase.rpc("meetup_chat", { mid: meetupId }) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (people.error || shares.error || chat.error) throw new Error("Das Training konnte nicht geladen werden.");
 
-  const joined = new Set(people.some((p) => p.user_id === userId) ? [data.id] : []);
   return {
-    ...toMeetup(data, joined, userId),
-    communityName: data.groups?.name ?? "",
-    participants: people.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
+    ...meetup,
+    participants: people.data.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
+    sharedWith: shares.data.map((s) => s.group_id),
+    messages: chat.data.map((m) => ({
+      id: m.id,
+      name: m.display_name,
+      body: m.body,
+      createdAt: m.created_at,
+      isMe: m.user_id === userId,
+    })),
   };
 }
 

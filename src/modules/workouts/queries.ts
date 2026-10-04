@@ -75,6 +75,27 @@ export async function getRecentWorkouts(limit = 20) {
   return data;
 }
 
+/** Eigene Workouts in einem Zeitraum, für den Wochenplan. */
+export async function getMyWorkoutsBetween(from: Date, to: Date) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, title, performed_at, workout_sets(count)")
+    .eq("user_id", userId)
+    .gte("performed_at", from.toISOString())
+    .lt("performed_at", to.toISOString())
+    .order("performed_at")
+    .limit(100);
+
+  if (error) throw new Error("Workouts konnten nicht geladen werden.");
+  return data.map((w) => ({
+    id: w.id,
+    title: w.title,
+    performedAt: w.performed_at,
+    setCount: w.workout_sets[0]?.count ?? 0,
+  }));
+}
+
 // ---------- Öffentliche Community ----------
 // Mitglieder sehen hier nur Namen, Trainingstage und Bestwerte der anderen, keine Workouts.
 // Beides liefern Datenbankfunktionen, die nur Mitgliedern antworten (Migration 0012).

@@ -68,9 +68,10 @@ export default function PrivacyPage() {
           wann und in welcher Rolle.
         </li>
         <li>
-          <strong>Treffen:</strong> Treffen, die du in einer Community planst
-          (Titel, Zeitpunkt, Treffpunkt, Höchstzahl, Notiz), und bei welchen
-          Treffen du zugesagt hast.
+          <strong>Geplante Trainings und Chat:</strong> Trainings, die du
+          planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
+          Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
+          du zugesagt hast und deine Nachrichten im Chat eines Trainings.
         </li>
         <li>
           <strong>Technische Daten:</strong> beim Aufruf der App fallen bei
@@ -123,12 +124,19 @@ export default function PrivacyPage() {
         deine Meldung mit deinem Konto, damit wir sie prüfen können.
       </p>
       <p>
-        Treffen sehen nur die Mitglieder der jeweiligen Community, auch in
-        öffentlichen Communities. Sie sehen, wer das Treffen plant und wer
-        zugesagt hat, mit Anzeigenamen. Gib als Treffpunkt einen öffentlichen
-        Ort an, keine Privatadresse. Zusagen kannst du jederzeit zurückziehen;
-        wer ein Treffen geplant hat oder die Community verwaltet, kann es
-        entfernen.
+        Ein geplantes Training siehst nur du, solange du es mit keiner
+        Community teilst. Teilst du es, sehen es die Mitglieder dieser
+        Communities, auch in öffentlichen Communities nur die Mitglieder: wer
+        es plant, wann und wo, und wer zugesagt hat, jeweils mit Anzeigenamen.
+        Die verknüpfte Vorlage sehen andere nicht. Gib als Treffpunkt einen
+        öffentlichen Ort an, keine Privatadresse. Wer eine Community verwaltet,
+        kann ein Training von ihrer Pinnwand nehmen.
+      </p>
+      <p>
+        Den Chat eines Trainings lesen und schreiben nur die, die zugesagt
+        haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
+        kannst du jederzeit löschen. Entfernt die planende Person das
+        Training, wird der Chat mit gelöscht.
       </p>
 
       <h2>Wer deine Vorlagen sieht</h2>
@@ -223,8 +231,8 @@ export default function PrivacyPage() {
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
-        Versionen, alle Mitgliedschaften, deine Treffen und Zusagen sofort
-        entfernt. Communities, die
+        Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen
+        und Chat-Nachrichten sofort entfernt. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

@@ -1,13 +1,23 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/result";
 
-import { createMeetup, deleteMeetup, joinMeetup, leaveMeetup } from "../actions";
+import {
+  createMeetup,
+  deleteMeetup,
+  deleteMeetupMessage,
+  joinMeetup,
+  leaveMeetup,
+  removeMeetupShare,
+  sendMeetupMessage,
+  updateMeetupShares,
+} from "../actions";
 
 const initial: FormState = {};
 
@@ -20,17 +30,55 @@ function ErrorText({ error }: { error?: string }) {
   );
 }
 
+type CommunityOption = { id: string; name: string; kindLabel: string };
+
+/** Häkchen je eigener Community. Ohne Häkchen bleibt ein Training privat. */
+function ShareChoices({ communities, selected }: { communities: readonly CommunityOption[]; selected: readonly string[] }) {
+  if (communities.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Du bist noch in keiner Community. Das Training bleibt privat.
+      </p>
+    );
+  }
+  return (
+    <ul>
+      {communities.map((c) => (
+        <li key={c.id}>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 py-1">
+            <input
+              type="checkbox"
+              name="shareWith"
+              value={c.id}
+              defaultChecked={selected.includes(c.id)}
+              className="accent-primary size-5 shrink-0"
+            />
+            <span className="min-w-0">
+              <span className="block">{c.name}</span>
+              <span className="text-muted-foreground block text-sm">{c.kindLabel}</span>
+            </span>
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
- * Neues Treffen. Tag und Uhrzeit kommen vom Server vorbelegt (deutsche Zeit),
+ * Training planen. Tag und Uhrzeit kommen vom Server vorbelegt (deutsche Zeit),
  * damit Server und Browser dasselbe anzeigen.
  */
 export function CreateMeetupForm({
-  groupId,
+  templates,
+  communities,
+  preselected,
   defaultDate,
   defaultTime,
   minDate,
 }: {
-  groupId: string;
+  templates: readonly { id: string; name: string }[];
+  communities: readonly CommunityOption[];
+  preselected: readonly string[];
   defaultDate: string;
   defaultTime: string;
   minDate: string;
@@ -39,10 +87,29 @@ export function CreateMeetupForm({
 
   return (
     <form action={action} className="max-w-xl space-y-6">
-      <input type="hidden" name="groupId" value={groupId} />
+      {templates.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="templateId">Vorlage (optional)</Label>
+          <select
+            id="templateId"
+            name="templateId"
+            defaultValue=""
+            className="border-input bg-background focus-visible:outline-ring h-12 w-full rounded-lg border px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 md:h-10"
+          >
+            <option value="">Ohne Vorlage</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-muted-foreground text-sm">Mit Vorlage startest du das Training am Tag direkt aus dem Plan.</p>
+        </div>
+      )}
+
       <div className="space-y-2">
-        <Label htmlFor="title">Was habt ihr vor?</Label>
-        <Input id="title" name="title" maxLength={80} placeholder="Lockerer Lauf an der Isar" required />
+        <Label htmlFor="title">{templates.length > 0 ? "Titel (optional mit Vorlage)" : "Was hast du vor?"}</Label>
+        <Input id="title" name="title" maxLength={80} placeholder="Lockerer Lauf an der Isar" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -56,26 +123,27 @@ export function CreateMeetupForm({
         </div>
       </div>
 
+      <fieldset className="space-y-1">
+        <legend className="mb-1 text-sm font-medium">Teilen mit</legend>
+        <p className="text-muted-foreground pb-1 text-sm">
+          Mitglieder der gewählten Communities sehen das Training auf der Pinnwand und können zusagen.
+        </p>
+        <ShareChoices communities={communities} selected={preselected} />
+      </fieldset>
+
       <div className="space-y-2">
-        <Label htmlFor="place">Treffpunkt</Label>
-        <Input id="place" name="place" maxLength={80} placeholder="Reichenbachbrücke" required aria-describedby="place-hint" />
+        <Label htmlFor="place">Treffpunkt (optional)</Label>
+        <Input id="place" name="place" maxLength={80} placeholder="Reichenbachbrücke" aria-describedby="place-hint" />
         <p id="place-hint" className="text-muted-foreground text-sm">
-          Ein öffentlicher Ort, zum Beispiel eine Brücke oder ein Parkeingang. Keine Privatadresse.
+          Ein öffentlicher Ort, zum Beispiel eine Brücke, ein Parkeingang oder ein Studio. Keine Privatadresse.
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="max">Höchstens (optional)</Label>
-        <Input
-          id="max"
-          name="max"
-          type="number"
-          inputMode="numeric"
-          min={2}
-          max={500}
-          placeholder="Ohne Grenze"
-          className="max-w-40"
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="max">Höchstens (optional)</Label>
+          <Input id="max" name="max" type="number" inputMode="numeric" min={2} max={500} placeholder="Ohne Grenze" />
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -85,19 +153,44 @@ export function CreateMeetupForm({
 
       <ErrorText error={state.error} />
       <Button type="submit" className="w-full md:w-auto" disabled={pending}>
-        {pending ? "Wird geplant" : "Treffen planen"}
+        {pending ? "Wird geplant" : "Training planen"}
       </Button>
     </form>
   );
 }
 
-type ToggleProps = {
+/** Mit welchen Communities ein eigenes Training geteilt ist, nachträglich ändern. */
+export function ShareSettings({
+  meetupId,
+  communities,
+  selected,
+}: {
   meetupId: string;
-  groupId: string;
-  joined: boolean;
-  title: string;
-  primary?: boolean;
-};
+  communities: readonly CommunityOption[];
+  selected: readonly string[];
+}) {
+  const [state, action, pending] = useActionState(updateMeetupShares, initial);
+
+  return (
+    <form action={action} className="space-y-3">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <ShareChoices communities={communities} selected={selected} />
+      <ErrorText error={state.error} />
+      {state.message && (
+        <p role="status" className="text-sm">
+          {state.message}
+        </p>
+      )}
+      {communities.length > 0 && (
+        <Button type="submit" variant="outline" disabled={pending}>
+          Teilen speichern
+        </Button>
+      )}
+    </form>
+  );
+}
+
+type ToggleProps = { meetupId: string; joined: boolean; title: string; primary?: boolean };
 
 /** Zusagen oder absagen. "primary" ist der eine gefüllte Button einer Ansicht. */
 export function MeetupToggle(props: ToggleProps) {
@@ -105,19 +198,12 @@ export function MeetupToggle(props: ToggleProps) {
   return <MeetupToggleForm key={String(props.joined)} {...props} />;
 }
 
-function MeetupToggleForm({
-  meetupId,
-  groupId,
-  joined,
-  title,
-  primary = false,
-}: ToggleProps) {
+function MeetupToggleForm({ meetupId, joined, title, primary = false }: ToggleProps) {
   const [state, action, pending] = useActionState(joined ? leaveMeetup : joinMeetup, initial);
 
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="meetupId" value={meetupId} />
-      <input type="hidden" name="groupId" value={groupId} />
       <Button
         type="submit"
         variant={joined ? "outline" : primary ? "default" : "outline"}
@@ -133,15 +219,30 @@ function MeetupToggleForm({
   );
 }
 
+/** Verwaltung einer Community nimmt ein fremdes Training von ihrer Pinnwand. */
+export function RemoveFromCommunity({ meetupId, groupId, name }: { meetupId: string; groupId: string; name: string }) {
+  const [state, action, pending] = useActionState(removeMeetupShare, initial);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <input type="hidden" name="groupId" value={groupId} />
+      <Button type="submit" variant="ghost" className="-ml-4" disabled={pending}>
+        Aus {name} entfernen
+      </Button>
+      <ErrorText error={state.error} />
+    </form>
+  );
+}
+
 // Entfernen in zwei Schritten: erst nachfragen, dann entfernen.
-export function DeleteMeetup({ meetupId, groupId }: { meetupId: string; groupId: string }) {
+export function DeleteMeetup({ meetupId, shared }: { meetupId: string; shared: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [state, action, pending] = useActionState(deleteMeetup, initial);
 
   if (!confirming) {
     return (
       <Button variant="ghost" className="-ml-4" onClick={() => setConfirming(true)}>
-        Treffen entfernen
+        Training entfernen
       </Button>
     );
   }
@@ -149,8 +250,11 @@ export function DeleteMeetup({ meetupId, groupId }: { meetupId: string; groupId:
   return (
     <form action={action} className="space-y-3">
       <input type="hidden" name="meetupId" value={meetupId} />
-      <input type="hidden" name="groupId" value={groupId} />
-      <p>Das Treffen verschwindet für alle, auch für die, die schon zugesagt haben.</p>
+      <p>
+        {shared
+          ? "Das Training verschwindet für alle, auch für die, die schon zugesagt haben, samt Chat."
+          : "Das Training verschwindet aus deinem Plan."}
+      </p>
       <ErrorText error={state.error} />
       <div className="flex gap-3">
         <Button type="submit" variant="destructive" disabled={pending}>
@@ -160,6 +264,98 @@ export function DeleteMeetup({ meetupId, groupId }: { meetupId: string; groupId:
           Abbrechen
         </Button>
       </div>
+    </form>
+  );
+}
+
+// ---------- Chat ----------
+
+type Message = { id: string; name: string; body: string; createdAt: string; isMe: boolean };
+
+const messageTime = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+const REFRESH_MS = 10_000;
+
+/**
+ * Chat der Teilnehmer. Neue Nachrichten holt die Seite alle zehn Sekunden, solange sie
+ * sichtbar ist. Senden lädt sofort neu.
+ */
+export function MeetupChat({ meetupId, messages }: { meetupId: string; messages: readonly Message[] }) {
+  const router = useRouter();
+  const [state, action, pending] = useActionState(sendMeetupMessage, initial);
+  const form = useRef<HTMLFormElement>(null);
+  const end = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [router]);
+
+  useEffect(() => {
+    if (state.message === "sent") form.current?.reset();
+  }, [state]);
+
+  const lastId = messages.at(-1)?.id;
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "nearest" });
+  }, [lastId]);
+
+  return (
+    <div>
+      {messages.length === 0 ? (
+        <p className="text-muted-foreground py-2">Noch keine Nachrichten. Schreib den anderen, zum Beispiel wo ihr euch genau trefft.</p>
+      ) : (
+        <ol className="max-h-[60vh] overflow-y-auto" aria-label="Nachrichten" aria-live="polite">
+          {messages.map((m, i) => (
+            <li key={m.id} ref={i === messages.length - 1 ? end : undefined} className="border-b py-3">
+              <p className="text-sm">
+                <span className="font-medium">{m.isMe ? "Du" : m.name}</span>{" "}
+                <span className="text-muted-foreground">{messageTime.format(new Date(m.createdAt))}</span>
+              </p>
+              <p className="mt-0.5 break-words whitespace-pre-line">{m.body}</p>
+              {m.isMe && <DeleteMessage id={m.id} meetupId={meetupId} />}
+            </li>
+          ))}
+        </ol>
+      )}
+      <form ref={form} action={action} className="mt-4 space-y-2">
+        <input type="hidden" name="meetupId" value={meetupId} />
+        <Label htmlFor="body" className="sr-only">
+          Nachricht
+        </Label>
+        <div className="flex gap-3">
+          <Input id="body" name="body" maxLength={1000} placeholder="Nachricht" autoComplete="off" required />
+          <Button type="submit" variant="outline" disabled={pending}>
+            Senden
+          </Button>
+        </div>
+        <ErrorText error={state.error} />
+      </form>
+    </div>
+  );
+}
+
+function DeleteMessage({ id, meetupId }: { id: string; meetupId: string }) {
+  const [state, action, pending] = useActionState(deleteMeetupMessage, initial);
+  return (
+    <form action={action}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+      >
+        Löschen
+      </button>
+      <ErrorText error={state.error} />
     </form>
   );
 }

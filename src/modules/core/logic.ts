@@ -141,6 +141,34 @@ export function berlinDateTimeParts(at: Date): { date: string; time: string } {
   return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
 }
 
+export type PlanDay = { date: string; weekday: string; label: string; isToday: boolean };
+
+const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
+
+/**
+ * Kalenderwoche in deutscher Zeit, Montag bis Sonntag. offset verschiebt um ganze Wochen.
+ * from und to begrenzen die Woche als Zeitpunkte (to ist der folgende Montag, 0 Uhr).
+ */
+export function berlinWeek(now: Date, offset = 0): { days: PlanDay[]; from: Date; to: Date } {
+  const today = berlinDateTimeParts(now).date;
+  const [y, m, d] = today.split("-").map(Number);
+  const todayUtc = Date.UTC(y, m - 1, d);
+  const mondayIndex = (new Date(todayUtc).getUTCDay() + 6) % 7;
+  const monday = todayUtc - mondayIndex * 86400000 + offset * 7 * 86400000;
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+  const days = WEEKDAYS.map((weekday, i) => {
+    const date = iso(monday + i * 86400000);
+    const [, mm, dd] = date.split("-").map(Number);
+    return { date, weekday, label: `${weekday} ${dd}.${mm}.`, isToday: date === today };
+  });
+  return {
+    days,
+    from: berlinLocalToDate(days[0].date, "00:00") as Date,
+    to: berlinLocalToDate(iso(monday + 7 * 86400000), "00:00") as Date,
+  };
+}
+
 const dayNumber = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric" });
 const monthShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, month: "short" });
 const weekdayShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short" });
@@ -168,13 +196,12 @@ export function isMeetupFull(count: number, max: number | null): boolean {
   return max !== null && count >= max;
 }
 
-/** Kalendereintrag (iCalendar) für ein Treffen, mit zwei Stunden Dauer. */
+/** Kalendereintrag (iCalendar) für ein geplantes Training, mit zwei Stunden Dauer. */
 export function buildMeetupIcs(meetup: {
   id: string;
   title: string;
   startsAt: string;
-  place: string;
-  communityName: string;
+  place: string | null;
   url: string;
 }): string {
   const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -191,8 +218,8 @@ export function buildMeetupIcs(meetup: {
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
     `SUMMARY:${escape(meetup.title)}`,
-    `LOCATION:${escape(meetup.place)}`,
-    `DESCRIPTION:${escape(`${meetup.communityName} auf OHealth`)}`,
+    ...(meetup.place ? [`LOCATION:${escape(meetup.place)}`] : []),
+    "DESCRIPTION:Geplant mit OHealth",
     `URL:${meetup.url}`,
     "END:VEVENT",
     "END:VCALENDAR",
