@@ -18,7 +18,7 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 10 | Mitteilungen | Ohne Bescheid kommt niemand zurück: neue Trainings, Zusagen, Chat und Absagen erscheinen an der Glocke | Erledigt: Glocke in der App (Migration notifications, Test 15), Push aufs Handy und Erinnerung vor dem Training (Migration push_and_reminders, Test 16) |
 | 11 | Persönliches Profil | Mehr Nähe in den Gruppen: Profilbild, Kurztext, Sportarten und Stadt; Profilbild oben rechts, Verlauf und Einstellungen im Profil | Erledigt (Migration profile_details, Test 17) |
 | 12 | Gemeinsame Grundlage für Chats | Ein Datenmodell für Event-, Community- und später Privatchats, mit „gelesen bis" je Person | Erledigt (Migration chats, Test 18): Event-Chat entsteht mit der ersten Zusage, Community-Chat mit der Community (nicht bei Coaching), bisherige Nachrichten übernommen |
-| 13 | Tab „Chats" | Neue Nachrichten unten rechts statt an der Glocke; die Glocke zeigt nur noch Zusagen, neue Trainings und Erinnerungen | Offen |
+| 13 | Tab „Chats" | Neue Nachrichten unten rechts statt an der Glocke; die Glocke zeigt nur noch Zusagen, neue Trainings und Erinnerungen | Erledigt (Migration chat_inbox, Test 19): Chat-Liste mit ungelesenen Nachrichten, Event- und Community-Chats unter /chats, Push öffnet den Chat |
 | 14 | Event-Chat unter jedem Event | Entsteht, sobald jemand zusagt; nur wer dabei ist, liest und schreibt | Offen |
 | 15 | Chat je Community | Alle Mitglieder schreiben; Grenze von 30 Nachrichten pro Minute, Verwaltung kann löschen, Push anfangs aus | Offen |
 | 16 | Freundschaften und Privatchats | Anfrage senden und annehmen, erst danach privat schreiben; blockieren | Offen |

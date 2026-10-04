@@ -21,18 +21,19 @@ const initial: FormState = {};
  * Folgen derselben Person zusammengefasst. Gesendete Nachrichten erscheinen sofort (mit Uhr, bis
  * der Server sie bestätigt). Neue Nachrichten holt die Seite alle vier Sekunden, solange sie sichtbar ist.
  */
-export function MeetupChat({
+export function ChatThread({
   chatId,
-  meetupId,
   myUserId,
   messages,
   now,
+  emptyHint,
 }: {
   chatId: string;
-  meetupId: string;
   myUserId: string;
   messages: readonly ChatMessage[];
   now: string;
+  /** Satz für den leeren Chat */
+  emptyHint: string;
 }) {
   const router = useRouter();
   const [optimistic, addOptimistic] = useOptimistic<Shown[], Shown>([...messages], (state, m) =>
@@ -82,7 +83,6 @@ export function MeetupChat({
     const formData = new FormData();
     formData.set("id", id);
     formData.set("chatId", chatId);
-    formData.set("meetupId", meetupId);
     formData.set("body", body);
     setText("");
     setError(null);
@@ -115,7 +115,7 @@ export function MeetupChat({
       <div className="flex-1 pb-4" aria-live="polite">
         {rows.length === 0 ? (
           <p className="text-muted-foreground py-12 text-center text-sm">
-            Noch keine Nachrichten. Schreib den anderen, zum Beispiel wo ihr euch genau trefft.
+            {emptyHint}
           </p>
         ) : (
           <ol aria-label="Nachrichten" className="space-y-0.5">
@@ -159,7 +159,7 @@ export function MeetupChat({
                       </span>
                     </button>
                     {m.isMe && selected === m.id && !m.pending && (
-                      <DeleteMessage id={m.id} meetupId={meetupId} onDone={() => setSelected(null)} />
+                      <DeleteMessage id={m.id} chatId={chatId} onDone={() => setSelected(null)} />
                     )}
                   </div>
                 </div>
@@ -214,7 +214,7 @@ export function MeetupChat({
   );
 }
 
-function DeleteMessage({ id, meetupId, onDone }: { id: string; meetupId: string; onDone: () => void }) {
+function DeleteMessage({ id, chatId, onDone }: { id: string; chatId: string; onDone: () => void }) {
   const [pending, setPending] = useState(false);
   return (
     <p className="flex justify-end">
@@ -225,7 +225,7 @@ function DeleteMessage({ id, meetupId, onDone }: { id: string; meetupId: string;
           setPending(true);
           const formData = new FormData();
           formData.set("id", id);
-          formData.set("meetupId", meetupId);
+          formData.set("chatId", chatId);
           startTransition(async () => {
             await deleteChatMessage(initial, formData);
             onDone();

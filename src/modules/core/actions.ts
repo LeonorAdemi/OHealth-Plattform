@@ -420,13 +420,11 @@ export async function sendChatMessage(_prev: FormState, formData: FormData): Pro
     .object({
       id: z.uuid(),
       chatId: z.uuid(),
-      meetupId: z.uuid(),
       body: z.string().trim().min(1, "Schreib eine Nachricht.").max(1000, "Höchstens 1000 Zeichen."),
     })
     .safeParse({
       id: formData.get("id"),
       chatId: formData.get("chatId"),
-      meetupId: formData.get("meetupId"),
       body: formData.get("body") ?? "",
     });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
@@ -445,22 +443,22 @@ export async function sendChatMessage(_prev: FormState, formData: FormData): Pro
     return { error: "Die Nachricht wurde nicht gesendet. Versuch es erneut." };
   }
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
+  revalidatePath("/chats", "layout");
   return { message: "sent" };
 }
 
 /** Löscht eine eigene Nachricht. */
 export async function deleteChatMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
-    .object({ id: z.uuid(), meetupId: z.uuid() })
-    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId") });
+    .object({ id: z.uuid(), chatId: z.uuid() })
+    .safeParse({ id: formData.get("id"), chatId: formData.get("chatId") });
   if (!parsed.success) return { error: "Diese Nachricht gibt es nicht mehr." };
 
   const supabase = await createClient();
   const { error } = await supabase.from("chat_messages").delete().eq("id", parsed.data.id);
   if (error) return { error: "Die Nachricht konnte nicht gelöscht werden." };
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
+  revalidatePath("/chats", "layout");
   return {};
 }
 
@@ -472,6 +470,13 @@ export async function markChatRead(chatId: string): Promise<void> {
   await supabase.rpc("mark_chat_read", { cid: id.data });
 }
 
+/** Zahl der Chats mit ungelesenen Nachrichten, für die Zahl am Tab. */
+export async function fetchUnreadChatCount(): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unread_chat_count");
+  return error ? 0 : (data ?? 0);
+}
+
 // ---------- Mitteilungen ----------
 
 /** Zahl der ungelesenen Mitteilungen, für die Glocke (fragt regelmäßig nach). */
@@ -480,6 +485,7 @@ export async function fetchUnreadCount(): Promise<number> {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    .neq("kind", "message")
     .is("read_at", null);
   return error ? 0 : (count ?? 0);
 }
@@ -488,7 +494,11 @@ export async function fetchUnreadCount(): Promise<number> {
 export async function markAllNotificationsRead(): Promise<void> {
   const supabase = await createClient();
   // Ohne Neuladen: Die offene Seite zeigt "Neu" noch für diesen Besuch, die Glocke setzt sich selbst zurück.
-  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .neq("kind", "message")
+    .is("read_at", null);
 }
 
 /** Markiert die Mitteilungen zu einem Training als gelesen, sobald man es ansieht. */

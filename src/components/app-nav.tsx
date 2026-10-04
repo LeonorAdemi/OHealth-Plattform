@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardList, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
   { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
   { href: "/community", label: "Community", icon: Users },
+  { href: "/chats", label: "Chats", icon: MessageCircle },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -21,7 +22,14 @@ function isActive(pathname: string, href: string) {
 
 // Handy: Tab-Leiste unten. Desktop: Einträge der Seitenleiste.
 // Verlauf und Einstellungen erreicht man über das Profilbild oben rechts.
-export function AppNav({ variant }: { variant: "tabs" | "side" }) {
+export function AppNav({
+  variant,
+  badges = {},
+}: {
+  variant: "tabs" | "side";
+  /** Zusatz je Eintrag, etwa die Zahl ungelesener Chats */
+  badges?: Partial<Record<(typeof ITEMS)[number]["href"], React.ReactNode>>;
+}) {
   const pathname = usePathname();
 
   if (variant === "tabs") {
@@ -39,7 +47,10 @@ export function AppNav({ variant }: { variant: "tabs" | "side" }) {
                   active ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                <Icon size={20} strokeWidth={1.5} aria-hidden />
+                <span className="relative inline-flex">
+                  <Icon size={20} strokeWidth={1.5} aria-hidden />
+                  {badges[href] && <span className="absolute -top-2 left-3 flex">{badges[href]}</span>}
+                </span>
                 {label}
               </Link>
             </li>
@@ -65,6 +76,7 @@ export function AppNav({ variant }: { variant: "tabs" | "side" }) {
             >
               <Icon size={20} strokeWidth={1.5} aria-hidden />
               {label}
+              {badges[href] && <span className="ml-auto flex">{badges[href]}</span>}
             </Link>
           </li>
         );

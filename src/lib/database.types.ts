@@ -1216,6 +1216,7 @@ export type Database = {
         }
         Returns: string
       }
+      unread_chat_count: { Args: never; Returns: number }
       update_workout: {
         Args: { p_id: string; p_sets: Json; p_title: string }
         Returns: string

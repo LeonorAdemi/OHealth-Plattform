@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chatDayLabel,
+  chatListTime,
   chatTime,
   layoutChat,
   pushContent,
@@ -217,6 +218,7 @@ describe("Push", () => {
       tag: "chat-m1",
     });
     expect(pushContent({ ...base, kind: "message", latest: "Um 9", count: 3 }).body).toBe("Ben: Um 9 (3 neue)");
+    expect(pushContent({ ...base, kind: "message", latest: "Um 9", chatId: "c1" }).url).toBe("/chats/c1");
   });
 
   it("nimmt sonst den Satz der Mitteilung", () => {
@@ -227,6 +229,12 @@ describe("Push", () => {
 
 describe("Chat", () => {
   const now = new Date("2026-10-04T12:00:00Z");
+
+  it("Chat-Liste: heute Uhrzeit, gestern Gestern, sonst Datum", () => {
+    expect(chatListTime("2026-10-04T08:05:00Z", now)).toBe("10:05");
+    expect(chatListTime("2026-10-03T20:00:00Z", now)).toBe("Gestern");
+    expect(chatListTime("2026-09-28T08:00:00Z", now)).toBe("28.9.");
+  });
 
   it("benennt Tage wie ein Messenger", () => {
     expect(chatDayLabel("2026-10-04T08:00:00Z", now)).toBe("Heute");

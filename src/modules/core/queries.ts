@@ -137,6 +137,59 @@ export async function getMyCommunity(id: string) {
   return mine.find((c) => c.id === id) ?? null;
 }
 
+// ---------- Chats ----------
+
+/** Eigene Chats, neueste Nachricht zuerst, mit Zahl der ungelesenen Nachrichten. */
+export async function getMyChats(limit = 50) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.rpc("my_chats", { max_rows: limit });
+  if (error) throw new Error("Chats konnten nicht geladen werden.");
+  return data.map((c) => ({
+    id: c.chat_id,
+    kind: c.kind === "community" ? ("community" as const) : ("meetup" as const),
+    meetupId: c.meetup_id,
+    groupId: c.group_id,
+    title: c.title,
+    startsAt: c.starts_at,
+    last: c.last_at
+      ? { body: c.last_body, name: c.last_display_name, isMe: c.last_user_id === userId, at: c.last_at }
+      : null,
+    unread: c.unread,
+  }));
+}
+
+/** Zahl der Chats mit ungelesenen Nachrichten (für den Tab). */
+export async function getUnreadChatCount() {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("unread_chat_count");
+  return error ? 0 : (data ?? 0);
+}
+
+/** Ein Chat mit seinen Nachrichten. null, wenn es ihn nicht gibt oder ich keinen Zugang habe. */
+export async function getChat(chatId: string) {
+  const { supabase, userId } = await requireUser();
+  const [chat, messages] = await Promise.all([
+    supabase.from("chats").select("id, kind, meetup_id, group_id").eq("id", chatId).maybeSingle(),
+    supabase.rpc("chat_messages_page", { cid: chatId }),
+  ]);
+  if (chat.error || messages.error) throw new Error("Der Chat konnte nicht geladen werden.");
+  if (!chat.data) return null;
+  return {
+    id: chat.data.id,
+    kind: chat.data.kind === "community" ? ("community" as const) : ("meetup" as const),
+    meetupId: chat.data.meetup_id,
+    groupId: chat.data.group_id,
+    messages: messages.data.map((m) => ({
+      id: m.id,
+      userId: m.user_id,
+      name: m.display_name,
+      body: m.body,
+      createdAt: m.created_at,
+      isMe: m.user_id === userId,
+    })),
+  };
+}
+
 /** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */
 export async function searchCommunities(search: string, limit = 20) {
   const { supabase } = await requireUser();
@@ -291,6 +344,8 @@ export async function getNotifications(limit = 50) {
   const { data, error } = await supabase
     .from("notifications")
     .select("id, kind, meetup_id, group_id, actor_name, title, count, created_at, read_at")
+    // Chat-Nachrichten zählt der Tab „Chats“; als Mitteilung dienen sie nur noch dem Push.
+    .neq("kind", "message")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error("Mitteilungen konnten nicht geladen werden.");
@@ -313,6 +368,7 @@ export async function getUnreadNotificationCount() {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    .neq("kind", "message")
     .is("read_at", null);
   if (error) return 0;
   return count ?? 0;
@@ -355,6 +411,7 @@ const pushPayloadSchema = z.object({
   title: z.string(),
   count: z.number(),
   meetup_id: z.string().nullable(),
+  chat_id: z.string().nullable().optional(),
   latest: z.string().nullable(),
   vapid_public_key: z.string().nullable(),
   vapid_private_key: z.string().nullable(),
@@ -379,6 +436,7 @@ export async function getPushPayload(notificationId: string, secret: string) {
     title: p.title,
     count: p.count,
     meetupId: p.meetup_id,
+    chatId: p.chat_id ?? null,
     latest: p.latest,
     vapid: p.vapid_public_key && p.vapid_private_key ? { publicKey: p.vapid_public_key, privateKey: p.vapid_private_key } : null,
     subscriptions: p.subscriptions,

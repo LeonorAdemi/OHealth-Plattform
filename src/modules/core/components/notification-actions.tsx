@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { FormState } from "@/lib/result";
 
 import { markAllNotificationsRead, markChatRead, markMeetupNotificationsRead, updateNotificationPrefs } from "../actions";
+import { CHAT_READ } from "./unread-chats-badge";
 
 export const NOTIFICATIONS_READ = "ohealth:notifications-read";
 
@@ -24,7 +25,7 @@ export function MarkAllRead({ hasUnread }: { hasUnread: boolean }) {
 /** Merkt sich, dass der Chat bis zur neuesten Nachricht gelesen ist, solange man ihn ansieht. */
 export function MarkChatRead({ chatId, version }: { chatId: string; version: string }) {
   useEffect(() => {
-    void markChatRead(chatId);
+    markChatRead(chatId).then(() => window.dispatchEvent(new Event(CHAT_READ)), () => {});
   }, [chatId, version]);
   return null;
 }
@@ -54,7 +55,11 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
     hint: "In großen Communities können das viele sein.",
   },
   { name: "joined", label: "Jemand sagt bei meinem Training zu" },
-  { name: "message", label: "Neue Nachrichten im Chat" },
+  {
+    name: "message",
+    label: "Neue Nachrichten im Chat",
+    hint: "Als Push aufs Handy. In der App zeigt der Tab Chats neue Nachrichten.",
+  },
   { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt" },
   { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
 ];

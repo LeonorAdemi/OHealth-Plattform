@@ -56,10 +56,10 @@ insert into public.meetup_messages (meetup_id, user_id, body) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', 'Bin dabei');
 insert into public.notification_prefs (user_id, message) values ('00000000-0000-0000-0000-00000000000a', false);
 -- Die Nachricht ist über die Brücke auch im neuen Chat; Anna hat ihn gelesen.
-select is(
-  (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
-  + (select count(*)::int from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a'),
-  2, 'Vorher: Annas Nachricht und Gelesen-Stand im neuen Chat');
+select ok(
+  (select count(*) from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a') = 1
+  and (select count(*) from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a') > 0,
+  'Vorher: Annas Nachricht und Gelesen-Stand im neuen Chat');
 
 -- ---------- ohne Anmeldung ----------
 set local role anon;

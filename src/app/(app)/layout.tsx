@@ -2,10 +2,16 @@ import { AppNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { NotificationBell } from "@/modules/core/components/notification-bell";
 import { ProfileLink } from "@/modules/core/components/profile-link";
-import { getProfile, getUnreadNotificationCount } from "@/modules/core/queries";
+import { UnreadChatsBadge } from "@/modules/core/components/unread-chats-badge";
+import { getProfile, getUnreadChatCount, getUnreadNotificationCount } from "@/modules/core/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [profile, unread] = await Promise.all([getProfile(), getUnreadNotificationCount()]);
+  const [profile, unread, unreadChats] = await Promise.all([
+    getProfile(),
+    getUnreadNotificationCount(),
+    getUnreadChatCount(),
+  ]);
+  const badges = { "/chats": <UnreadChatsBadge initialCount={unreadChats} /> };
 
   return (
     <div className="min-h-dvh md:flex">
@@ -14,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Logo variant="mark" />
         </div>
         <nav aria-label="Hauptnavigation" className="mt-8">
-          <AppNav variant="side" />
+          <AppNav variant="side" badges={badges} />
         </nav>
       </aside>
 
@@ -31,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         aria-label="Hauptnavigation"
         className="bg-background fixed inset-x-0 bottom-0 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        <AppNav variant="tabs" />
+        <AppNav variant="tabs" badges={badges} />
       </nav>
     </div>
   );

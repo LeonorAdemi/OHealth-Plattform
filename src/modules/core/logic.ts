@@ -302,9 +302,17 @@ export function pushContent(p: {
   title: string;
   count: number;
   meetupId: string | null;
+  chatId?: string | null;
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
-  const url = p.meetupId ? (p.kind === "message" ? `/plan/${p.meetupId}/chat` : `/plan/${p.meetupId}`) : "/mitteilungen";
+  const url =
+    p.kind === "message" && p.chatId
+      ? `/chats/${p.chatId}`
+      : p.meetupId
+        ? p.kind === "message"
+          ? `/plan/${p.meetupId}/chat`
+          : `/plan/${p.meetupId}`
+        : "/mitteilungen";
   if (p.kind === "message" && p.latest) {
     return {
       title: p.title,
@@ -355,6 +363,16 @@ export function chatDayLabel(at: string, now: Date): string {
 /** Uhrzeit einer Nachricht, z. B. "18:05". */
 export function chatTime(at: string): string {
   return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(
+    new Date(at),
+  );
+}
+
+/** Zeitpunkt der letzten Nachricht in der Chat-Liste: heute die Uhrzeit, gestern "Gestern", sonst das Datum. */
+export function chatListTime(at: string, now: Date): string {
+  const label = chatDayLabel(at, now);
+  if (label === "Heute") return chatTime(at);
+  if (label === "Gestern") return label;
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "numeric" }).format(
     new Date(at),
   );
 }
