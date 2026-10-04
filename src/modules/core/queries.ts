@@ -95,7 +95,7 @@ export async function getGroupMembers(groupId: string) {
 // ---------- Community ----------
 
 /** Eigene Communities mit Art, Rolle und Mitgliederzahl, älteste Mitgliedschaft zuerst. */
-export async function getMyCommunities() {
+export const getMyCommunities = cache(async () => {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("my_communities");
 
@@ -107,10 +107,16 @@ export async function getMyCommunities() {
     inviteCode: row.invite_code,
     description: row.description,
     sport: row.sport,
-    location: row.location,
+    city: row.city,
     role: row.role,
     memberCount: row.member_count,
   }));
+});
+
+/** Eine eigene Community. null, wenn ich (nicht mehr) Mitglied bin. */
+export async function getMyCommunity(id: string) {
+  const mine = await getMyCommunities();
+  return mine.find((c) => c.id === id) ?? null;
 }
 
 /** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */
@@ -124,7 +130,7 @@ export async function searchCommunities(search: string, limit = 20) {
     name: row.name,
     description: row.description,
     sport: row.sport,
-    location: row.location,
+    city: row.city,
     memberCount: row.member_count,
     isMember: row.is_member,
   }));
@@ -147,9 +153,91 @@ export async function getCommunityPreview(code: string) {
     kind: communityKind(row.type),
     description: row.description,
     sport: row.sport,
-    location: row.location,
+    city: row.city,
     memberCount: row.member_count,
     isMember: row.is_member,
+  };
+}
+
+// ---------- Treffen ----------
+
+type MeetupRow = {
+  id: string;
+  group_id: string;
+  created_by: string;
+  title: string;
+  starts_at: string;
+  place: string;
+  max_participants: number | null;
+  note: string | null;
+  meetup_participants: { count: number }[];
+};
+
+const MEETUP_COLUMNS =
+  "id, group_id, created_by, title, starts_at, place, max_participants, note, meetup_participants(count)";
+
+function toMeetup(row: MeetupRow, joined: ReadonlySet<string>, userId: string) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    title: row.title,
+    startsAt: row.starts_at,
+    place: row.place,
+    maxParticipants: row.max_participants,
+    note: row.note,
+    count: row.meetup_participants[0]?.count ?? 0,
+    isJoined: joined.has(row.id),
+    isMine: row.created_by === userId,
+  };
+}
+
+export type Meetup = ReturnType<typeof toMeetup>;
+
+/**
+ * Kommende Treffen, nächstes zuerst: einer Community oder, ohne groupId, aus allen eigenen
+ * Communities. Treffen sehen nur Mitglieder (RLS).
+ */
+export async function getUpcomingMeetups(now: Date, { groupId, limit = 50 }: { groupId?: string; limit?: number } = {}) {
+  const { supabase, userId } = await requireUser();
+  let query = supabase
+    .from("meetups")
+    .select(`${MEETUP_COLUMNS}, groups(name)`)
+    .gt("starts_at", now.toISOString())
+    .order("starts_at")
+    .limit(limit);
+  if (groupId) query = query.eq("group_id", groupId);
+  const { data, error } = await query;
+  if (error) throw new Error("Treffen konnten nicht geladen werden.");
+
+  const ids = data.map((m) => m.id);
+  const { data: mine, error: mineError } = ids.length
+    ? await supabase.from("meetup_participants").select("meetup_id").eq("user_id", userId).in("meetup_id", ids)
+    : { data: [], error: null };
+  if (mineError) throw new Error("Treffen konnten nicht geladen werden.");
+
+  const joined = new Set(mine.map((p) => p.meetup_id));
+  return data.map((row) => ({ ...toMeetup(row, joined, userId), communityName: row.groups?.name ?? "" }));
+}
+
+/** Ein Treffen mit den Namen aller, die dabei sind. null, wenn es das Treffen (für mich) nicht gibt. */
+export async function getMeetup(meetupId: string) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("meetups")
+    .select(`${MEETUP_COLUMNS}, groups(name)`)
+    .eq("id", meetupId)
+    .maybeSingle();
+  if (error) throw new Error("Das Treffen konnte nicht geladen werden.");
+  if (!data) return null;
+
+  const { data: people, error: peopleError } = await supabase.rpc("meetup_participant_names", { mid: meetupId });
+  if (peopleError) throw new Error("Das Treffen konnte nicht geladen werden.");
+
+  const joined = new Set(people.some((p) => p.user_id === userId) ? [data.id] : []);
+  return {
+    ...toMeetup(data, joined, userId),
+    communityName: data.groups?.name ?? "",
+    participants: people.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
   };
 }
 

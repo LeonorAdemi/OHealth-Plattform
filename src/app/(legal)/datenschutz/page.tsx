@@ -68,6 +68,11 @@ export default function PrivacyPage() {
           wann und in welcher Rolle.
         </li>
         <li>
+          <strong>Treffen:</strong> Treffen, die du in einer Community planst
+          (Titel, Zeitpunkt, Treffpunkt, Höchstzahl, Notiz), und bei welchen
+          Treffen du zugesagt hast.
+        </li>
+        <li>
           <strong>Technische Daten:</strong> beim Aufruf der App fallen bei
           unseren Dienstleistern Protokolldaten an, zum Beispiel IP-Adresse,
           Zeitpunkt und aufgerufene Seite.
@@ -116,6 +121,14 @@ export default function PrivacyPage() {
         einer Community hat, sieht diese Angaben auch ohne Konto, aber nie die
         Namen der Mitglieder. Wenn du eine Community meldest, speichern wir
         deine Meldung mit deinem Konto, damit wir sie prüfen können.
+      </p>
+      <p>
+        Treffen sehen nur die Mitglieder der jeweiligen Community, auch in
+        öffentlichen Communities. Sie sehen, wer das Treffen plant und wer
+        zugesagt hat, mit Anzeigenamen. Gib als Treffpunkt einen öffentlichen
+        Ort an, keine Privatadresse. Zusagen kannst du jederzeit zurückziehen;
+        wer ein Treffen geplant hat oder die Community verwaltet, kann es
+        entfernen.
       </p>
 
       <h2>Wer deine Vorlagen sieht</h2>
@@ -210,7 +223,8 @@ export default function PrivacyPage() {
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
-        Versionen und alle Mitgliedschaften sofort entfernt. Communities, die
+        Versionen, alle Mitgliedschaften, deine Treffen und Zusagen sofort
+        entfernt. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  berlinDateTimeParts,
+  berlinLocalToDate,
+  buildMeetupIcs,
+  describeMeetupCount,
+  formatMeetupWhen,
+  isMeetupFull,
+  meetupDateBlock,
+  topWithMe,
   communityKind,
   describeCommunity,
   enabledProviders,
@@ -62,13 +70,76 @@ describe("Community", () => {
   });
 
   it("beschreibt eine Community kurz, ohne leere Angaben", () => {
-    expect(describeCommunity({ sport: "Laufen", location: "München", memberCount: 12 })).toBe(
-      "Laufen · München · 12 Mitglieder",
+    expect(describeCommunity({ sport: "Laufen", city: "München", memberCount: 12 })).toBe(
+      "Laufen · München · 12\u00a0Mitglieder",
     );
-    expect(describeCommunity({ sport: null, location: null, memberCount: 1 })).toBe("1 Mitglied");
+    expect(describeCommunity({ sport: null, city: null, memberCount: 1 })).toBe("1\u00a0Mitglied");
   });
 
   it("baut den Rückweg zum Beitritt nach der Registrierung", () => {
     expect(joinAfterAuthPath("isar-code")).toBe("/beitreten/isar-code?beitreten=1");
+  });
+});
+
+describe("Treffen", () => {
+  it("rechnet deutsche Zeit in einen Zeitpunkt um, auch an Tagen mit Zeitumstellung", () => {
+    expect(berlinLocalToDate("2026-10-10", "09:00")?.toISOString()).toBe("2026-10-10T07:00:00.000Z");
+    expect(berlinLocalToDate("2026-12-01", "18:00")?.toISOString()).toBe("2026-12-01T17:00:00.000Z");
+    // 25. Oktober 2026: um 3 Uhr Sommerzeit wird es 2 Uhr Winterzeit
+    expect(berlinLocalToDate("2026-10-25", "12:00")?.toISOString()).toBe("2026-10-25T11:00:00.000Z");
+    // 29. März 2026: um 2 Uhr wird es 3 Uhr
+    expect(berlinLocalToDate("2026-03-29", "10:00")?.toISOString()).toBe("2026-03-29T08:00:00.000Z");
+  });
+
+  it("lehnt ungültige Eingaben ab", () => {
+    expect(berlinLocalToDate("2026-13-01", "09:00")).toBeNull();
+    expect(berlinLocalToDate("10.10.2026", "09:00")).toBeNull();
+    expect(berlinLocalToDate("2026-10-10", "25:00")).toBeNull();
+  });
+
+  it("liefert Tag und Uhrzeit für Formularfelder in deutscher Zeit", () => {
+    expect(berlinDateTimeParts(new Date("2026-10-10T22:30:00Z"))).toEqual({ date: "2026-10-11", time: "00:30" });
+  });
+
+  it("zeigt Datum und Uhrzeit wie in der Liste", () => {
+    expect(meetupDateBlock("2026-10-10T22:30:00Z")).toEqual({ day: "11", month: "Okt" });
+    expect(formatMeetupWhen("2026-10-10T07:00:00Z")).toBe("Sa 9:00");
+  });
+
+  it("beschreibt die Zusagen", () => {
+    expect(describeMeetupCount(8, null)).toBe("8\u00a0dabei");
+    expect(describeMeetupCount(5, 12)).toBe("5 von 12");
+    expect(isMeetupFull(12, 12)).toBe(true);
+    expect(isMeetupFull(11, 12)).toBe(false);
+    expect(isMeetupFull(100, null)).toBe(false);
+  });
+
+  it("baut einen Kalendereintrag mit zwei Stunden Dauer", () => {
+    const ics = buildMeetupIcs({
+      id: "m1",
+      title: "Lauf, locker",
+      startsAt: "2026-10-10T07:00:00Z",
+      place: "Reichenbachbrücke",
+      communityName: "Laufen München",
+      url: "https://example.com/community/x/treffen/m1",
+    });
+    expect(ics).toContain("DTSTART:20261010T070000Z\r\n");
+    expect(ics).toContain("DTEND:20261010T090000Z\r\n");
+    expect(ics).toContain("SUMMARY:Lauf\\, locker\r\n");
+    expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+  });
+});
+
+describe("Rangliste kürzen", () => {
+  const rows = Array.from({ length: 30 }, (_, i) => ({ id: i, isMe: i === 24 }));
+
+  it("zeigt die ersten n und die eigene Zeile mit ihrem Platz", () => {
+    const shown = topWithMe(rows, 20);
+    expect(shown).toHaveLength(21);
+    expect(shown[20]).toEqual({ row: rows[24], rank: 25 });
+  });
+
+  it("zeigt die eigene Zeile nicht doppelt", () => {
+    expect(topWithMe(rows, 25)).toHaveLength(25);
   });
 });

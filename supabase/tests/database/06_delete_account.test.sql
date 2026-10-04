@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(11);
+select plan(12);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -43,6 +43,13 @@ insert into public.template_versions (id, template_id, version_number) values
 insert into public.template_version_exercises (version_id, exercise_id, position)
 select '50000000-0000-0000-0000-00000000000a', e.id, 1 from public.exercises e where e.name = 'Bankdrücken';
 
+-- Ben plant in der Crew ein Treffen, Anna sagt zu
+insert into public.meetups (id, group_id, created_by, title, starts_at, place) values
+  ('60000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-00000000000b', 'Lauf', now() + interval '1 day', 'Isar');
+insert into public.meetup_participants (meetup_id, user_id) values
+  ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a');
+
 -- ---------- ohne Anmeldung ----------
 set local role anon;
 select throws_ok(
@@ -67,6 +74,11 @@ select is(
   + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a'),
   0,
   'Konto, Profil, Workouts, Sätze, Mitgliedschaften und Vorlagen mit Versionen sind vollständig weg');
+
+select results_eq(
+  $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,
+  $$ values ('00000000-0000-0000-0000-00000000000b'::uuid) $$,
+  'Zusagen verschwinden mit dem Konto, das Treffen der anderen Person bleibt');
 
 select results_eq(
   $$ select name, copied_from from public.workout_templates

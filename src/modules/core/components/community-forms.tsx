@@ -88,8 +88,8 @@ export function CreateCommunityForm() {
           </datalist>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="location">Ort (optional)</Label>
-          <Input id="location" name="location" maxLength={60} placeholder="München" />
+          <Label htmlFor="city">Stadt (optional)</Label>
+          <Input id="city" name="city" maxLength={60} placeholder="München" />
         </div>
       </div>
       <p className="text-muted-foreground -mt-3 text-sm">

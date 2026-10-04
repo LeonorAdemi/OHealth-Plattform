@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { groupTypeFor } from "./logic";
+import { berlinLocalToDate, groupTypeFor } from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -84,7 +84,7 @@ const communitySchema = z
     name: z.string().trim().min(1, "Gib der Community einen Namen.").max(60, "Der Name darf höchstens 60 Zeichen haben."),
     kind: z.enum(["public", "private", "coaching"]),
     sport: z.string().trim().max(40, "Die Sportart darf höchstens 40 Zeichen haben."),
-    location: z.string().trim().max(60, "Der Ort darf höchstens 60 Zeichen haben."),
+    city: z.string().trim().max(60, "Die Stadt darf höchstens 60 Zeichen haben."),
     description: z.string().trim().max(200, "Die Beschreibung darf höchstens 200 Zeichen haben."),
   })
   .refine((c) => c.kind !== "public" || c.name.length >= 3, {
@@ -102,7 +102,7 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
     name: formData.get("name") ?? "",
     kind: formData.get("kind") ?? "",
     sport: formData.get("sport") ?? "",
-    location: formData.get("location") ?? "",
+    city: formData.get("city") ?? "",
     description: formData.get("description") ?? "",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
@@ -119,7 +119,7 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
       type: groupTypeFor(parsed.data.kind),
       created_by: userId,
       sport: parsed.data.sport || null,
-      location: parsed.data.location || null,
+      city: parsed.data.city || null,
       description: parsed.data.description || null,
     })
     .select("id")
@@ -168,8 +168,8 @@ export async function joinWithCode(_prev: FormState, formData: FormData): Promis
 }
 
 /**
- * Verlässt eine Community. Wer sie als Einziger verwaltet, übergibt die Verwaltung an das
- * Mitglied, das am längsten dabei ist. Ist man das letzte Mitglied oder der einzige Coach,
+ * Verlässt eine Community (leave_group). Wer sie als Einziger verwaltet, übergibt die Verwaltung
+ * an das Mitglied, das am längsten dabei ist. Ist man das letzte Mitglied oder der einzige Coach,
  * wird sie gelöscht, wie beim Löschen des Kontos (delete_own_account).
  */
 export async function leaveCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -177,41 +177,8 @@ export async function leaveCommunity(_prev: FormState, formData: FormData): Prom
   if (!id.success) return { error: "Diese Community gibt es nicht mehr." };
 
   const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims?.sub;
-  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
-
-  // Als Verwalter sieht man alle Mitglieder, sonst nur sich selbst.
-  const { data: members, error: readError } = await supabase
-    .from("group_members")
-    .select("user_id, role, joined_at")
-    .eq("group_id", id.data)
-    .order("joined_at")
-    .limit(500);
-  if (readError) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
-
-  const me = members.find((m) => m.user_id === userId);
-  if (!me) return { error: "Du bist kein Mitglied dieser Community." };
-  const others = members.filter((m) => m.user_id !== userId);
-  const managesAlone =
-    (me.role === "admin" || me.role === "coach") &&
-    !others.some((m) => m.role === "admin" || m.role === "coach");
-
-  if (managesAlone && (others.length === 0 || me.role === "coach")) {
-    const { error } = await supabase.from("groups").delete().eq("id", id.data);
-    if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
-  } else {
-    if (managesAlone) {
-      const { error } = await supabase
-        .from("group_members")
-        .update({ role: "admin" })
-        .eq("group_id", id.data)
-        .eq("user_id", others[0].user_id);
-      if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
-    }
-    const { error } = await supabase.from("group_members").delete().eq("group_id", id.data).eq("user_id", userId);
-    if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
-  }
+  const { error } = await supabase.rpc("leave_group", { gid: id.data });
+  if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
 
   revalidatePath("/community");
   redirect("/community");
@@ -232,6 +199,134 @@ export async function reportCommunity(_prev: FormState, formData: FormData): Pro
   if (error) return { error: "Die Meldung konnte nicht gesendet werden. Versuch es erneut." };
 
   return { message: "Danke, die Meldung ist eingegangen. Wir sehen sie uns an." };
+}
+
+// ---------- Treffen ----------
+
+const meetupSchema = z.object({
+  groupId: z.uuid(),
+  title: z.string().trim().min(1, "Schreib, was ihr vorhabt.").max(80, "Höchstens 80 Zeichen für den Titel."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Wähl einen Tag."),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Wähl eine Uhrzeit."),
+  place: z.string().trim().min(1, "Gib einen Treffpunkt an.").max(80, "Höchstens 80 Zeichen für den Treffpunkt."),
+  max: z.union([
+    z.literal(""),
+    z.coerce.number().int("Die Höchstzahl ist eine ganze Zahl.").min(2, "Mindestens 2 Plätze.").max(500, "Höchstens 500 Plätze."),
+  ]),
+  note: z.string().trim().max(300, "Höchstens 300 Zeichen für die Notiz."),
+});
+
+const MEETUP_FAILED = "Das hat nicht geklappt. Prüf deine Verbindung und versuch es erneut.";
+
+/** Plant ein Treffen in einer Community. Wer plant, ist automatisch dabei (Trigger). */
+export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = meetupSchema.safeParse({
+    groupId: formData.get("groupId"),
+    title: formData.get("title") ?? "",
+    date: formData.get("date") ?? "",
+    time: formData.get("time") ?? "",
+    place: formData.get("place") ?? "",
+    max: formData.get("max") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const startsAt = berlinLocalToDate(parsed.data.date, parsed.data.time);
+  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." };
+  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data, error } = await supabase
+    .from("meetups")
+    .insert({
+      group_id: parsed.data.groupId,
+      created_by: userId,
+      title: parsed.data.title,
+      starts_at: startsAt.toISOString(),
+      place: parsed.data.place,
+      max_participants: parsed.data.max === "" ? null : parsed.data.max,
+      note: parsed.data.note || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.message.includes("Höchstens fünf")) {
+      return { error: "Du hast hier schon fünf geplante Treffen. Warte, bis eins vorbei ist." };
+    }
+    return { error: MEETUP_FAILED };
+  }
+
+  revalidatePath("/community", "layout");
+  redirect(`/community/${parsed.data.groupId}/treffen/${data.id}`);
+}
+
+const meetupRef = z.object({ meetupId: z.uuid(), groupId: z.uuid() });
+
+function parseMeetupRef(formData: FormData) {
+  return meetupRef.safeParse({ meetupId: formData.get("meetupId"), groupId: formData.get("groupId") });
+}
+
+/** Sagt für ein Treffen zu ("Ich bin dabei"). */
+export async function joinMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ref = parseMeetupRef(formData);
+  if (!ref.success) return { error: "Dieses Treffen gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase
+    .from("meetup_participants")
+    .insert({ meetup_id: ref.data.meetupId, user_id: userId });
+  // 23505: schon dabei, das ist kein Fehler.
+  if (error && error.code !== "23505") {
+    if (error.message.includes("voll")) return { error: "Dieses Treffen ist schon voll." };
+    if (error.message.includes("stattgefunden")) return { error: "Dieses Treffen hat schon stattgefunden." };
+    return { error: MEETUP_FAILED };
+  }
+
+  revalidatePath("/community", "layout");
+  return {};
+}
+
+/** Sagt für ein Treffen ab. */
+export async function leaveMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ref = parseMeetupRef(formData);
+  if (!ref.success) return { error: "Dieses Treffen gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase
+    .from("meetup_participants")
+    .delete()
+    .eq("meetup_id", ref.data.meetupId)
+    .eq("user_id", userId);
+  if (error) return { error: MEETUP_FAILED };
+
+  revalidatePath("/community", "layout");
+  return {};
+}
+
+/** Entfernt ein Treffen. Darf, wer es geplant hat oder die Community verwaltet (RLS). */
+export async function deleteMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ref = parseMeetupRef(formData);
+  if (!ref.success) return { error: "Dieses Treffen gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("meetups").delete().eq("id", ref.data.meetupId).select("id");
+  if (error || data.length === 0) return { error: "Das Treffen konnte nicht entfernt werden." };
+
+  revalidatePath("/community", "layout");
+  redirect(`/community/${ref.data.groupId}`);
 }
 
 // ---------- Passwort zurücksetzen ----------

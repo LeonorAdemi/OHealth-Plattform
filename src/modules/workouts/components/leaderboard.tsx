@@ -1,14 +1,26 @@
 import { cn } from "@/lib/utils";
+import { topWithMe } from "@/modules/core/logic";
 
 import type { LeaderboardRow } from "../logic";
 import { WeekGrid } from "./week-grid";
 
-export function Leaderboard({ rows }: { rows: readonly LeaderboardRow[] }) {
+/** Rangliste der Trainingstage. Mit limit: die ersten n und die eigene Zeile mit ihrem Platz. */
+export function Leaderboard({ rows, limit }: { rows: readonly LeaderboardRow[]; limit?: number }) {
+  const shown = topWithMe(rows, limit ?? rows.length);
+
   return (
     <ol>
-      {rows.map((row, index) => (
-        <li key={row.userId} className="flex min-h-14 items-center gap-3 border-b">
-          <span className="text-muted-foreground w-6 text-sm">{index + 1}</span>
+      {shown.map(({ row, rank }, index) => (
+        <li
+          key={row.userId}
+          value={rank}
+          className={cn(
+            "flex min-h-14 items-center gap-3 border-b",
+            // Lücke vor der eigenen Zeile, wenn sie weiter hinten steht
+            index > 0 && rank !== shown[index - 1].rank + 1 && "mt-4 border-t",
+          )}
+        >
+          <span className="text-muted-foreground num w-6 text-sm">{rank}</span>
           <span className={cn("min-w-0 flex-1 truncate", row.isMe && "text-brand")}>
             {row.isMe ? "Du" : row.name}
           </span>

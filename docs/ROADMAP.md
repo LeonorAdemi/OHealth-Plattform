@@ -13,7 +13,8 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 5 | Ende-zu-Ende-Tests der drei Kernabläufe | Sichert das Fundament ab, bevor weitere Module dazukommen | Offen |
 | 6 | Native Hülle für TestFlight | Erst sinnvoll, wenn die App im Alltag trägt (siehe Store-Konzept) | Offen |
 | 7 | KI-Zugriff über MCP für Trainingstipps | Trainingstipps aus den eigenen Daten, ohne KI in der App zu betreiben | Gebaut und getestet. Offen: OAuth-Server in Supabase einschalten, Test mit Claude nach dem Deployment |
-| 8 | Öffentliche Communities (z. B. „Laufen München“) | Gemeinschaftseffekt über den Freundeskreis hinaus | Datenbank fertig und eingespielt (Migration public_communities, Test 09). Offen: Oberfläche |
+| 8 | Öffentliche Communities (z. B. „Laufen München“) | Gemeinschaftseffekt über den Freundeskreis hinaus | Erledigt: Übersicht mit Suche, eigene Communities öffentlich oder privat, Teilen-Link, Rangliste (Migrationen public_communities, community_phase_a, Tests 09 und 13) |
+| 9 | Treffen in Communities („Heute 18 Uhr laufen, wer mag?“) | Aus der Rangliste wird gemeinsames Training | Erledigt: planen, zusagen, absagen, Kalendereintrag (Migration community_search_and_meetups, Test 14). Später denkbar: Zusage erst nach Bestätigung, Erinnerung |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.
 

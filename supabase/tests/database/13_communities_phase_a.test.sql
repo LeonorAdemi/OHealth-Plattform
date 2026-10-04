@@ -1,4 +1,4 @@
--- Community Phase A: Suche nach Name, Sportart und Ort, Link-Vorschau auch ohne Konto,
+-- Community Phase A: Suche nach Name, Sportart und Stadt, Link-Vorschau auch ohne Konto,
 -- ausgeblendete Communities nehmen niemanden auf.
 -- Ausführen: supabase test db
 
@@ -13,7 +13,7 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000b', 'ben@example.com'),
   ('00000000-0000-0000-0000-00000000000c', 'cleo@example.com');
 
-insert into public.groups (id, name, type, invite_code, created_by, sport, location, description) values
+insert into public.groups (id, name, type, invite_code, created_by, sport, city, description) values
   ('10000000-0000-0000-0000-000000000001', 'Lauftreff Isar', 'community', 'isar-code',
    '00000000-0000-0000-0000-00000000000a', 'Laufen', 'München', 'Samstags locker an der Isar'),
   ('10000000-0000-0000-0000-000000000002', 'Kraft Berlin', 'community', 'berlin-code',
@@ -40,7 +40,7 @@ select results_eq(
 select results_eq(
   $$ select name from public.community_search('münchen', 10) $$,
   $$ values ('Lauftreff Isar'::text) $$,
-  'Suche findet über den Ort, ohne Rücksicht auf Groß- und Kleinschreibung');
+  'Suche findet über die Stadt, ohne Rücksicht auf Groß- und Kleinschreibung');
 select results_eq(
   $$ select name from public.community_search('Kraft Berlin', 10) $$,
   $$ values ('Kraft Berlin'::text) $$,
@@ -70,16 +70,16 @@ set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c",
 
 -- ---------- Link-Vorschau ----------
 select results_eq(
-  $$ select name, type, sport, location, member_count, is_member from public.community_link_preview('crew-code') $$,
+  $$ select name, type, sport, city, member_count, is_member from public.community_link_preview('crew-code') $$,
   $$ values ('Crew'::text, 'friends'::text, null::text, null::text, 1, false) $$,
   'Vorschau: zeigt auch eine private Gruppe, wenn man ihren Link hat');
 
 set local role anon;
 set local request.jwt.claims to '';
 select results_eq(
-  $$ select name, sport, location, member_count, is_member from public.community_link_preview('isar-code') $$,
+  $$ select name, sport, city, member_count, is_member from public.community_link_preview('isar-code') $$,
   $$ values ('Lauftreff Isar'::text, 'Laufen'::text, 'München'::text, 2, false) $$,
-  'Vorschau ohne Konto: Name, Sportart, Ort und Mitgliederzahl');
+  'Vorschau ohne Konto: Name, Sportart, Stadt und Mitgliederzahl');
 select is_empty($$ select 1 from public.community_link_preview('gibt-es-nicht') $$,
   'Vorschau ohne Konto: ein falscher Code liefert nichts');
 select throws_ok($$ select * from public.community_search(null, 10) $$, '42501', null,

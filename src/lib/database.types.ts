@@ -100,37 +100,37 @@ export type Database = {
       }
       groups: {
         Row: {
+          city: string | null
           created_at: string
           created_by: string | null
           description: string | null
           hidden: boolean
           id: string
           invite_code: string
-          location: string | null
           name: string
           sport: string | null
           type: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           hidden?: boolean
           id?: string
           invite_code?: string
-          location?: string | null
           name: string
           sport?: string | null
           type?: string
         }
         Update: {
+          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           hidden?: boolean
           id?: string
           invite_code?: string
-          location?: string | null
           name?: string
           sport?: string | null
           type?: string
@@ -141,6 +141,90 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetup_participants: {
+        Row: {
+          created_at: string
+          meetup_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          meetup_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          meetup_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_participants_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetups: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          max_participants: number | null
+          note: string | null
+          place: string
+          starts_at: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          group_id: string
+          id?: string
+          max_participants?: number | null
+          note?: string | null
+          place: string
+          starts_at: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          max_participants?: number | null
+          note?: string | null
+          place?: string
+          starts_at?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]
@@ -601,20 +685,22 @@ export type Database = {
       community_directory: {
         Args: { max_rows?: number; search?: string }
         Returns: {
+          city: string
           description: string
           id: string
           is_member: boolean
           member_count: number
           name: string
+          sport: string
         }[]
       }
       community_link_preview: {
         Args: { code: string }
         Returns: {
+          city: string
           description: string
           id: string
           is_member: boolean
-          location: string
           member_count: number
           name: string
           sport: string
@@ -624,10 +710,10 @@ export type Database = {
       community_search: {
         Args: { max_rows?: number; search?: string }
         Returns: {
+          city: string
           description: string
           id: string
           is_member: boolean
-          location: string
           member_count: number
           name: string
           sport: string
@@ -645,10 +731,7 @@ export type Database = {
         Args: { p_new_id: string; p_source_id: string }
         Returns: string
       }
-      delete_own_account: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      delete_own_account: { Args: never; Returns: undefined }
       group_invite_preview: {
         Args: { code: string }
         Returns: {
@@ -659,6 +742,7 @@ export type Database = {
         }[]
       }
       join_group: { Args: { code: string }; Returns: string }
+      leave_group: { Args: { gid: string }; Returns: undefined }
       log_training: {
         Args: {
           p_finished_at: string
@@ -679,14 +763,21 @@ export type Database = {
         }
         Returns: string
       }
-      my_communities: {
-        Args: Record<PropertyKey, never>
+      meetup_participant_names: {
+        Args: { mid: string }
         Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
+      my_communities: {
+        Args: never
+        Returns: {
+          city: string
           description: string
           id: string
           invite_code: string
           joined_at: string
-          location: string
           member_count: number
           name: string
           role: string
@@ -837,9 +928,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
