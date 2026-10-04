@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+/* OHealth Design-Tokens. Regeln und Begründungen: docs/DESIGN.md
+   Die Namen folgen shadcn/Origin UI, damit deren Komponenten ohne Anpassung passen.
+   Achtung: "accent" ist dort die Hover-Fläche. Die Markenfarbe heißt "brand". */
+
+:root {
+  --radius: 0.5rem;
+
+  /* Kreide */
+  --background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+
+  /* Eisen */
+  --foreground: #18201c;
+  --card-foreground: #18201c;
+  --popover-foreground: #18201c;
+  --primary: #18201c;
+  --primary-foreground: #ffffff;
+  --ring: #18201c;
+
+  /* Stein */
+  --muted-foreground: #636b67;
+
+  /* Linie */
+  --border: #e1e6e3;
+  --input: #b4bcb7;
+
+  /* Nebel */
+  --muted: #f3f6f4;
+  --secondary: #f3f6f4;
+  --secondary-foreground: #18201c;
+  --accent: #f3f6f4;
+  --accent-foreground: #18201c;
+
+  /* Moos: nur für "das bist du" und "das ist Fortschritt" */
+  --brand: #156b4a;
+  --brand-foreground: #ffffff;
+  --brand-subtle: #dff7ea;
+
+  /* Signal: nur Fehler und Löschen */
+  --destructive: #be2323;
+  --destructive-foreground: #ffffff;
+
+  /* Diagramme: eigener Wert in Moos, alles andere in Eisen und Grau */
+  --chart-1: #156b4a;
+  --chart-2: #18201c;
+  --chart-3: #636b67;
+  --chart-4: #b4bcb7;
+  --chart-5: #e1e6e3;
+
+  /* Seitenleiste (Desktop): weiß, nur durch eine Linie getrennt */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18201c;
+  --sidebar-primary: #18201c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f6f4;
+  --sidebar-accent-foreground: #18201c;
+  --sidebar-border: #e1e6e3;
+  --sidebar-ring: #18201c;
+}
+
+@theme inline {
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+
+  /* Typo-Skala aus docs/DESIGN.md, Abschnitt 5.
+     Mini, Klein, Text und Abschnitt sind die Tailwind-Klassen text-xs, text-sm, text-base, text-xl. */
+  --text-titel: 1.75rem;
+  --text-titel--line-height: 2.125rem;
+  --text-zahl: 2.75rem;
+  --text-zahl--line-height: 3rem;
+  --text-grosszahl: 4.5rem;
+  --text-grosszahl--line-height: 4.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Zahlen in Tabellen und Listen */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Großzahl und Zahl: schmal gesetzt, siehe DESIGN.md Abschnitt 6 */
+@utility num-display {
+  font-variant-numeric: tabular-nums;
+  font-stretch: 75%;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Fließtext der Rechtsseiten (Impressum, Datenschutz) */
+@layer components {
+  .legal h1 {
+    font-size: var(--text-titel);
+    line-height: var(--text-titel--line-height);
+    font-weight: 600;
+  }
+  .legal h2 {
+    margin-top: 2rem;
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+  }
+  .legal p,
+  .legal ul {
+    margin-top: 0.75rem;
+  }
+  .legal ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .legal li + li {
+    margin-top: 0.5rem;
+  }
+  .legal strong {
+    font-weight: 500;
+  }
+}
