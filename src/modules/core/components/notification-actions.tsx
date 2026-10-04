@@ -35,6 +35,7 @@ type Prefs = {
   joined: boolean;
   message: boolean;
   cancelled: boolean;
+  reminder: boolean;
 };
 
 const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
@@ -47,6 +48,7 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
   { name: "joined", label: "Jemand sagt bei meinem Training zu" },
   { name: "message", label: "Neue Nachrichten im Chat" },
   { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt" },
+  { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
 ];
 
 const initial: FormState = {};

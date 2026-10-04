@@ -2,9 +2,11 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { z } from "zod";
 
 import { toExerciseMeasure } from "@/lib/domain";
 import type { AgentClient } from "@/lib/supabase/agent";
+import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 
 import { communityKind, toNotificationKind } from "./logic";
@@ -247,6 +249,7 @@ export async function getMeetup(meetupId: string) {
     sharedWith: shares.data.map((s) => s.group_id),
     messages: chat.data.map((m) => ({
       id: m.id,
+      userId: m.user_id,
       name: m.display_name,
       body: m.body,
       createdAt: m.created_at,
@@ -296,6 +299,7 @@ export const NOTIFICATION_DEFAULTS = {
   joined: true,
   message: true,
   cancelled: true,
+  reminder: true,
 };
 
 /** Eigene Einstellungen für Mitteilungen. Ohne gespeicherte Zeile gelten die Voreinstellungen. */
@@ -303,7 +307,7 @@ export async function getNotificationPrefs() {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notification_prefs")
-    .select("new_training_private, new_training_public, joined, message, cancelled")
+    .select("new_training_private, new_training_public, joined, message, cancelled, reminder")
     .maybeSingle();
   if (error) throw new Error("Einstellungen konnten nicht geladen werden.");
   if (!data) return NOTIFICATION_DEFAULTS;
@@ -313,7 +317,52 @@ export async function getNotificationPrefs() {
     joined: data.joined,
     message: data.message,
     cancelled: data.cancelled,
+    reminder: data.reminder,
   };
+}
+
+// ---------- Push ----------
+// Ohne Sitzung: Die Datenbank prüft das gemeinsame Geheimnis (push_payload, push_forget).
+
+const pushPayloadSchema = z.object({
+  kind: z.string(),
+  actor_name: z.string(),
+  title: z.string(),
+  count: z.number(),
+  meetup_id: z.string().nullable(),
+  latest: z.string().nullable(),
+  vapid_public_key: z.string().nullable(),
+  vapid_private_key: z.string().nullable(),
+  subscriptions: z.array(z.object({ endpoint: z.string(), p256dh: z.string(), auth: z.string() })),
+});
+
+/**
+ * Inhalt, Geräte-Abos und Schlüssel einer Mitteilung. "denied" bei falschem Geheimnis,
+ * null, wenn es nichts (mehr) zu senden gibt.
+ */
+export async function getPushPayload(notificationId: string, secret: string) {
+  const { data, error } = await createAnonClient().rpc("push_payload", { nid: notificationId, secret });
+  if (error?.code === "42501") return "denied" as const;
+  if (error) throw new Error("Push-Inhalt konnte nicht geladen werden.");
+  if (!data) return null;
+  const parsed = pushPayloadSchema.safeParse(data);
+  if (!parsed.success) return null;
+  const p = parsed.data;
+  return {
+    kind: toNotificationKind(p.kind),
+    actorName: p.actor_name,
+    title: p.title,
+    count: p.count,
+    meetupId: p.meetup_id,
+    latest: p.latest,
+    vapid: p.vapid_public_key && p.vapid_private_key ? { publicKey: p.vapid_public_key, privateKey: p.vapid_private_key } : null,
+    subscriptions: p.subscriptions,
+  };
+}
+
+/** Entfernt ein Abo, das der Push-Dienst nicht mehr kennt. */
+export async function forgetPushSubscription(endpoint: string, secret: string) {
+  await createAnonClient().rpc("push_forget", { endpoint, secret });
 }
 
 /**

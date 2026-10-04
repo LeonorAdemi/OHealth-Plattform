@@ -22,6 +22,7 @@ Begründete Abhängigkeiten außerhalb des Grundgerüsts:
 | Paket | Wofür | Warum nicht selbst | Bundle |
 | --- | --- | --- | --- |
 | `@modelcontextprotocol/server` | MCP-Endpunkt `/api/mcp` | Offizielles SDK, das Protokoll mit Versionen und Transport ist zu umfangreich für Eigenbau | Nur Server, 0 kB im Browser |
+| `web-push` | Push-Versand in `/api/push` | Verschlüsselung der Inhalte (RFC 8291) und VAPID-Signatur (RFC 8292) sind fehleranfällig im Eigenbau; Standardbibliothek dafür | Nur Server, 0 kB im Browser |
 
 ## 3. Architektur
 
@@ -75,6 +76,7 @@ Regeln, die diese Ziele sichern:
 - Nach jeder Änderung am Datenmodell laufen die Supabase-Advisors (Sicherheit und Performance). Warnungen werden behoben oder hier begründet. Bewusst offen: `join_group`, `group_invite_preview` und `delete_own_account` brauchen erhöhte Rechte und sind für angemeldete Nutzer aufrufbar. Jede davon wirkt nur auf den Aufrufer selbst.
 - Migrationen werden nie nachträglich geändert. Jede Änderung ist eine neue Datei.
 - Der Service-Role-Schlüssel wird im Anwendungscode nicht verwendet. Zugangsdaten stehen nur in `.env.local` und in Vercel.
+- **Push.** Neue Mitteilungen meldet die Datenbank per `pg_net` an `/api/push`. Die Route reicht das mitgeschickte Geheimnis an `push_payload` weiter; die Datenbank prüft es gegen `private.push_config` und liefert erst dann Inhalt, Geräte-Abos und das VAPID-Schlüsselpaar. Adresse, Geheimnis und Schlüsselpaar trägt der Betreiber je Umgebung im SQL-Editor ein, nie im Repo (Migration `push_keys_in_db`). In Vercel steht nur der öffentliche Schlüssel `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Erinnerungen legt `pg_cron` alle 15 Minuten an (Migration `push_and_reminders`, Test 16).
 - Es werden nur Daten gespeichert, die eine Funktion brauchen.
 - Ändert sich die Datenverarbeitung, wird die Datenschutzseite im selben Schritt angepasst (siehe `docs/LEGAL.md`).
 - Jeder Nutzer kann sein Konto samt allen eigenen Daten selbst löschen. Neue Tabellen mit Nutzerdaten hängen deshalb per Fremdschlüssel mit Kaskade am Profil, und der Datenbanktest zum Konto-Löschen wird um sie ergänzt.

@@ -6,6 +6,7 @@ import { MCP_PATH } from "@/lib/mcp-auth";
 import { signOut } from "@/modules/core/actions";
 import { ConnectedAgent, McpAddress } from "@/modules/core/components/agent-access";
 import { DeleteAccount } from "@/modules/core/components/delete-account";
+import { PushToggle } from "@/modules/core/components/push-toggle";
 import { PasskeySetup } from "@/modules/core/components/passkey-setup";
 import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
 import { DisplayNameForm } from "@/modules/core/components/simple-forms";
@@ -47,8 +48,16 @@ export default async function ProfilePage() {
         <h2 id="mitteilungen-titel" className="text-xl font-semibold">
           Mitteilungen
         </h2>
-        <p className="text-muted-foreground mt-1 mb-2 text-sm">Wofür die Glocke dir Bescheid gibt.</p>
+        <p className="text-muted-foreground mt-1 mb-2 text-sm">
+          Wofür die Glocke und dein Handy dir Bescheid geben.
+        </p>
         <NotificationPrefsForm prefs={prefs} />
+        <h3 className="mt-8 font-medium">Aufs Handy</h3>
+        <p className="text-muted-foreground mt-1 mb-2 text-sm">
+          Schaltest du sie ein, kommen dieselben Mitteilungen auch als Push auf dieses Gerät, mit der letzten Nachricht im
+          Chat.
+        </p>
+        <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
       </section>
 
       {passkeysEnabled(process.env.NEXT_PUBLIC_PASSKEYS) && (

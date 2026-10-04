@@ -147,6 +147,17 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie.
 - **Leere Zustände:** Ein Satz, der sagt, was hier erscheinen wird, und ein Button. Keine Illustrationen.
 
+### Chat
+
+Der Chat eines Trainings folgt bewusst dem Muster bekannter Messenger, weil es dort jeder sofort bedienen kann. Das ist die einzige Stelle mit Flächen statt Linien:
+
+- Eigene Nachrichten rechts in Eisen mit weißer Schrift, andere links in Nebel. Kein Moos.
+- Sprechblasen mit 16 px Rundung, die letzte einer Folge an der Seite des Absenders mit 6 px.
+- Name nur über der ersten Nachricht einer Folge (gleiche Person, höchstens fünf Minuten Abstand).
+- Uhrzeit klein in der Blase, bei eigenen Nachrichten mit Uhr (wird gesendet) oder Häkchen (gesendet).
+- Tagestrenner („Heute“, „Gestern“, „Do, 1. Okt.“) als kleine Fläche in Nebel, mittig.
+- Eingabe unten fest, rundes Feld und runder Senden-Button in Eisen. Am Rechner sendet Enter.
+
 ## 10. Sprache
 
 Die App spricht Deutsch, duzt und bleibt sachlich.

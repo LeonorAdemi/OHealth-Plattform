@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +10,9 @@ import type { FormState } from "@/lib/result";
 import {
   createMeetup,
   deleteMeetup,
-  deleteMeetupMessage,
   joinMeetup,
   leaveMeetup,
   removeMeetupShare,
-  sendMeetupMessage,
   updateMeetupShares,
 } from "../actions";
 
@@ -264,98 +261,6 @@ export function DeleteMeetup({ meetupId, shared }: { meetupId: string; shared: b
           Abbrechen
         </Button>
       </div>
-    </form>
-  );
-}
-
-// ---------- Chat ----------
-
-type Message = { id: string; name: string; body: string; createdAt: string; isMe: boolean };
-
-const messageTime = new Intl.DateTimeFormat("de-DE", {
-  timeZone: "Europe/Berlin",
-  weekday: "short",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
-const REFRESH_MS = 10_000;
-
-/**
- * Chat der Teilnehmer. Neue Nachrichten holt die Seite alle zehn Sekunden, solange sie
- * sichtbar ist. Senden lädt sofort neu.
- */
-export function MeetupChat({ meetupId, messages }: { meetupId: string; messages: readonly Message[] }) {
-  const router = useRouter();
-  const [state, action, pending] = useActionState(sendMeetupMessage, initial);
-  const form = useRef<HTMLFormElement>(null);
-  const end = useRef<HTMLLIElement>(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
-    }, REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [router]);
-
-  useEffect(() => {
-    if (state.message === "sent") form.current?.reset();
-  }, [state]);
-
-  const lastId = messages.at(-1)?.id;
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest" });
-  }, [lastId]);
-
-  return (
-    <div>
-      {messages.length === 0 ? (
-        <p className="text-muted-foreground py-2">Noch keine Nachrichten. Schreib den anderen, zum Beispiel wo ihr euch genau trefft.</p>
-      ) : (
-        <ol className="max-h-[60vh] overflow-y-auto" aria-label="Nachrichten" aria-live="polite">
-          {messages.map((m, i) => (
-            <li key={m.id} ref={i === messages.length - 1 ? end : undefined} className="border-b py-3">
-              <p className="text-sm">
-                <span className="font-medium">{m.isMe ? "Du" : m.name}</span>{" "}
-                <span className="text-muted-foreground">{messageTime.format(new Date(m.createdAt))}</span>
-              </p>
-              <p className="mt-0.5 break-words whitespace-pre-line">{m.body}</p>
-              {m.isMe && <DeleteMessage id={m.id} meetupId={meetupId} />}
-            </li>
-          ))}
-        </ol>
-      )}
-      <form ref={form} action={action} className="mt-4 space-y-2">
-        <input type="hidden" name="meetupId" value={meetupId} />
-        <Label htmlFor="body" className="sr-only">
-          Nachricht
-        </Label>
-        <div className="flex gap-3">
-          <Input id="body" name="body" maxLength={1000} placeholder="Nachricht" autoComplete="off" required />
-          <Button type="submit" variant="outline" disabled={pending}>
-            Senden
-          </Button>
-        </div>
-        <ErrorText error={state.error} />
-      </form>
-    </div>
-  );
-}
-
-function DeleteMessage({ id, meetupId }: { id: string; meetupId: string }) {
-  const [state, action, pending] = useActionState(deleteMeetupMessage, initial);
-  return (
-    <form action={action}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="meetupId" value={meetupId} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-      >
-        Löschen
-      </button>
-      <ErrorText error={state.error} />
     </form>
   );
 }

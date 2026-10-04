@@ -318,6 +318,7 @@ export type Database = {
           message: boolean
           new_training_private: boolean
           new_training_public: boolean
+          reminder: boolean
           updated_at: string
           user_id: string
         }
@@ -327,6 +328,7 @@ export type Database = {
           message?: boolean
           new_training_private?: boolean
           new_training_public?: boolean
+          reminder?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -336,6 +338,7 @@ export type Database = {
           message?: boolean
           new_training_private?: boolean
           new_training_public?: boolean
+          reminder?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -440,6 +443,41 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -1009,6 +1047,15 @@ export type Database = {
           sport: string
           type: string
         }[]
+      }
+      push_forget: {
+        Args: { endpoint: string; secret: string }
+        Returns: undefined
+      }
+      push_payload: { Args: { nid: string; secret: string }; Returns: Json }
+      save_push_subscription: {
+        Args: { auth: string; endpoint: string; p256dh: string }
+        Returns: undefined
       }
       save_template: {
         Args: {

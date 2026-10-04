@@ -411,14 +411,18 @@ export async function deleteMeetup(_prev: FormState, formData: FormData): Promis
 
 // ---------- Chat ----------
 
-/** Schreibt eine Nachricht in den Chat eines Trainings. Nur wer zugesagt hat (RLS). */
+/**
+ * Schreibt eine Nachricht in den Chat eines Trainings. Nur wer zugesagt hat (RLS).
+ * Die ID kommt vom Gerät: Wird nach einem Verbindungsabbruch erneut gesendet, entsteht nichts doppelt.
+ */
 export async function sendMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
     .object({
+      id: z.uuid(),
       meetupId: z.uuid(),
       body: z.string().trim().min(1, "Schreib eine Nachricht.").max(1000, "Höchstens 1000 Zeichen."),
     })
-    .safeParse({ meetupId: formData.get("meetupId"), body: formData.get("body") ?? "" });
+    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId"), body: formData.get("body") ?? "" });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
@@ -428,14 +432,14 @@ export async function sendMeetupMessage(_prev: FormState, formData: FormData): P
 
   const { error } = await supabase
     .from("meetup_messages")
-    .insert({ meetup_id: parsed.data.meetupId, user_id: userId, body: parsed.data.body });
-  if (error) {
+    .insert({ id: parsed.data.id, meetup_id: parsed.data.meetupId, user_id: userId, body: parsed.data.body });
+  if (error && error.code !== "23505") {
     if (error.message.includes("Zu viele")) return { error: "Zu viele Nachrichten. Warte einen Moment." };
     if (error.code === "42501") return { error: "Schreiben können nur alle, die dabei sind." };
     return { error: "Die Nachricht wurde nicht gesendet. Versuch es erneut." };
   }
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`);
+  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
   return { message: "sent" };
 }
 
@@ -450,7 +454,7 @@ export async function deleteMeetupMessage(_prev: FormState, formData: FormData):
   const { error } = await supabase.from("meetup_messages").delete().eq("id", parsed.data.id);
   if (error) return { error: "Die Nachricht konnte nicht gelöscht werden." };
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`);
+  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
   return {};
 }
 
@@ -502,12 +506,42 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
     joined: on("joined"),
     message: on("message"),
     cancelled: on("cancelled"),
+    reminder: on("reminder"),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
 
   revalidatePath("/profil");
   return { message: "Gespeichert" };
+}
+
+const pushSubscription = z.object({
+  endpoint: z.url().startsWith("https://").max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+
+/** Speichert das Push-Abo dieses Geräts für die angemeldete Person. */
+export async function savePushSubscription(input: unknown): Promise<FormState> {
+  const parsed = pushSubscription.safeParse(input);
+  if (!parsed.success) return { error: "Dieses Gerät unterstützt keine Mitteilungen." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_push_subscription", {
+    endpoint: parsed.data.endpoint,
+    p256dh: parsed.data.keys.p256dh,
+    auth: parsed.data.keys.auth,
+  });
+  if (error) return { error: "Mitteilungen konnten nicht eingeschaltet werden. Versuch es erneut." };
+  return { message: "Eingeschaltet" };
+}
+
+/** Entfernt das Push-Abo dieses Geräts. */
+export async function removePushSubscription(endpoint: unknown): Promise<FormState> {
+  const parsed = z.string().max(1000).safeParse(endpoint);
+  if (!parsed.success) return {};
+  const supabase = await createClient();
+  await supabase.from("push_subscriptions").delete().eq("endpoint", parsed.data);
+  return { message: "Ausgeschaltet" };
 }
 
 // ---------- Passwort zurücksetzen ----------
