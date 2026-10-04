@@ -14,7 +14,10 @@ const ITEMS = [
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" || pathname.startsWith("/workouts") : pathname.startsWith(href);
+  if (href === "/") {
+    return pathname === "/" || ["/workouts", "/training", "/uebungen"].some((p) => pathname.startsWith(p));
+  }
+  return pathname.startsWith(href);
 }
 
 // Handy: Tab-Leiste unten. Desktop: Einträge der Seitenleiste.

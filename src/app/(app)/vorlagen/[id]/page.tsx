@@ -11,10 +11,17 @@ import {
   RestoreVersion,
   TemplateVisibilityForm,
 } from "@/modules/workouts/components/template-actions";
-import { APP_TIME_ZONE, formatTemplateTarget, versionSourceLabel } from "@/modules/workouts/logic";
-import { getTemplate } from "@/modules/workouts/queries";
+import {
+  APP_TIME_ZONE,
+  formatLastSets,
+  formatTemplateTarget,
+  versionSourceLabel,
+} from "@/modules/workouts/logic";
+import { getLastSets, getTemplate } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Vorlage" };
+
+const dayFormat = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "short" });
 
 const dateFormat = new Intl.DateTimeFormat("de-DE", {
   timeZone: APP_TIME_ZONE,
@@ -38,6 +45,7 @@ export default async function TemplatePage({
 
   const template = await getTemplate(id, versionNumber);
   if (!template) notFound();
+  const lastSets = await getLastSets(template.exercises.map((e) => e.exerciseId));
 
   const isLatest = template.selectedNumber === template.latestNumber;
 
@@ -58,23 +66,47 @@ export default async function TemplatePage({
       </p>
 
       <ol className="mt-8 max-w-2xl" aria-label="Übungen">
-        {template.exercises.map((exercise, index) => (
-          <li key={index} className="flex min-h-14 items-center justify-between gap-4 border-b py-2">
-            <span className="min-w-0">
-              <span className="text-muted-foreground mr-3 text-sm">{index + 1}</span>
-              {exercise.exerciseName}
-            </span>
-            <span className="num shrink-0">{formatTemplateTarget(exercise)}</span>
-          </li>
-        ))}
+        {template.exercises.map((exercise, index) => {
+          const last = lastSets[exercise.exerciseId];
+          return (
+            <li key={index} className="min-h-14 border-b py-3">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="min-w-0">
+                  <span className="text-muted-foreground mr-3 text-sm">{index + 1}</span>
+                  {exercise.exerciseName}
+                </span>
+                <span className="num shrink-0">{formatTemplateTarget(exercise)}</span>
+              </div>
+              <p className="text-muted-foreground mt-1 pl-6 text-sm">
+                {last ? (
+                  <>
+                    Zuletzt {dayFormat.format(new Date(last.performedAt))}:{" "}
+                    <span className="num">{formatLastSets(last.sets)}</span>
+                  </>
+                ) : (
+                  "Noch kein früheres Training"
+                )}
+                {" · "}
+                <Link href={`/uebungen/${exercise.exerciseId}`} className="underline underline-offset-4">
+                  Verlauf
+                </Link>
+              </p>
+            </li>
+          );
+        })}
       </ol>
 
       <div className="mt-10 space-y-6">
         {!template.isMine && <CopyTemplate sourceId={template.id} />}
         {template.isMine && isLatest && (
-          <Button asChild className="w-full md:w-auto">
-            <Link href={`/vorlagen/${template.id}/bearbeiten`}>Vorlage bearbeiten</Link>
-          </Button>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Button asChild className="w-full md:w-auto">
+              <Link href={`/training/${template.id}`}>Training starten</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full md:w-auto">
+              <Link href={`/vorlagen/${template.id}/bearbeiten`}>Vorlage bearbeiten</Link>
+            </Button>
+          </div>
         )}
         {template.isMine && !isLatest && (
           <RestoreVersion id={template.id} version={template.selectedNumber} />

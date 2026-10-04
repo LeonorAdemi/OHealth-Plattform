@@ -12,6 +12,7 @@ import {
   toTemplateVisibility,
   weekKeys,
   type BestRow,
+  type ExerciseSessionRow,
   type StoredSet,
   type StoredTemplateExercise,
 } from "./logic";
@@ -143,7 +144,7 @@ export async function getWorkout(id: string) {
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, workout_sets(reps, duration_seconds, distance_m, weight_kg, position, exercises(id, name, measure))",
+      "id, title, performed_at, started_at, finished_at, workout_sets(reps, duration_seconds, distance_m, weight_kg, rest_seconds, position, exercises(id, name, measure))",
     )
     .eq("id", id)
     .eq("user_id", userId)
@@ -164,12 +165,20 @@ export async function getWorkout(id: string) {
             durationSeconds: row.duration_seconds,
             distanceM: row.distance_m,
             weightKg: row.weight_kg,
+            restSeconds: row.rest_seconds,
           },
         ]
       : [],
   );
 
-  return { id: data.id, title: data.title, performedAt: data.performed_at, sets };
+  return {
+    id: data.id,
+    title: data.title,
+    performedAt: data.performed_at,
+    startedAt: data.started_at,
+    finishedAt: data.finished_at,
+    sets,
+  };
 }
 
 // ---------- KI-Zugriff über MCP ----------
@@ -392,7 +401,126 @@ export async function getTemplate(id: string, versionNumber?: number) {
       createdAt: version.created_at,
     })),
     latestNumber: latest.version_number,
+    latestVersionId: latest.id,
     selectedNumber: selected.version_number,
     exercises,
+  };
+}
+
+// ---------- Training und Verlauf ----------
+
+export type LastExerciseSets = { performedAt: string; sets: StoredSet[] };
+
+/**
+ * Die Sätze vom letzten eigenen Workout je Übung, für "Zuletzt" und die Vorbelegung.
+ * Übungen ohne früheres Workout fehlen im Ergebnis.
+ */
+export async function getLastSets(exerciseIds: readonly string[]): Promise<Record<string, LastExerciseSets>> {
+  const ids = [...new Set(exerciseIds)];
+  if (ids.length === 0) return {};
+  const { supabase, userId } = await requireUser();
+
+  const { data: latest, error } = await supabase
+    .from("v_exercise_last_sessions")
+    .select("exercise_id, workout_id, performed_at")
+    .eq("user_id", userId)
+    .in("exercise_id", ids)
+    .limit(ids.length);
+  if (error) throw new Error("Die letzten Werte konnten nicht geladen werden.");
+
+  const pairs = latest.flatMap((row) =>
+    row.exercise_id && row.workout_id && row.performed_at
+      ? [{ exerciseId: row.exercise_id, workoutId: row.workout_id, performedAt: row.performed_at }]
+      : [],
+  );
+  if (pairs.length === 0) return {};
+
+  const { data: rows, error: setsError } = await supabase
+    .from("workout_sets")
+    .select("workout_id, reps, duration_seconds, distance_m, weight_kg, exercises(id, name, measure)")
+    .in("workout_id", [...new Set(pairs.map((pair) => pair.workoutId))])
+    .in("exercise_id", pairs.map((pair) => pair.exerciseId))
+    .order("position")
+    .limit(ids.length * 40);
+  if (setsError) throw new Error("Die letzten Werte konnten nicht geladen werden.");
+
+  const result: Record<string, LastExerciseSets> = {};
+  for (const pair of pairs) {
+    const sets: StoredSet[] = rows.flatMap((row) =>
+      row.workout_id === pair.workoutId && row.exercises?.id === pair.exerciseId
+        ? [
+            {
+              exerciseId: row.exercises.id,
+              exerciseName: row.exercises.name,
+              measure: toExerciseMeasure(row.exercises.measure),
+              reps: row.reps,
+              durationSeconds: row.duration_seconds,
+              distanceM: row.distance_m,
+              weightKg: row.weight_kg,
+            },
+          ]
+        : [],
+    );
+    if (sets.length > 0) result[pair.exerciseId] = { performedAt: pair.performedAt, sets };
+  }
+  return result;
+}
+
+/** Eine Übung mit dem eigenen Verlauf (neueste zuerst) und dem Bestwert. null, wenn es sie nicht gibt. */
+export async function getExerciseHistory(exerciseId: string) {
+  const { supabase, userId } = await requireUser();
+  const [exercise, sessions, best] = await Promise.all([
+    supabase.from("exercises").select("id, name, measure, muscle_group").eq("id", exerciseId).maybeSingle(),
+    supabase
+      .from("v_exercise_sessions")
+      .select("workout_id, performed_at, set_count, max_weight_kg, total_reps, best_e1rm_kg, max_duration_seconds, total_distance_m")
+      .eq("user_id", userId)
+      .eq("exercise_id", exerciseId)
+      .order("performed_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("v_exercise_bests")
+      .select("max_weight_kg, best_e1rm_kg, max_reps, max_duration_seconds, total_distance_m")
+      .eq("user_id", userId)
+      .eq("exercise_id", exerciseId)
+      .maybeSingle(),
+  ]);
+
+  if (exercise.error || sessions.error || best.error) {
+    throw new Error("Der Verlauf konnte nicht geladen werden.");
+  }
+  if (!exercise.data) return null;
+
+  const rows: ExerciseSessionRow[] = sessions.data.flatMap((row) =>
+    row.workout_id && row.performed_at
+      ? [
+          {
+            workoutId: row.workout_id,
+            performedAt: row.performed_at,
+            setCount: row.set_count ?? 0,
+            maxWeightKg: row.max_weight_kg,
+            totalReps: row.total_reps,
+            bestE1rmKg: row.best_e1rm_kg,
+            maxDurationSeconds: row.max_duration_seconds,
+            totalDistanceM: row.total_distance_m,
+          },
+        ]
+      : [],
+  );
+
+  return {
+    id: exercise.data.id,
+    name: exercise.data.name,
+    measure: toExerciseMeasure(exercise.data.measure),
+    sessions: rows,
+    best: best.data
+      ? {
+          maxWeightKg: best.data.max_weight_kg,
+          bestE1rmKg: best.data.best_e1rm_kg,
+          maxReps: best.data.max_reps,
+          maxDurationSeconds: best.data.max_duration_seconds,
+          totalDistanceM: best.data.total_distance_m,
+        }
+      : null,
   };
 }

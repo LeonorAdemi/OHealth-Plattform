@@ -5,6 +5,19 @@ import {
   buildLeaderboard,
   buildSetsPayload,
   buildTemplatePayload,
+  buildTrainingPayload,
+  completeSet,
+  endRest,
+  extraTrainingEntry,
+  formatClock,
+  formatLastSets,
+  formatSessionSummary,
+  formatWorkoutDuration,
+  parseTrainingSession,
+  planTrainingEntries,
+  reopenSet,
+  restElapsed,
+  type TrainingSession,
   dayKey,
   formatDistance,
   formatDuration,
@@ -487,5 +500,195 @@ describe("Vorlagen: Anzeige", () => {
     expect(versionSourceLabel("app")).toBe("App");
     expect(toTemplateVisibility("public")).toBe("public");
     expect(toTemplateVisibility("irgendwas")).toBe("private");
+  });
+});
+
+describe("Training: Zeiten", () => {
+  it("formatiert Dauer und Pause wie eine Uhr", () => {
+    expect(formatClock(0)).toBe("0:00");
+    expect(formatClock(45)).toBe("0:45");
+    expect(formatClock(723)).toBe("12:03");
+    expect(formatClock(3723)).toBe("1:02:03");
+    expect(formatClock(-5)).toBe("0:00");
+  });
+
+  it("nennt die Dauer eines Workouts in Minuten und Stunden", () => {
+    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T08:52:30Z")).toBe("52 min");
+    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T09:05:00Z")).toBe("1 h 05 min");
+    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T08:00:30Z")).toBe("unter 1 min");
+  });
+});
+
+describe("Training: Vorbelegung", () => {
+  const bench = {
+    exerciseId: "bank",
+    exerciseName: "Bankdrücken",
+    measure: "weight_reps" as const,
+    targetSets: 3,
+    targetReps: 8,
+    targetWeightKg: 60,
+    targetDurationSeconds: null,
+    targetDistanceM: null,
+  };
+  const last = (reps: number, weightKg: number) => ({
+    exerciseId: "bank",
+    exerciseName: "Bankdrücken",
+    measure: "weight_reps" as const,
+    reps,
+    durationSeconds: null,
+    distanceM: null,
+    weightKg,
+  });
+
+  it("nimmt Satz für Satz die Werte vom letzten Mal und füllt mit dem letzten Satz auf", () => {
+    const [entry] = planTrainingEntries([bench], new Map([["bank", [last(8, 62.5), last(6, 65)]]]));
+    expect(entry.sets.map((s) => [s.value, s.weight])).toEqual([
+      ["8", "62,5"],
+      ["6", "65"],
+      ["6", "65"],
+    ]);
+    expect(entry.fromTemplate).toBe(true);
+    expect(entry.sets.every((s) => s.doneAt === null)).toBe(true);
+  });
+
+  it("nimmt ohne früheres Training die Zielwerte der Vorlage", () => {
+    const [entry] = planTrainingEntries([bench], new Map());
+    expect(entry.sets).toHaveLength(3);
+    expect(entry.sets[0]).toMatchObject({ value: "8", weight: "60" });
+  });
+
+  it("legt im Training hinzugefügte Übungen getrennt von der Vorlage an", () => {
+    const extra = extraTrainingEntry("klimm", "weight_reps");
+    expect(extra).toMatchObject({ exerciseId: "klimm", fromTemplate: false });
+    expect(extra.sets).toEqual([{ value: "", weight: "", doneAt: null, restSeconds: null }]);
+    expect(extraTrainingEntry("bank", "weight_reps", [last(8, 60), last(8, 60)]).sets).toHaveLength(2);
+  });
+});
+
+describe("Training: Abhaken und Pausen", () => {
+  const T0 = 1_000_000;
+  const session = (): TrainingSession => ({
+    version: 1,
+    id: "w1",
+    templateId: "t1",
+    templateVersionId: "v1",
+    title: "Oberkörper",
+    startedAt: T0,
+    rest: null,
+    entries: [
+      {
+        exerciseId: "bank",
+        measure: "weight_reps",
+        fromTemplate: true,
+        sets: [
+          { value: "8", weight: "60", doneAt: null, restSeconds: null },
+          { value: "8", weight: "60", doneAt: null, restSeconds: null },
+          { value: "8", weight: "60", doneAt: null, restSeconds: null },
+        ],
+      },
+    ],
+  });
+
+  it("misst die Pause zwischen zwei abgehakten Sätzen, vor dem ersten gibt es keine", () => {
+    let s = completeSet(session(), 0, 0, T0 + 60_000);
+    expect(s.entries[0].sets[0].restSeconds).toBeNull();
+    expect(restElapsed(s, T0 + 150_000)).toBe(90);
+
+    s = completeSet(s, 0, 1, T0 + 150_000);
+    expect(s.entries[0].sets[1].restSeconds).toBe(90);
+    expect(s.rest).toEqual({ startedAt: T0 + 150_000, endedAt: null });
+  });
+
+  it("hält die Pause an, wenn sie beendet wird, und ordnet diese Dauer dem nächsten Satz zu", () => {
+    let s = completeSet(session(), 0, 0, T0);
+    s = endRest(s, T0 + 75_000);
+    expect(restElapsed(s, T0 + 200_000)).toBe(75);
+    s = completeSet(s, 0, 1, T0 + 200_000);
+    expect(s.entries[0].sets[1].restSeconds).toBe(75);
+  });
+
+  it("ändert einen bereits abgehakten Satz nicht ein zweites Mal", () => {
+    const s = completeSet(session(), 0, 0, T0);
+    expect(completeSet(s, 0, 0, T0 + 5_000)).toBe(s);
+  });
+
+  it("nimmt das Abhaken zurück, ohne die Pause anzuhalten", () => {
+    let s = completeSet(session(), 0, 0, T0);
+    s = reopenSet(s, 0, 0);
+    expect(s.entries[0].sets[0]).toMatchObject({ doneAt: null, restSeconds: null });
+    expect(s.rest).toEqual({ startedAt: T0, endedAt: null });
+  });
+
+  it("speichert nur abgehakte Sätze, mit Pause", () => {
+    let s = completeSet(session(), 0, 0, T0);
+    s = completeSet(s, 0, 2, T0 + 120_000);
+    expect(buildTrainingPayload(s.entries)).toEqual({
+      ok: true,
+      sets: [
+        { exercise_id: "bank", set_number: 1, reps: 8, weight_kg: 60 },
+        { exercise_id: "bank", set_number: 2, reps: 8, weight_kg: 60, rest_seconds: 120 },
+      ],
+    });
+  });
+
+  it("verlangt mindestens einen abgehakten Satz mit Wert", () => {
+    expect(buildTrainingPayload(session().entries)).toEqual({ ok: false, error: "Hak mindestens einen Satz ab." });
+    const s = completeSet(session(), 0, 0, T0);
+    s.entries[0].sets[0].value = "";
+    expect(buildTrainingPayload(s.entries)).toMatchObject({ ok: false });
+  });
+
+  it("liest ein gespeichertes Training und verwirft Unpassendes", () => {
+    const s = session();
+    expect(parseTrainingSession(JSON.stringify(s))).toEqual(s);
+    expect(parseTrainingSession(null)).toBeNull();
+    expect(parseTrainingSession("kein json")).toBeNull();
+    expect(parseTrainingSession(JSON.stringify({ ...s, version: 2 }))).toBeNull();
+  });
+});
+
+describe("Verlauf je Übung", () => {
+  const row = {
+    workoutId: "w1",
+    performedAt: "2026-10-04T08:00:00Z",
+    setCount: 3,
+    maxWeightKg: 62.5,
+    totalReps: 22,
+    bestE1rmKg: 79.2,
+    maxDurationSeconds: null,
+    totalDistanceM: null,
+  };
+
+  it("fasst ein Workout je Messart zusammen", () => {
+    expect(formatSessionSummary(row, "weight_reps")).toBe("3 Sätze · bis 62,5 kg · 22 Wdh.");
+    expect(formatSessionSummary({ ...row, maxWeightKg: 0 }, "weight_reps")).toBe("3 Sätze · 22 Wdh.");
+    expect(formatSessionSummary({ ...row, setCount: 1, maxDurationSeconds: 90 }, "duration")).toBe(
+      "1 Satz · bis 1:30 min",
+    );
+    expect(formatSessionSummary({ ...row, totalDistanceM: 5200 }, "distance")).toBe("3 Sätze · 5,2 km");
+  });
+
+  it("zeigt die Sätze vom letzten Mal in einer Zeile", () => {
+    const set = { exerciseId: "b", exerciseName: "B", measure: "weight_reps" as const, durationSeconds: null, distanceM: null };
+    expect(formatLastSets([{ ...set, reps: 8, weightKg: 60 }, { ...set, reps: 6, weightKg: 62.5 }])).toBe(
+      "8 × 60 kg, 6 × 62,5 kg",
+    );
+  });
+});
+
+describe("Korrektur behält die Pausen", () => {
+  it("gibt die Pause aus dem gespeicherten Satz an die Nutzlast weiter", () => {
+    const stored = [
+      { exerciseId: "b", exerciseName: "B", measure: "weight_reps" as const, reps: 8, durationSeconds: null, distanceM: null, weightKg: 60, restSeconds: null },
+      { exerciseId: "b", exerciseName: "B", measure: "weight_reps" as const, reps: 8, durationSeconds: null, distanceM: null, weightKg: 60, restSeconds: 95 },
+    ];
+    const draft = toDraftEntries(stored).map((entry) => ({ ...entry, measure: "weight_reps" as const }));
+    expect(buildSetsPayload(draft)).toEqual({
+      ok: true,
+      sets: [
+        { exercise_id: "b", set_number: 1, reps: 8, weight_kg: 60 },
+        { exercise_id: "b", set_number: 2, reps: 8, weight_kg: 60, rest_seconds: 95 },
+      ],
+    });
   });
 });

@@ -73,7 +73,8 @@ export function parseDecimal(input: string): number | null {
   return Number(cleaned);
 }
 
-export type DraftSet = { value: string; weight: string };
+// rest: Pause vor dem Satz in Sekunden. Nur bei Trainings mit Zeitmessung, bleibt bei Korrekturen erhalten.
+export type DraftSet = { value: string; weight: string; rest?: number | null };
 export type DraftEntry = { exerciseId: string; measure: ExerciseMeasure; sets: DraftSet[] };
 
 export type SetPayload = {
@@ -83,6 +84,7 @@ export type SetPayload = {
   duration_seconds?: number;
   distance_m?: number;
   weight_kg: number;
+  rest_seconds?: number;
 };
 
 /**
@@ -111,7 +113,11 @@ export function buildSetsPayload(
       }
 
       setNumber += 1;
-      const base = { exercise_id: entry.exerciseId, set_number: setNumber };
+      const base = {
+        exercise_id: entry.exerciseId,
+        set_number: setNumber,
+        ...(typeof set.rest === "number" ? { rest_seconds: set.rest } : {}),
+      };
 
       if (entry.measure === "weight_reps") {
         if (!Number.isInteger(value)) {
@@ -293,6 +299,7 @@ export type StoredSet = {
   durationSeconds: number | null;
   distanceM: number | null;
   weightKg: number;
+  restSeconds?: number | null;
 };
 
 export type ExerciseBlock = {
@@ -348,15 +355,17 @@ export function toDraftEntries(sets: readonly StoredSet[]): { exerciseId: string
   return groupSetsIntoBlocks(sets).map((block) => ({
     exerciseId: block.exerciseId,
     sets: block.sets.map((set) => {
+      const rest = set.restSeconds ?? null;
       if (block.measure === "duration") {
-        return { value: String(set.durationSeconds ?? ""), weight: "" };
+        return { value: String(set.durationSeconds ?? ""), weight: "", rest };
       }
       if (block.measure === "distance") {
-        return { value: set.distanceM === null ? "" : decimal(set.distanceM), weight: "" };
+        return { value: set.distanceM === null ? "" : decimal(set.distanceM), weight: "", rest };
       }
       return {
         value: String(set.reps ?? ""),
         weight: set.weightKg > 0 ? decimal(set.weightKg) : "",
+        rest,
       };
     }),
   }));
@@ -592,4 +601,224 @@ export function toTemplateDraftEntries(
 /** Bezeichnung der Herkunft einer Version für den Versionsverlauf. */
 export function versionSourceLabel(source: string): string {
   return source === "ai" ? "KI" : "App";
+}
+
+// ---------- Training ----------
+
+/** Uhrzeit-Format für Dauer und Pause: "0:45", "12:03", "1:02:03". */
+export function formatClock(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(seconds % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
+/** Dauer eines Workouts in Worten: "52 min", "1 h 05 min". Unter einer Minute: "unter 1 min". */
+export function formatWorkoutDuration(startedAt: string, finishedAt: string): string {
+  const minutes = Math.floor((Date.parse(finishedAt) - Date.parse(startedAt)) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 1) return "unter 1\u00a0min";
+  if (minutes < 60) return `${minutes}\u00a0min`;
+  return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
+}
+
+/** Schlüssel des laufenden Trainings im Speicher des Geräts. Ein Training je Gerät. */
+export const TRAINING_KEY = "ohealth:training";
+
+export type TrainingSet = {
+  value: string;
+  weight: string;
+  /** Zeitpunkt des Abhakens in ms, null = noch offen */
+  doneAt: number | null;
+  /** Pause vor dem Satz in Sekunden, gemessen beim Abhaken */
+  restSeconds: number | null;
+};
+
+export type TrainingEntry = {
+  exerciseId: string;
+  measure: ExerciseMeasure;
+  /** false: im Training hinzugefügt, gehört nicht zur Vorlage */
+  fromTemplate: boolean;
+  sets: TrainingSet[];
+};
+
+export type TrainingSession = {
+  version: 1;
+  id: string;
+  templateId: string | null;
+  templateVersionId: string | null;
+  title: string;
+  startedAt: number;
+  /** Laufende oder zuletzt beendete Pause, beginnt mit dem Abhaken eines Satzes */
+  rest: { startedAt: number; endedAt: number | null } | null;
+  entries: TrainingEntry[];
+};
+
+const decimalText = (value: number) => String(value).replace(".", ",");
+
+/** Werte eines gespeicherten Satzes als Eingabetext. */
+function setToInput(measure: ExerciseMeasure, set: StoredSet): { value: string; weight: string } {
+  if (measure === "duration") return { value: set.durationSeconds === null ? "" : String(set.durationSeconds), weight: "" };
+  if (measure === "distance") return { value: set.distanceM === null ? "" : decimalText(set.distanceM), weight: "" };
+  return { value: set.reps === null ? "" : String(set.reps), weight: set.weightKg > 0 ? decimalText(set.weightKg) : "" };
+}
+
+/** Zielwerte einer Vorlagen-Übung als Eingabetext. */
+function targetToInput(exercise: StoredTemplateExercise): { value: string; weight: string } {
+  const [draft] = toTemplateDraftEntries([exercise]);
+  return { value: draft.value, weight: draft.weight };
+}
+
+/**
+ * Plant die Sätze eines Trainings aus einer Vorlage. Je Übung so viele Sätze wie die Vorlage
+ * vorsieht. Vorbelegt wird mit den Werten vom letzten Mal (Satz für Satz, sonst der letzte
+ * Satz), ohne frühere Werte mit den Zielwerten der Vorlage.
+ */
+export function planTrainingEntries(
+  exercises: readonly StoredTemplateExercise[],
+  lastSets: ReadonlyMap<string, readonly StoredSet[]>,
+): TrainingEntry[] {
+  return exercises.map((exercise) => {
+    const last = lastSets.get(exercise.exerciseId) ?? [];
+    const count = Math.max(1, exercise.targetSets);
+    const sets: TrainingSet[] = Array.from({ length: count }, (_, i) => {
+      const source = last[i] ?? last.at(-1);
+      const input = source ? setToInput(exercise.measure, source) : targetToInput(exercise);
+      return { ...input, doneAt: null, restSeconds: null };
+    });
+    return { exerciseId: exercise.exerciseId, measure: exercise.measure, fromTemplate: true, sets };
+  });
+}
+
+/** Eine im Training hinzugefügte Übung, vorbelegt mit dem letzten Mal, falls vorhanden. */
+export function extraTrainingEntry(
+  exerciseId: string,
+  measure: ExerciseMeasure,
+  last: readonly StoredSet[] = [],
+): TrainingEntry {
+  const count = Math.max(1, last.length);
+  const sets = Array.from({ length: count }, (_, i) => {
+    const source = last[i];
+    return {
+      ...(source ? setToInput(measure, source) : { value: "", weight: "" }),
+      doneAt: null,
+      restSeconds: null,
+    };
+  });
+  return { exerciseId, measure, fromTemplate: false, sets };
+}
+
+/** Sekunden der laufenden Pause, null ohne Pause. Beendete Pausen bleiben stehen. */
+export function restElapsed(session: TrainingSession, now: number): number | null {
+  if (!session.rest) return null;
+  return Math.max(0, Math.round(((session.rest.endedAt ?? now) - session.rest.startedAt) / 1000));
+}
+
+/**
+ * Hakt einen Satz ab: Die bisherige Pause wird dem Satz zugeordnet, danach beginnt eine neue.
+ * Vor dem ersten abgehakten Satz gibt es keine Pause.
+ */
+export function completeSet(session: TrainingSession, entryIndex: number, setIndex: number, now: number): TrainingSession {
+  const target = session.entries[entryIndex]?.sets[setIndex];
+  if (!target || target.doneAt !== null) return session;
+
+  const restSeconds = restElapsed(session, now);
+  const entries = session.entries.map((entry, ei) =>
+    ei !== entryIndex
+      ? entry
+      : { ...entry, sets: entry.sets.map((set, si) => (si === setIndex ? { ...set, doneAt: now, restSeconds } : set)) },
+  );
+  return { ...session, entries, rest: { startedAt: now, endedAt: null } };
+}
+
+/** Nimmt das Abhaken zurück. Die Pause läuft unverändert weiter. */
+export function reopenSet(session: TrainingSession, entryIndex: number, setIndex: number): TrainingSession {
+  const entries = session.entries.map((entry, ei) =>
+    ei !== entryIndex
+      ? entry
+      : {
+          ...entry,
+          sets: entry.sets.map((set, si) => (si === setIndex ? { ...set, doneAt: null, restSeconds: null } : set)),
+        },
+  );
+  return { ...session, entries };
+}
+
+/** Beendet die laufende Pause, zum Beispiel wenn der nächste Satz beginnt. */
+export function endRest(session: TrainingSession, now: number): TrainingSession {
+  if (!session.rest || session.rest.endedAt !== null) return session;
+  return { ...session, rest: { ...session.rest, endedAt: now } };
+}
+
+/**
+ * Macht aus den abgehakten Sätzen die Nutzlast für log_training.
+ * Offene Sätze zählen nicht, sie sind nur vorbelegt.
+ */
+export function buildTrainingPayload(
+  entries: readonly TrainingEntry[],
+): { ok: true; sets: SetPayload[] } | { ok: false; error: string } {
+  const done = entries.map((entry) => ({ ...entry, sets: entry.sets.filter((set) => set.doneAt !== null) }));
+
+  if (done.every((entry) => entry.sets.length === 0)) {
+    return { ok: false, error: "Hak mindestens einen Satz ab." };
+  }
+  if (done.some((entry) => entry.sets.some((set) => set.value.trim() === ""))) {
+    return { ok: false, error: "Trag bei jedem abgehakten Satz einen Wert ein." };
+  }
+
+  return buildSetsPayload(
+    done.map((entry) => ({
+      exerciseId: entry.exerciseId,
+      measure: entry.measure,
+      sets: entry.sets.map((set) => ({ value: set.value, weight: set.weight, rest: set.restSeconds })),
+    })),
+  );
+}
+
+/** Liest ein gespeichertes Training. Alles, was nicht passt, gilt als kein Training. */
+export function parseTrainingSession(raw: string | null): TrainingSession | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<TrainingSession>;
+    if (value.version !== 1 || typeof value.id !== "string" || typeof value.startedAt !== "number" || !Array.isArray(value.entries)) {
+      return null;
+    }
+    return value as TrainingSession;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Verlauf je Übung ----------
+
+export type ExerciseSessionRow = {
+  workoutId: string;
+  performedAt: string;
+  setCount: number;
+  maxWeightKg: number | null;
+  totalReps: number | null;
+  bestE1rmKg: number | null;
+  maxDurationSeconds: number | null;
+  totalDistanceM: number | null;
+};
+
+/** Ein Workout im Verlauf einer Übung, z. B. "3 Sätze · bis 62,5 kg · 22 Wdh.". */
+export function formatSessionSummary(row: ExerciseSessionRow, measure: ExerciseMeasure): string {
+  const parts = [`${row.setCount}\u00a0${row.setCount === 1 ? "Satz" : "Sätze"}`];
+  if (measure === "duration" && row.maxDurationSeconds !== null) {
+    const { value, unit } = formatDuration(row.maxDurationSeconds);
+    parts.push(`bis ${value}\u00a0${unit}`);
+  } else if (measure === "distance" && row.totalDistanceM !== null) {
+    const { value, unit } = formatDistance(row.totalDistanceM);
+    parts.push(`${value}\u00a0${unit}`);
+  } else if (measure === "weight_reps") {
+    if (row.maxWeightKg !== null && row.maxWeightKg > 0) parts.push(`bis ${formatWeight(row.maxWeightKg)}\u00a0kg`);
+    if (row.totalReps !== null) parts.push(`${row.totalReps}\u00a0Wdh.`);
+  }
+  return parts.join(" · ");
+}
+
+/** Sätze vom letzten Mal in einer Zeile: "8 × 60 kg, 8 × 62,5 kg, 6 × 62,5 kg". */
+export function formatLastSets(sets: readonly StoredSet[]): string {
+  return sets.map(formatSetLine).join(", ");
 }

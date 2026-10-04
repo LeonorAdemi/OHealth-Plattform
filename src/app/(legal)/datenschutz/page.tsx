@@ -55,7 +55,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Training:</strong> deine Workouts mit Datum, Titel, Übungen
-          und Sätzen (Wiederholungen, Gewicht, Dauer, Distanz).
+          und Sätzen (Wiederholungen, Gewicht, Dauer, Distanz). Bei einem
+          Training aus einer Vorlage zusätzlich Start und Ende, die Pausen
+          zwischen den Sätzen und welche Vorlage du verwendet hast.
         </li>
         <li>
           <strong>Vorlagen:</strong> deine Workout-Vorlagen mit Namen,
@@ -177,8 +179,8 @@ export default function PrivacyPage() {
       <h2>Cookies und Speicher auf deinem Gerät</h2>
       <p>
         Die App setzt nur Cookies, die für die Anmeldung nötig sind. Ein
-        angefangenes Workout wird als Entwurf auf deinem Gerät gespeichert, bis
-        es an den Server übertragen ist.
+        angefangenes Workout oder laufendes Training wird auf deinem Gerät
+        gespeichert, bis es an den Server übertragen ist.
         {passkeys &&
           " Wenn du einen Passkey einrichtest, bleibt der geheime Schlüssel auf deinem Gerät, wir speichern nur den öffentlichen Teil."}{" "}
         Wir setzen keine Analyse- oder Werbe-Cookies ein.

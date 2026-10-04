@@ -15,6 +15,7 @@ const setSchema = z
     duration_seconds: z.int().positive().optional(),
     distance_m: z.number().positive().optional(),
     weight_kg: z.number().min(0).max(9999),
+    rest_seconds: z.int().min(0).max(86400).optional(),
   })
   .refine(
     (s) => s.reps !== undefined || s.duration_seconds !== undefined || s.distance_m !== undefined,
@@ -53,6 +54,51 @@ export async function saveWorkout(input: unknown): Promise<Result<{ id: string }
   }
 
   revalidateWorkoutViews();
+  return { ok: true, data: { id: data } };
+}
+
+const trainingSchema = z
+  .object({
+    id: z.uuid(),
+    title: z.string().trim().max(80).optional(),
+    templateVersionId: z.uuid().nullable(),
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime(),
+    sets: z.array(setSchema).min(1, "Hak mindestens einen Satz ab.").max(200),
+  })
+  .refine((t) => Date.parse(t.finishedAt) >= Date.parse(t.startedAt), "Start und Ende passen nicht zusammen.");
+
+/**
+ * Speichert ein Training aus einer Vorlage mit Start, Ende und Pausen (log_training).
+ * Die ID vergibt der Client, damit ein wiederholter Versuch kein Duplikat erzeugt.
+ * Zusätzliche Übungen und geänderte Werte bleiben im Workout, die Vorlage ändert sich nicht.
+ */
+export async function saveTraining(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = trainingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("log_training", {
+    p_id: parsed.data.id,
+    p_title: parsed.data.title ?? "",
+    // Ohne Vorlage gestartet: Die Datenbank erwartet dann null.
+    p_template_version_id: parsed.data.templateVersionId as string,
+    p_started_at: parsed.data.startedAt,
+    p_finished_at: parsed.data.finishedAt,
+    p_sets: parsed.data.sets,
+  });
+
+  if (error || !data) {
+    return {
+      ok: false,
+      error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.",
+    };
+  }
+
+  revalidateWorkoutViews();
+  revalidatePath("/vorlagen", "layout");
   return { ok: true, data: { id: data } };
 }
 

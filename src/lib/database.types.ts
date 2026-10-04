@@ -304,6 +304,7 @@ export type Database = {
           id: string
           position: number
           reps: number | null
+          rest_seconds: number | null
           rpe: number | null
           set_number: number
           weight_kg: number
@@ -317,6 +318,7 @@ export type Database = {
           id?: string
           position?: number
           reps?: number | null
+          rest_seconds?: number | null
           rpe?: number | null
           set_number: number
           weight_kg?: number
@@ -330,6 +332,7 @@ export type Database = {
           id?: string
           position?: number
           reps?: number | null
+          rest_seconds?: number | null
           rpe?: number | null
           set_number?: number
           weight_kg?: number
@@ -342,6 +345,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "exercises"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "v_exercise_last_sessions"
+            referencedColumns: ["workout_id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "v_exercise_sessions"
+            referencedColumns: ["workout_id"]
           },
           {
             foreignKeyName: "workout_sets_workout_id_fkey"
@@ -403,29 +420,45 @@ export type Database = {
       workouts: {
         Row: {
           created_at: string
+          finished_at: string | null
           id: string
           notes: string | null
           performed_at: string
+          started_at: string | null
+          template_version_id: string | null
           title: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          started_at?: string | null
+          template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Update: {
           created_at?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          started_at?: string | null
+          template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workouts_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "template_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workouts_user_id_fkey"
             columns: ["user_id"]
@@ -447,6 +480,70 @@ export type Database = {
           total_distance_m: number | null
           total_volume_kg: number | null
           user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_exercise_last_sessions: {
+        Row: {
+          best_e1rm_kg: number | null
+          exercise_id: string | null
+          max_duration_seconds: number | null
+          max_reps: number | null
+          max_weight_kg: number | null
+          performed_at: string | null
+          set_count: number | null
+          total_distance_m: number | null
+          total_reps: number | null
+          total_volume_kg: number | null
+          user_id: string | null
+          workout_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_exercise_sessions: {
+        Row: {
+          best_e1rm_kg: number | null
+          exercise_id: string | null
+          max_duration_seconds: number | null
+          max_reps: number | null
+          max_weight_kg: number | null
+          performed_at: string | null
+          set_count: number | null
+          total_distance_m: number | null
+          total_reps: number | null
+          total_volume_kg: number | null
+          user_id: string | null
+          workout_id: string | null
         }
         Relationships: [
           {
@@ -531,6 +628,17 @@ export type Database = {
         }[]
       }
       join_group: { Args: { code: string }; Returns: string }
+      log_training: {
+        Args: {
+          p_finished_at: string
+          p_id: string
+          p_sets: Json
+          p_started_at: string
+          p_template_version_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       log_workout: {
         Args: {
           p_id: string
