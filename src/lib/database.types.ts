@@ -106,7 +106,9 @@ export type Database = {
           hidden: boolean
           id: string
           invite_code: string
+          location: string | null
           name: string
+          sport: string | null
           type: string
         }
         Insert: {
@@ -116,7 +118,9 @@ export type Database = {
           hidden?: boolean
           id?: string
           invite_code?: string
+          location?: string | null
           name: string
+          sport?: string | null
           type?: string
         }
         Update: {
@@ -126,7 +130,9 @@ export type Database = {
           hidden?: boolean
           id?: string
           invite_code?: string
+          location?: string | null
           name?: string
+          sport?: string | null
           type?: string
         }
         Relationships: [
@@ -602,6 +608,31 @@ export type Database = {
           name: string
         }[]
       }
+      community_link_preview: {
+        Args: { code: string }
+        Returns: {
+          description: string
+          id: string
+          is_member: boolean
+          location: string
+          member_count: number
+          name: string
+          sport: string
+          type: string
+        }[]
+      }
+      community_search: {
+        Args: { max_rows?: number; search?: string }
+        Returns: {
+          description: string
+          id: string
+          is_member: boolean
+          location: string
+          member_count: number
+          name: string
+          sport: string
+        }[]
+      }
       community_training_days: {
         Args: { from_day: string; gid: string }
         Returns: {
@@ -614,7 +645,10 @@ export type Database = {
         Args: { p_new_id: string; p_source_id: string }
         Returns: string
       }
-      delete_own_account: { Args: never; Returns: undefined }
+      delete_own_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       group_invite_preview: {
         Args: { code: string }
         Returns: {
@@ -644,6 +678,21 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      my_communities: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          description: string
+          id: string
+          invite_code: string
+          joined_at: string
+          location: string
+          member_count: number
+          name: string
+          role: string
+          sport: string
+          type: string
+        }[]
       }
       save_template: {
         Args: {
@@ -678,12 +727,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -707,11 +756,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -732,11 +781,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -757,11 +806,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -774,11 +823,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -788,6 +837,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

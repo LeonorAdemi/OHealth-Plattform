@@ -7,6 +7,8 @@ import { toExerciseMeasure } from "@/lib/domain";
 import type { AgentClient } from "@/lib/supabase/agent";
 import { createClient } from "@/lib/supabase/server";
 
+import { communityKind } from "./logic";
+
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
   const supabase = await createClient();
@@ -74,20 +76,6 @@ export async function getExercises() {
   }));
 }
 
-/** Gruppen des Nutzers, älteste Mitgliedschaft zuerst. */
-export async function getMyGroups() {
-  const { supabase, userId } = await requireUser();
-  const { data, error } = await supabase
-    .from("group_members")
-    .select("role, joined_at, groups(id, name, type, invite_code)")
-    .eq("user_id", userId)
-    .order("joined_at")
-    .limit(50);
-
-  if (error) throw new Error("Gruppen konnten nicht geladen werden.");
-  return data.flatMap((row) => (row.groups ? [{ ...row.groups, role: row.role }] : []));
-}
-
 export async function getGroupMembers(groupId: string) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
@@ -104,13 +92,65 @@ export async function getGroupMembers(groupId: string) {
   }));
 }
 
-/** Was ein Einladungslink zeigt, bevor man beitritt. Leer, wenn der Code ungültig ist. */
-export async function getInvitePreview(code: string) {
+// ---------- Community ----------
+
+/** Eigene Communities mit Art, Rolle und Mitgliederzahl, älteste Mitgliedschaft zuerst. */
+export async function getMyCommunities() {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("group_invite_preview", { code });
+  const { data, error } = await supabase.rpc("my_communities");
+
+  if (error) throw new Error("Communities konnten nicht geladen werden.");
+  return data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    kind: communityKind(row.type),
+    inviteCode: row.invite_code,
+    description: row.description,
+    sport: row.sport,
+    location: row.location,
+    role: row.role,
+    memberCount: row.member_count,
+  }));
+}
+
+/** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */
+export async function searchCommunities(search: string, limit = 20) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("community_search", { search, max_rows: limit });
+
+  if (error) throw new Error("Die Suche hat nicht geklappt.");
+  return data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    sport: row.sport,
+    location: row.location,
+    memberCount: row.member_count,
+    isMember: row.is_member,
+  }));
+}
+
+/**
+ * Was ein Teilen-Link zeigt, auch ohne Anmeldung: Name, Art, Beschreibung, Sportart, Ort und
+ * Mitgliederzahl, nie Namen von Mitgliedern. null, wenn der Code ungültig ist.
+ */
+export async function getCommunityPreview(code: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("community_link_preview", { code });
 
   if (error) throw new Error("Die Einladung konnte nicht geladen werden.");
-  return data[0] ?? null;
+  const row = data[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    kind: communityKind(row.type),
+    description: row.description,
+    sport: row.sport,
+    location: row.location,
+    memberCount: row.member_count,
+    isMember: row.is_member,
+  };
 }
 
 /**

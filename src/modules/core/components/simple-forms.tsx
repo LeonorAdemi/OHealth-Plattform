@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/result";
 
-import { acceptInvite, requestPasswordReset, updateDisplayName, updatePassword } from "../actions";
+import { requestPasswordReset, updateDisplayName, updatePassword } from "../actions";
 
 const initial: FormState = {};
 
@@ -93,16 +93,3 @@ export function DisplayNameForm({ current }: { current: string }) {
   );
 }
 
-export function AcceptInviteForm({ code }: { code: string }) {
-  const [state, action, pending] = useActionState(acceptInvite, initial);
-
-  return (
-    <form action={action} className="space-y-3">
-      <input type="hidden" name="code" value={code} />
-      <Feedback state={state} />
-      <Button type="submit" className="w-full md:w-auto" disabled={pending}>
-        Gruppe beitreten
-      </Button>
-    </form>
-  );
-}

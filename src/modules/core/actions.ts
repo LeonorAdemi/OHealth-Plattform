@@ -9,6 +9,8 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
+import { groupTypeFor } from "./logic";
+
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
   password: z.string().min(8, "Das Passwort braucht mindestens 8 Zeichen."),
@@ -77,14 +79,32 @@ export async function signOut() {
   redirect("/login");
 }
 
-const groupName = z
-  .string()
-  .trim()
-  .min(1, "Gib der Gruppe einen Namen.")
-  .max(60, "Der Name darf höchstens 60 Zeichen haben.");
+const communitySchema = z
+  .object({
+    name: z.string().trim().min(1, "Gib der Community einen Namen.").max(60, "Der Name darf höchstens 60 Zeichen haben."),
+    kind: z.enum(["public", "private", "coaching"]),
+    sport: z.string().trim().max(40, "Die Sportart darf höchstens 40 Zeichen haben."),
+    location: z.string().trim().max(60, "Der Ort darf höchstens 60 Zeichen haben."),
+    description: z.string().trim().max(200, "Die Beschreibung darf höchstens 200 Zeichen haben."),
+  })
+  .refine((c) => c.kind !== "public" || c.name.length >= 3, {
+    message: "Eine öffentliche Community braucht einen Namen mit mindestens 3 Zeichen.",
+  })
+  .refine((c) => c.kind !== "public" || c.name.length <= 40, {
+    message: "Der Name einer öffentlichen Community darf höchstens 40 Zeichen haben.",
+  });
 
-export async function createGroup(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = groupName.safeParse(formData.get("name"));
+const COMMUNITY_SAVE_FAILED = "Die Community konnte nicht erstellt werden. Versuch es erneut.";
+
+/** Legt eine Community an. Wer sie erstellt, verwaltet sie (Admin bzw. Coach). */
+export async function createCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = communitySchema.safeParse({
+    name: formData.get("name") ?? "",
+    kind: formData.get("kind") ?? "",
+    sport: formData.get("sport") ?? "",
+    location: formData.get("location") ?? "",
+    description: formData.get("description") ?? "",
+  });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
@@ -92,25 +112,126 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("groups")
-    .insert({ name: parsed.data, type: "friends", created_by: userId });
-  if (error) return { error: "Die Gruppe konnte nicht erstellt werden. Versuch es erneut." };
+    .insert({
+      name: parsed.data.name,
+      type: groupTypeFor(parsed.data.kind),
+      created_by: userId,
+      sport: parsed.data.sport || null,
+      location: parsed.data.location || null,
+      description: parsed.data.description || null,
+    })
+    .select("id")
+    .single();
 
-  revalidatePath("/gruppe");
-  return {};
+  if (error) {
+    if (error.message.includes("Höchstens drei Communities")) {
+      return { error: "Du hast schon drei öffentliche Communities. Mehr sind nicht möglich." };
+    }
+    return { error: COMMUNITY_SAVE_FAILED };
+  }
+
+  revalidatePath("/community");
+  redirect(`/community/${data.id}`);
 }
 
-export async function joinGroup(_prev: FormState, formData: FormData): Promise<FormState> {
+/** Tritt einer öffentlichen Community bei. Private Communities gehen nur über den Link. */
+export async function joinPublicCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Diese Community gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { error } = await supabase.from("group_members").insert({ group_id: id.data, user_id: userId });
+  // 23505: schon Mitglied, das ist kein Fehler.
+  if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/community");
+  redirect(`/community/${id.data}`);
+}
+
+/** Tritt mit einem Einladungscode bei (eingetippt statt über den Link). */
+export async function joinWithCode(_prev: FormState, formData: FormData): Promise<FormState> {
   const code = z.string().trim().min(1).safeParse(formData.get("code"));
   if (!code.success) return { error: "Gib den Einladungscode ein." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("join_group", { code: code.data });
-  if (error) return { error: "Dieser Einladungscode ist ungültig." };
+  const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
 
-  revalidatePath("/gruppe");
-  return {};
+  revalidatePath("/community");
+  redirect(`/community/${data}`);
+}
+
+/**
+ * Verlässt eine Community. Wer sie als Einziger verwaltet, übergibt die Verwaltung an das
+ * Mitglied, das am längsten dabei ist. Ist man das letzte Mitglied oder der einzige Coach,
+ * wird sie gelöscht, wie beim Löschen des Kontos (delete_own_account).
+ */
+export async function leaveCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Diese Community gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  // Als Verwalter sieht man alle Mitglieder, sonst nur sich selbst.
+  const { data: members, error: readError } = await supabase
+    .from("group_members")
+    .select("user_id, role, joined_at")
+    .eq("group_id", id.data)
+    .order("joined_at")
+    .limit(500);
+  if (readError) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
+
+  const me = members.find((m) => m.user_id === userId);
+  if (!me) return { error: "Du bist kein Mitglied dieser Community." };
+  const others = members.filter((m) => m.user_id !== userId);
+  const managesAlone =
+    (me.role === "admin" || me.role === "coach") &&
+    !others.some((m) => m.role === "admin" || m.role === "coach");
+
+  if (managesAlone && (others.length === 0 || me.role === "coach")) {
+    const { error } = await supabase.from("groups").delete().eq("id", id.data);
+    if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
+  } else {
+    if (managesAlone) {
+      const { error } = await supabase
+        .from("group_members")
+        .update({ role: "admin" })
+        .eq("group_id", id.data)
+        .eq("user_id", others[0].user_id);
+      if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
+    }
+    const { error } = await supabase.from("group_members").delete().eq("group_id", id.data).eq("user_id", userId);
+    if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
+  }
+
+  revalidatePath("/community");
+  redirect("/community");
+}
+
+/** Meldet eine Community, zum Beispiel wegen eines unpassenden Namens. Der Betreiber prüft. */
+export async function reportCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({
+      id: z.uuid(),
+      reason: z.string().trim().min(1, "Schreib kurz, was nicht passt.").max(500, "Höchstens 500 Zeichen."),
+    })
+    .safeParse({ id: formData.get("id"), reason: formData.get("reason") ?? "" });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("reports").insert({ group_id: parsed.data.id, reason: parsed.data.reason });
+  if (error) return { error: "Die Meldung konnte nicht gesendet werden. Versuch es erneut." };
+
+  return { message: "Danke, die Meldung ist eingegangen. Wir sehen sie uns an." };
 }
 
 // ---------- Passwort zurücksetzen ----------
@@ -174,7 +295,10 @@ export async function updateDisplayName(_prev: FormState, formData: FormData): P
 
 // ---------- Einladung ----------
 
-/** Tritt der Gruppe aus einem Einladungslink bei. Läuft erst nach ausdrücklicher Bestätigung. */
+/**
+ * Tritt einer Community aus einem Teilen-Link bei. Läuft nach ausdrücklicher Bestätigung oder,
+ * wer vor der Registrierung „Beitreten" gewählt hat, direkt nach der Anmeldung.
+ */
 export async function acceptInvite(_prev: FormState, formData: FormData): Promise<FormState> {
   const code = z.string().trim().min(1).safeParse(formData.get("code"));
   if (!code.success) return { error: "Dieser Einladungslink ist ungültig." };
@@ -183,8 +307,8 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
 
-  revalidatePath("/gruppe");
-  redirect(`/gruppe?g=${data}`);
+  revalidatePath("/community");
+  redirect(`/community/${data}`);
 }
 
 // ---------- Konto löschen ----------

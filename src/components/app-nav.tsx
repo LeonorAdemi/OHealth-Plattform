@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
   { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
-  { href: "/gruppe", label: "Gruppe", icon: Users },
+  { href: "/community", label: "Community", icon: Users },
   { href: "/verlauf", label: "Verlauf", icon: History },
 ] as const;
 

@@ -10,7 +10,7 @@ export function InviteShare({ url, groupName }: { url: string; groupName: string
 
   async function share() {
     setStatus(null);
-    const text = `Tritt meiner Gruppe „${groupName}“ bei OHealth bei.`;
+    const text = `Komm in meine Community „${groupName}“ bei OHealth.`;
 
     if (typeof navigator.share === "function") {
       try {

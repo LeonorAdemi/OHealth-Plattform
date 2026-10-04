@@ -12,6 +12,8 @@ const PUBLIC_PATHS = [
   "/auth",
   "/impressum",
   "/datenschutz",
+  // Teilen-Link einer Community: Vorschau auch ohne Konto
+  "/beitreten",
 ];
 
 // Erneuert die Sitzung einmal je Anfrage und leitet je nach Anmeldestatus um.
