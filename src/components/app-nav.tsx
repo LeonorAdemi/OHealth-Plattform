@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardList, History, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,7 +10,6 @@ const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
   { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
   { href: "/community", label: "Community", icon: Users },
-  { href: "/verlauf", label: "Verlauf", icon: History },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -21,6 +20,7 @@ function isActive(pathname: string, href: string) {
 }
 
 // Handy: Tab-Leiste unten. Desktop: Einträge der Seitenleiste.
+// Verlauf und Einstellungen erreicht man über das Profilbild oben rechts.
 export function AppNav({ variant }: { variant: "tabs" | "side" }) {
   const pathname = usePathname();
 

@@ -159,7 +159,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <ul className="mt-2" aria-label="Dabei">
             {meetup.participants.map((p) => (
               <li key={p.userId} className={cn("flex min-h-14 items-center border-b", p.isMe && "text-brand")}>
-                {p.isMe ? "Du" : p.name}
+                {p.isMe ? (
+                  "Du"
+                ) : (
+                  <Link href={`/person/${p.userId}`} className="hover:underline hover:underline-offset-4">
+                    {p.name}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

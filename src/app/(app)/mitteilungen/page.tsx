@@ -75,7 +75,7 @@ export default async function NotificationsPage() {
           </ul>
         )}
         <p className="mt-6 text-sm">
-          <Link href="/profil#mitteilungen" className="text-muted-foreground underline underline-offset-4">
+          <Link href="/profil/einstellungen#mitteilungen" className="text-muted-foreground underline underline-offset-4">
             Einstellen, welche Mitteilungen du bekommst
           </Link>
         </p>

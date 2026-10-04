@@ -19,6 +19,9 @@ import {
   topWithMe,
   communityKind,
   describeCommunity,
+  describeProfile,
+  normalizeSports,
+  uniqueSports,
   enabledProviders,
   groupTypeFor,
   joinAfterAuthPath,
@@ -247,5 +250,28 @@ describe("Chat", () => {
     expect(rows.map((r) => r.dayLabel)).toEqual(["Gestern", "Heute", null, null, null]);
     expect(rows.map((r) => r.firstInGroup)).toEqual([true, true, false, true, true]);
     expect(rows.map((r) => r.lastInGroup)).toEqual([true, false, true, true, true]);
+  });
+});
+
+describe("Profil", () => {
+  it("Sportarten: getrimmt, ohne Doppelte und Leere, höchstens fünf", () => {
+    expect(normalizeSports([" Laufen ", "laufen", "", "Yoga", "Klettern", "Rudern", "Tennis", "Golf"])).toEqual([
+      "Laufen",
+      "Yoga",
+      "Klettern",
+      "Rudern",
+      "Tennis",
+    ]);
+  });
+  it("Vorschläge: ohne Doppelte, aber ohne Obergrenze", () => {
+    expect(uniqueSports(["A", "B", "C", "D", "E", "F", "a"])).toEqual(["A", "B", "C", "D", "E", "F"]);
+  });
+  it("Sportarten: Leerraum in der Mitte wird zusammengefasst", () => {
+    expect(normalizeSports(["Stand  Up   Paddling"])).toEqual(["Stand Up Paddling"]);
+  });
+  it("Zeile unter dem Namen aus Stadt und Sportarten", () => {
+    expect(describeProfile({ city: "München", sports: ["Laufen", "Yoga"] })).toBe("München · Laufen, Yoga");
+    expect(describeProfile({ city: null, sports: ["Laufen"] })).toBe("Laufen");
+    expect(describeProfile({ city: null, sports: [] })).toBe("");
   });
 });

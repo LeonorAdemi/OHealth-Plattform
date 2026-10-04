@@ -114,23 +114,25 @@ Raster: 4 px. Erlaubte Abstände: 4, 8, 12, 16, 24, 32, 48, 64.
 ```
 Handy (bis 767 px)            Desktop (ab 1024 px)
 ┌────────────────────┐        ┌──────────┬───────────────────────────┐
-│ Titel              │        │ OHealth  │ Titel                     │
-│                    │        │          │                           │
-│ 3                  │        │ Heute    │ 3                         │
-│ Workouts diese Wo. │        │ Gruppe   │ Workouts diese Woche      │
-│ ■ ■ □ ■ □ □ □      │        │ Verlauf  │ ■ ■ □ ■ □ □ □             │
+│             🔔  (A)│        │ OHealth  │                     🔔  (A)│
+│ Titel              │        │          │ Titel                     │
+│                    │        │ Heute    │                           │
+│ 3                  │        │ Vorlagen │ 3                         │
+│ Workouts diese Wo. │        │ Communit.│ Workouts diese Woche      │
+│ ■ ■ □ ■ □ □ □      │        │          │ ■ ■ □ ■ □ □ □             │
 │                    │        │          │                           │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │                    │        │          │                           │
-│ [ Workout starten ]│        │ Profil   │                           │
+│ [ Workout starten ]│        │          │                           │
 ├────────────────────┤        └──────────┴───────────────────────────┘
-│ Heute Gruppe Verl. │         240 px      Inhalt max. 960 px
+│ Heute Vorl. Comm.  │         240 px      Inhalt max. 960 px
 └────────────────────┘
 ```
 
 - Handy: Seitenrand 20 px, Tab-Leiste unten mit höchstens vier Einträgen, Hauptaktion als Button in voller Breite über der Tab-Leiste.
 - Desktop: Seitenleiste links 240 px, weiß, durch eine Linie getrennt. Inhalt höchstens 960 px breit, Textspalten höchstens 640 px. Zusätzliche Breite wird für eine zweite Spalte genutzt, nicht für größere Elemente.
+- Oben rechts stehen auf jeder Ansicht, am Handy und am Desktop, die Glocke und das eigene Profilbild (A). Das Profilbild führt zum Profil; dort liegen der Verlauf und die Einstellungen. Ein eigener Tab für den Verlauf entfällt.
 - Listenzeilen sind mindestens 56 px hoch, mit Linie darunter, ohne Rahmen und ohne Hintergrund.
 
 ## 9. Komponenten
@@ -138,6 +140,9 @@ Handy (bis 767 px)            Desktop (ab 1024 px)
 Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über die Tokens gestaltet, nicht einzeln umgefärbt.
 
 - **Ecken:** 8 px für Buttons, Eingaben und Overlays. Zeilen, Tabellen und Trennlinien haben keine Rundung. Vollrund nur Avatare.
+- **Profilbild:** Rund, 32 px oben rechts, 96 px auf dem Profil. Ohne Bild stehen die Initialen in Stein auf Nebel. Eingebunden nur über `Avatar` aus `src/components/ui/avatar.tsx`. Es steht dort, wo es um die Person geht (Kopfzeile, Profil, später Chat), nicht als Schmuck in Ranglisten.
+- **Profil:** Oben Profilbild, Name als Titel, darunter Stadt und Sportarten in Stein, dann der Kurztext. Danach „Profil bearbeiten" (Umriss) und „Einstellungen" (Text), darunter der Verlauf. Das Profil anderer Personen zeigt nur Bild, Name, Angaben und Kurztext.
+- **Auswahl-Chips** (zum Beispiel Sportarten): Umriss mit 8 px Rundung. Gewählt: Rahmen und Schrift in Eisen mit Häkchen, nicht gefüllt. Nicht gewählt: Rahmen in Linie, Schrift in Stein.
 - **Schatten:** keine. Einzige Ausnahme sind Overlays (Dialog, Drawer, Menü) mit einem einzigen weichen Schatten.
 - **Buttons:** Pro Ansicht genau ein gefüllter Button (Eisen auf Weiß). Alle weiteren sind Umriss oder reiner Text. Höhe 48 px am Handy, 40 px am Desktop. Beschriftung ist ein Verb und sagt genau, was passiert: „Workout speichern".
 - **Eingaben:** Beschriftung steht immer über dem Feld. Zahlenfelder für Gewicht und Wiederholungen sind groß (Zahl-Stil), rechtsbündig und öffnen die Zifferntastatur.

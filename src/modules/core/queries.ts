@@ -25,12 +25,28 @@ export async function getProfile() {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name")
+    .select("id, display_name, avatar_url, bio, city, sports")
     .eq("id", userId)
     .single();
 
   if (error) throw new Error("Profil konnte nicht geladen werden.");
   return data;
+}
+
+/**
+ * Profil einer anderen Person. Sichtbar nur mit gemeinsamer Freundesgruppe, Community oder
+ * Coaching-Beziehung (Regel profiles_select), sonst null.
+ */
+export async function getPersonProfile(personId: string) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url, bio, city, sports")
+    .eq("id", personId)
+    .maybeSingle();
+
+  if (error) throw new Error("Profil konnte nicht geladen werden.");
+  return data ? { ...data, isMe: data.id === userId } : null;
 }
 
 /** Profil für einen KI-Zugriff über MCP. Der Client trägt das Token der KI. */

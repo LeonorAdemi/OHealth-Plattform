@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { berlinLocalToDate, groupTypeFor } from "./logic";
+import { berlinLocalToDate, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -511,7 +511,7 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   return { message: "Gespeichert" };
 }
 
@@ -579,28 +579,111 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
 
 // ---------- Profil ----------
 
-export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
-  const name = z
+const profileDetails = z.object({
+  displayName: z.string().trim().min(1, "Gib einen Namen ein.").max(40, "Der Name darf höchstens 40 Zeichen haben."),
+  bio: z
     .string()
     .trim()
-    .min(1, "Gib einen Namen ein.")
-    .max(40, "Der Name darf höchstens 40 Zeichen haben.")
-    .safeParse(formData.get("displayName"));
-  if (!name.success) return { error: firstIssue(name.error) };
+    .max(MAX_BIO, `Der Kurztext darf höchstens ${MAX_BIO} Zeichen haben.`)
+    .transform((v) => v || null),
+  city: z
+    .string()
+    .trim()
+    .max(60, "Die Stadt darf höchstens 60 Zeichen haben.")
+    .transform((v) => v || null),
+  sports: z.array(z.string().max(40, "Eine Sportart darf höchstens 40 Zeichen haben.")).max(20),
+});
+
+/** Speichert Name, Kurztext, Stadt und Sportarten und führt zurück zum Profil. */
+export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = profileDetails.safeParse({
+    displayName: formData.get("displayName") ?? "",
+    bio: formData.get("bio") ?? "",
+    city: formData.get("city") ?? "",
+    sports: formData.getAll("sports").filter((v) => typeof v === "string"),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
+  const { displayName, bio, city, sports } = parsed.data;
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: name.data })
+    .update({ display_name: displayName, bio, city, sports: normalizeSports(sports) })
     .eq("id", userId);
-  if (error) return { error: "Der Name konnte nicht gespeichert werden. Versuch es erneut." };
+  if (error) return { error: "Das Profil konnte nicht gespeichert werden. Versuch es erneut." };
 
   revalidatePath("/", "layout");
-  return { message: "Gespeichert" };
+  redirect("/profil");
+}
+
+const AVATAR_MAX_BYTES = 512 * 1024;
+
+/** Erkennt WebP und JPEG an den ersten Bytes, unabhängig davon, was der Browser angibt. */
+function avatarExtension(bytes: Uint8Array): "webp" | "jpg" | null {
+  const ascii = (from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
+  if (bytes.length > 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "webp";
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
+  return null;
+}
+
+/**
+ * Lädt ein neues Profilbild hoch. Das Gerät hat es schon auf 512 × 512 Pixel verkleinert. Jedes Bild
+ * bekommt einen neuen, zufälligen Namen; das alte wird danach gelöscht.
+ */
+export async function uploadAvatar(formData: FormData): Promise<FormState> {
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) return { error: "Wähle ein Bild aus." };
+  if (file.size > AVATAR_MAX_BYTES) return { error: "Das Bild ist zu groß. Wähle ein anderes." };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const ext = avatarExtension(bytes);
+  if (!ext) return { error: "Dieses Bildformat wird nicht unterstützt. Wähle ein Foto im Format JPEG, PNG oder WebP." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data: current } = await supabase.from("profiles").select("avatar_url").eq("id", userId).single();
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const failed = { error: "Das Bild konnte nicht gespeichert werden. Prüf deine Verbindung und versuch es erneut." };
+
+  const upload = await supabase.storage.from("avatars").upload(path, bytes, {
+    contentType: ext === "webp" ? "image/webp" : "image/jpeg",
+    cacheControl: "31536000",
+    upsert: false,
+  });
+  if (upload.error) return failed;
+
+  const { error } = await supabase.from("profiles").update({ avatar_url: path }).eq("id", userId);
+  if (error) {
+    await supabase.storage.from("avatars").remove([path]);
+    return failed;
+  }
+  if (current?.avatar_url) await supabase.storage.from("avatars").remove([current.avatar_url]);
+
+  revalidatePath("/", "layout");
+  return { message: "Profilbild gespeichert" };
+}
+
+/** Entfernt das Profilbild. Danach erscheinen wieder die Initialen. */
+export async function removeAvatar(): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data: current } = await supabase.from("profiles").select("avatar_url").eq("id", userId).single();
+  const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
+  if (error) return { error: "Das Bild konnte nicht entfernt werden. Versuch es erneut." };
+  if (current?.avatar_url) await supabase.storage.from("avatars").remove([current.avatar_url]);
+
+  revalidatePath("/", "layout");
+  return { message: "Profilbild entfernt" };
 }
 
 // ---------- Einladung ----------
@@ -634,6 +717,19 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   }
 
   const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  // Profilbilder zuerst: Dateien im Storage hängen nicht am Profil und verschwinden sonst nicht.
+  const { data: files, error: listError } = await supabase.storage.from("avatars").list(userId, { limit: 100 });
+  const removed = files?.length
+    ? await supabase.storage.from("avatars").remove(files.map((f) => `${userId}/${f.name}`))
+    : { error: null };
+  if (listError || removed.error) {
+    return { error: "Das Konto konnte nicht gelöscht werden. Prüf deine Verbindung und versuch es erneut." };
+  }
+
   const { error } = await supabase.rpc("delete_own_account");
   if (error) {
     return { error: "Das Konto konnte nicht gelöscht werden. Prüf deine Verbindung und versuch es erneut." };
@@ -670,7 +766,7 @@ export async function decideAgentAccess(_prev: FormState, formData: FormData): P
     return { error: "Diese Anfrage ist abgelaufen. Starte die Verbindung in deiner KI-App neu." };
   }
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   redirect(data.redirect_url);
 }
 
@@ -683,6 +779,6 @@ export async function revokeAgentAccess(_prev: FormState, formData: FormData): P
   const { error } = await supabase.auth.oauth.revokeGrant({ clientId: clientId.data });
   if (error) return { error: "Der Zugriff konnte nicht entzogen werden. Versuch es erneut." };
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   return { message: "Zugriff entzogen" };
 }

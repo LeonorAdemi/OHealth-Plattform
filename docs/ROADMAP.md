@@ -16,6 +16,12 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 8 | Öffentliche Communities (z. B. „Laufen München“) | Gemeinschaftseffekt über den Freundeskreis hinaus | Erledigt: Übersicht mit Suche, eigene Communities öffentlich oder privat, Teilen-Link, Rangliste (Migrationen public_communities, community_phase_a, Tests 09 und 13) |
 | 9 | Wochenplan, geteilte Trainings und Chat | Aus der Rangliste wird gemeinsames Training: Woche planen, mit Communities teilen, andere sagen zu und sprechen sich im Chat ab | Erledigt (Migrationen community_search_and_meetups, planned_trainings_and_chat, Test 14). Später denkbar: Zusage erst nach Bestätigung, Erinnerung, Chat in Echtzeit statt alle zehn Sekunden |
 | 10 | Mitteilungen | Ohne Bescheid kommt niemand zurück: neue Trainings, Zusagen, Chat und Absagen erscheinen an der Glocke | Erledigt: Glocke in der App (Migration notifications, Test 15), Push aufs Handy und Erinnerung vor dem Training (Migration push_and_reminders, Test 16) |
+| 11 | Persönliches Profil | Mehr Nähe in den Gruppen: Profilbild, Kurztext, Sportarten und Stadt; Profilbild oben rechts, Verlauf und Einstellungen im Profil | Erledigt (Migration profile_details, Test 17) |
+| 12 | Gemeinsame Grundlage für Chats | Ein Datenmodell für Event-, Community- und später Privatchats, mit „gelesen bis" je Person | Offen |
+| 13 | Tab „Chats" | Neue Nachrichten unten rechts statt an der Glocke; die Glocke zeigt nur noch Zusagen, neue Trainings und Erinnerungen | Offen |
+| 14 | Event-Chat unter jedem Event | Entsteht, sobald jemand zusagt; nur wer dabei ist, liest und schreibt | Offen |
+| 15 | Chat je Community | Alle Mitglieder schreiben; Grenze von 30 Nachrichten pro Minute, Verwaltung kann löschen, Push anfangs aus | Offen |
+| 16 | Freundschaften und Privatchats | Anfrage senden und annehmen, erst danach privat schreiben; blockieren | Offen |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.
 

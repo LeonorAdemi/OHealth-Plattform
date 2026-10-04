@@ -103,7 +103,7 @@ export function SocialLogin({ next, mode }: { next: string; mode: "login" | "reg
       window.location.assign(next);
     } catch {
       setError(
-        "Die Anmeldung per Passkey hat nicht geklappt. Einen Passkey richtest du nach der ersten Anmeldung im Profil ein.",
+        "Die Anmeldung per Passkey hat nicht geklappt. Einen Passkey richtest du nach der ersten Anmeldung in den Einstellungen deines Profils ein.",
       );
       setPending(null);
     }

@@ -58,7 +58,7 @@ export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
 
 /** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
 export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
-  public: "Wenn du beitrittst, sehen die Mitglieder deinen Namen, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
+  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
   private: "Wenn du beitrittst, sehen die Mitglieder deine Workouts und du ihre.",
   coaching: "Wenn du beitrittst, sieht der Coach deine Workouts. Die anderen Mitglieder sehen sie nicht.",
 };
@@ -81,6 +81,35 @@ export const SPORT_SUGGESTIONS = [
 export function describeCommunity(c: { sport: string | null; city: string | null; memberCount: number }): string {
   const members = `${c.memberCount}\u00a0${c.memberCount === 1 ? "Mitglied" : "Mitglieder"}`;
   return [c.sport, c.city, members].filter(Boolean).join(" · ");
+}
+
+// ---------- Profil ----------
+
+export const MAX_SPORTS = 5;
+export const MAX_BIO = 160;
+
+/** Sportarten getrimmt, ohne leere und doppelte Einträge (Groß-/Kleinschreibung egal). */
+export function uniqueSports(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of values) {
+    const sport = raw.trim().replace(/\s+/g, " ").slice(0, 40);
+    const key = sport.toLocaleLowerCase("de-DE");
+    if (!sport || seen.has(key)) continue;
+    seen.add(key);
+    result.push(sport);
+  }
+  return result;
+}
+
+/** Sportarten zum Speichern: wie uniqueSports, höchstens fünf. Die Datenbank prüft dieselben Grenzen. */
+export function normalizeSports(values: readonly string[]): string[] {
+  return uniqueSports(values).slice(0, MAX_SPORTS);
+}
+
+/** Zeile unter dem Namen: "München · Laufen, Yoga". Leer, wenn nichts angegeben ist. */
+export function describeProfile(p: { city: string | null; sports: readonly string[] }): string {
+  return [p.city, p.sports.join(", ")].filter(Boolean).join(" · ");
 }
 
 /** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */

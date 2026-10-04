@@ -2,7 +2,7 @@
 
 Workouts tracken und in der Gruppe vergleichen. Später erweitert um Physio- und Health-Module.
 
-Stand: Draft 1 mit Anmeldung (E-Mail, Apple, Google, Facebook, Passkey), Passwort zurücksetzen, Workout loggen (Katalog mit gut hundert Übungen, Suche, Icons je Muskelgruppe und Skizze je Übung), ansehen, korrigieren und löschen, Verlauf, Workout-Vorlagen mit Versionen (privat oder öffentlich, kopierbar), Communities (öffentlich mit Suche nach Sportart und Ort, privat oder Coaching) mit Teilen-Link und Beitritt direkt nach der Registrierung, Wochenplan mit geplanten Trainings, die man mit Communities teilt (Pinnwand, Zusage, Chat der Teilnehmer, Kalendereintrag), Ranglisten für Konstanz und Bestwerte je Übung, Profil mit Konto-Löschen sowie KI-Zugriff über MCP für Trainingstipps.
+Stand: Draft 1 mit Anmeldung (E-Mail, Apple, Google, Facebook, Passkey), Passwort zurücksetzen, Workout loggen (Katalog mit gut hundert Übungen, Suche, Icons je Muskelgruppe und Skizze je Übung), ansehen, korrigieren und löschen, Verlauf, Workout-Vorlagen mit Versionen (privat oder öffentlich, kopierbar), Communities (öffentlich mit Suche nach Sportart und Ort, privat oder Coaching) mit Teilen-Link und Beitritt direkt nach der Registrierung, Wochenplan mit geplanten Trainings, die man mit Communities teilt (Pinnwand, Zusage, Chat der Teilnehmer, Kalendereintrag), Ranglisten für Konstanz und Bestwerte je Übung, Profil mit Bild, Kurztext, Sportarten und Stadt (oben rechts, mit Verlauf und Einstellungen samt Konto-Löschen) sowie KI-Zugriff über MCP für Trainingstipps.
 
 ## Einmalig einrichten
 
@@ -39,7 +39,7 @@ Die aktuellen Schritt-für-Schritt-Anleitungen stehen in der Supabase-Dokumentat
 1. In Supabase unter Authentication, Passkeys die Passkey-Anmeldung aktivieren. Die Angaben zur Domain füllt Supabase aus der Site URL vor.
 2. `NEXT_PUBLIC_PASSKEYS=true` in `.env.local` und in Vercel setzen.
 
-Passkeys funktionieren nur über HTTPS und sind an die Domain gebunden. Ein Nutzer meldet sich einmal auf anderem Weg an, richtet im Profil einen Passkey ein und kann sich danach mit „Mit Passkey anmelden" einloggen. Supabase führt die Funktion in der Dokumentation noch als experimentell.
+Passkeys funktionieren nur über HTTPS und sind an die Domain gebunden. Ein Nutzer meldet sich einmal auf anderem Weg an, richtet in den Einstellungen seines Profils einen Passkey ein und kann sich danach mit „Mit Passkey anmelden" einloggen. Supabase führt die Funktion in der Dokumentation noch als experimentell.
 
 ### Einladungslinks und Passwort zurücksetzen
 
@@ -57,12 +57,12 @@ Einmalig in Supabase unter Authentication, OAuth Server:
 
 Verbinden, zum Beispiel in Claude:
 
-1. In OHealth im Profil unter „KI-Zugriff" die Adresse kopieren.
+1. In OHealth in den Einstellungen des Profils unter „KI-Zugriff" die Adresse kopieren.
 2. In Claude unter Einstellungen, Connectors einen eigenen Connector hinzufügen und die Adresse einfügen.
 3. Claude öffnet die Anmeldung von OHealth und danach die Bestätigungsseite. Mit „Zugriff erlauben" ist die Verbindung fertig.
 4. In einem Chat fragen, etwa „Wie lief mein Training in den letzten vier Wochen?", oder die Vorlage „Trainingsanalyse" wählen.
 
-Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_bests`. Den Zugriff entziehst du im Profil. Zum Ausprobieren ohne Claude eignet sich der MCP Inspector (`npx @modelcontextprotocol/inspector`, Transport Streamable HTTP).
+Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_bests`. Den Zugriff entziehst du in den Einstellungen des Profils. Zum Ausprobieren ohne Claude eignet sich der MCP Inspector (`npx @modelcontextprotocol/inspector`, Transport Streamable HTTP).
 
 ## Befehle
 

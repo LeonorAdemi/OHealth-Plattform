@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { AppNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { NotificationBell } from "@/modules/core/components/notification-bell";
+import { ProfileLink } from "@/modules/core/components/profile-link";
 import { getProfile, getUnreadNotificationCount } from "@/modules/core/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,30 +16,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav aria-label="Hauptnavigation" className="mt-8">
           <AppNav variant="side" />
         </nav>
-        <div className="mt-6">
-          <NotificationBell initialCount={unread} variant="side" />
-        </div>
-        <Link
-          href="/profil"
-          className="hover:bg-accent mt-auto flex min-h-10 items-center rounded-lg px-3 transition-colors duration-150 ease-out"
-        >
-          <span className="truncate">{profile.display_name}</span>
-        </Link>
       </aside>
 
-      <main className="relative min-w-0 flex-1 px-5 pt-8 pb-28 md:px-10 md:py-10">
-        <div className="absolute top-3 right-3 md:hidden">
-          <NotificationBell initialCount={unread} variant="icon" />
+      <main className="min-w-0 flex-1 px-5 pt-2 pb-28 md:px-10 md:pt-6 md:pb-10">
+        {/* Oben rechts: Mitteilungen und das eigene Profil, auf dem Handy und am Desktop */}
+        <div className="-mr-3 flex items-center justify-end gap-1 md:-mr-4">
+          <NotificationBell initialCount={unread} />
+          <ProfileLink path={profile.avatar_url} name={profile.display_name} />
         </div>
         <div className="max-w-[960px]">{children}</div>
-        <p className="mt-16 md:hidden">
-          <Link
-            href="/profil"
-            className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-          >
-            {profile.display_name}, Profil
-          </Link>
-        </p>
       </main>
 
       <nav

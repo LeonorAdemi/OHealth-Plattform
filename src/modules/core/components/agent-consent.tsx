@@ -44,7 +44,7 @@ export function AgentConsentView({
 
       <p className="text-muted-foreground mt-6 text-sm">
         Angemeldet als {request.email}. Die Daten gehen an den Anbieter der App und werden dort nach
-        dessen Datenschutzregeln verarbeitet. Du kannst den Zugriff jederzeit im Profil entziehen.
+        dessen Datenschutzregeln verarbeitet. Du kannst den Zugriff jederzeit in den Einstellungen deines Profils entziehen.
       </p>
 
       <div className="mt-8">
