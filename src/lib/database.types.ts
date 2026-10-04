@@ -209,6 +209,92 @@ export type Database = {
           },
         ]
       }
+      template_version_exercises: {
+        Row: {
+          exercise_id: string
+          id: string
+          position: number
+          target_distance_m: number | null
+          target_duration_seconds: number | null
+          target_reps: number | null
+          target_sets: number
+          target_weight_kg: number | null
+          version_id: string
+        }
+        Insert: {
+          exercise_id: string
+          id?: string
+          position: number
+          target_distance_m?: number | null
+          target_duration_seconds?: number | null
+          target_reps?: number | null
+          target_sets?: number
+          target_weight_kg?: number | null
+          version_id: string
+        }
+        Update: {
+          exercise_id?: string
+          id?: string
+          position?: number
+          target_distance_m?: number | null
+          target_duration_seconds?: number | null
+          target_reps?: number | null
+          target_sets?: number
+          target_weight_kg?: number | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_version_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_version_exercises_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "template_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_versions: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          source: string
+          template_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          source?: string
+          template_id: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          source?: string
+          template_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sets: {
         Row: {
           created_at: string
@@ -262,6 +348,54 @@ export type Database = {
             columns: ["workout_id"]
             isOneToOne: false
             referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_templates: {
+        Row: {
+          copied_from: string | null
+          created_at: string
+          hidden: boolean
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          copied_from?: string | null
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          name: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Update: {
+          copied_from?: string | null
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_templates_copied_from_fkey"
+            columns: ["copied_from"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -379,7 +513,14 @@ export type Database = {
           user_id: string
         }[]
       }
-      delete_own_account: { Args: never; Returns: undefined }
+      copy_template: {
+        Args: { p_new_id: string; p_source_id: string }
+        Returns: string
+      }
+      delete_own_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       group_invite_preview: {
         Args: { code: string }
         Returns: {
@@ -396,6 +537,17 @@ export type Database = {
           p_performed_at: string
           p_sets: Json
           p_title: string
+        }
+        Returns: string
+      }
+      save_template: {
+        Args: {
+          p_exercises: Json
+          p_name: string
+          p_note: string
+          p_template_id: string
+          p_version_id: string
+          p_visibility: string
         }
         Returns: string
       }
@@ -421,12 +573,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -450,11 +602,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -475,11 +627,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -500,11 +652,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -517,11 +669,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -531,6 +683,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

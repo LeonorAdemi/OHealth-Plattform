@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, History, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, History, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
+  { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
   { href: "/gruppe", label: "Gruppe", icon: Users },
   { href: "/verlauf", label: "Verlauf", icon: History },
 ] as const;

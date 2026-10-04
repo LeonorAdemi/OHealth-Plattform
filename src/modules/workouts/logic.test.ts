@@ -4,10 +4,12 @@ import {
   buildBestRanking,
   buildLeaderboard,
   buildSetsPayload,
+  buildTemplatePayload,
   dayKey,
   formatDistance,
   formatDuration,
   formatSetLine,
+  formatTemplateTarget,
   groupSetsIntoBlocks,
   formatWeight,
   isoWeek,
@@ -17,6 +19,9 @@ import {
   searchExercises,
   summarizeSets,
   toDraftEntries,
+  toTemplateDraftEntries,
+  toTemplateVisibility,
+  versionSourceLabel,
   type StoredSet,
   weekGrid,
   weekKeys,
@@ -371,5 +376,116 @@ describe("Übung suchen", () => {
 
   it("listet die Muskelgruppen in fester Reihenfolge", () => {
     expect(muscleGroups(catalog)).toEqual(["Brust", "Rücken", "Arme", "Beine", "Ganzkörper"]);
+  });
+});
+
+describe("Vorlagen: Zielwerte aus dem Formular", () => {
+  const bench = { exerciseId: "e1", measure: "weight_reps" as const, sets: "4", value: "8", weight: "62,5" };
+
+  it("macht aus dem Entwurf die Übungen für save_template", () => {
+    expect(buildTemplatePayload([bench])).toEqual({
+      ok: true,
+      exercises: [{ exercise_id: "e1", target_sets: 4, target_reps: 8, target_weight_kg: 62.5 }],
+    });
+  });
+
+  it("nimmt drei Sätze an, wenn das Feld leer ist, und lässt Zielwerte weg", () => {
+    expect(buildTemplatePayload([{ ...bench, sets: "", value: "", weight: "" }])).toEqual({
+      ok: true,
+      exercises: [{ exercise_id: "e1", target_sets: 3 }],
+    });
+  });
+
+  it("legt je nach Messart den passenden Zielwert fest", () => {
+    const plank = { exerciseId: "e2", measure: "duration" as const, sets: "3", value: "45", weight: "" };
+    const run = { exerciseId: "e3", measure: "distance" as const, sets: "1", value: "5,2", weight: "" };
+    expect(buildTemplatePayload([plank, run])).toEqual({
+      ok: true,
+      exercises: [
+        { exercise_id: "e2", target_sets: 3, target_duration_seconds: 45 },
+        { exercise_id: "e3", target_sets: 1, target_distance_m: 5.2 },
+      ],
+    });
+  });
+
+  it("ignoriert ein Gewicht bei Übungen ohne Last", () => {
+    const plank = { exerciseId: "e2", measure: "duration" as const, sets: "3", value: "45", weight: "20" };
+    const result = buildTemplatePayload([plank]);
+    expect(result.ok && result.exercises[0]).not.toHaveProperty("target_weight_kg");
+  });
+
+  it("verlangt mindestens eine Übung", () => {
+    expect(buildTemplatePayload([])).toEqual({ ok: false, error: "Füg mindestens eine Übung hinzu." });
+  });
+
+  it("lehnt unmögliche Eingaben mit Angabe der Übung ab", () => {
+    const check = (patch: Partial<typeof bench>) => buildTemplatePayload([bench, { ...bench, ...patch }]);
+    expect(check({ sets: "0" })).toMatchObject({ ok: false, error: expect.stringContaining("Übung 2") });
+    expect(check({ sets: "21" })).toMatchObject({ ok: false });
+    expect(check({ sets: "2,5" })).toMatchObject({ ok: false });
+    expect(check({ value: "0" })).toMatchObject({ ok: false });
+    expect(check({ value: "7,5" })).toMatchObject({ ok: false, error: expect.stringContaining("ganze Zahlen") });
+    expect(check({ weight: "abc" })).toMatchObject({ ok: false });
+  });
+
+  it("begrenzt die Zahl der Übungen", () => {
+    expect(buildTemplatePayload(Array.from({ length: 31 }, () => bench))).toMatchObject({ ok: false });
+    expect(buildTemplatePayload(Array.from({ length: 30 }, () => bench))).toMatchObject({ ok: true });
+  });
+});
+
+describe("Vorlagen: Anzeige", () => {
+  const base = {
+    exerciseId: "e1",
+    exerciseName: "Bankdrücken",
+    measure: "weight_reps" as const,
+    targetSets: 4,
+    targetReps: 8,
+    targetWeightKg: 60,
+    targetDurationSeconds: null,
+    targetDistanceM: null,
+  };
+
+  it("zeigt Sätze, Wiederholungen und Gewicht", () => {
+    expect(formatTemplateTarget(base)).toBe("4 × 8 · 60 kg");
+    expect(formatTemplateTarget({ ...base, targetWeightKg: 62.5 })).toBe("4 × 8 · 62,5 kg");
+  });
+
+  it("lässt das Gewicht weg, wenn es fehlt oder 0 ist", () => {
+    expect(formatTemplateTarget({ ...base, targetWeightKg: null })).toBe("4 × 8");
+    expect(formatTemplateTarget({ ...base, targetWeightKg: 0 })).toBe("4 × 8");
+  });
+
+  it("zeigt nur die Zahl der Sätze, wenn kein Zielwert gesetzt ist", () => {
+    const open = { ...base, targetReps: null, targetWeightKg: null };
+    expect(formatTemplateTarget(open)).toBe("4 Sätze");
+    expect(formatTemplateTarget({ ...open, targetSets: 1 })).toBe("1 Satz");
+  });
+
+  it("formatiert Dauer und Strecke", () => {
+    const plank = { ...base, measure: "duration" as const, targetReps: null, targetDurationSeconds: 90 };
+    const run = { ...base, measure: "distance" as const, targetReps: null, targetDistanceM: 5200 };
+    expect(formatTemplateTarget(plank)).toBe("4 × 1:30 min");
+    expect(formatTemplateTarget(run)).toBe("4 × 5,2 km");
+  });
+
+  it("gibt gespeicherte Übungen als Entwurf zurück und wieder in dieselbe Nutzlast", () => {
+    const stored = [base, { ...base, exerciseId: "e2", targetWeightKg: 62.5 }];
+    const draft = toTemplateDraftEntries(stored);
+    expect(draft[1]).toEqual({ exerciseId: "e2", measure: "weight_reps", sets: "4", value: "8", weight: "62,5" });
+    expect(buildTemplatePayload(draft)).toEqual({
+      ok: true,
+      exercises: [
+        { exercise_id: "e1", target_sets: 4, target_reps: 8, target_weight_kg: 60 },
+        { exercise_id: "e2", target_sets: 4, target_reps: 8, target_weight_kg: 62.5 },
+      ],
+    });
+  });
+
+  it("benennt die Herkunft einer Version und behandelt Unbekanntes als privat", () => {
+    expect(versionSourceLabel("ai")).toBe("KI");
+    expect(versionSourceLabel("app")).toBe("App");
+    expect(toTemplateVisibility("public")).toBe("public");
+    expect(toTemplateVisibility("irgendwas")).toBe("private");
   });
 });

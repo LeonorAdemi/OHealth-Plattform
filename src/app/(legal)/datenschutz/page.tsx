@@ -58,6 +58,10 @@ export default function PrivacyPage() {
           und Sätzen (Wiederholungen, Gewicht, Dauer, Distanz).
         </li>
         <li>
+          <strong>Vorlagen:</strong> deine Workout-Vorlagen mit Namen,
+          Übungen, Zielwerten, Sichtbarkeit und dem Verlauf früherer Versionen.
+        </li>
+        <li>
           <strong>Gruppen:</strong> in welchen Gruppen du Mitglied bist, seit
           wann und in welcher Rolle.
         </li>
@@ -75,7 +79,8 @@ export default function PrivacyPage() {
       <h2>Wofür wir die Daten verwenden</h2>
       <p>
         Wir verwenden deine Daten, um dir die App bereitzustellen: anmelden,
-        Workouts speichern und anzeigen, Ranglisten in deinen Gruppen berechnen.
+        Workouts und Vorlagen speichern und anzeigen, Ranglisten in deinen
+        Gruppen berechnen.
         Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1
         Buchstabe b DSGVO). Protokolldaten dienen dem sicheren und stabilen
         Betrieb (Art. 6 Abs. 1 Buchstabe f DSGVO).
@@ -97,6 +102,29 @@ export default function PrivacyPage() {
         Vor jedem Beitritt zeigt dir die App, wer deine Daten sehen wird. Du
         entscheidest selbst, welchen Gruppen du beitrittst.
       </p>
+
+      <h2>Wer deine Vorlagen sieht</h2>
+      <ul>
+        <li>
+          Eine private Vorlage siehst nur du. Das ist die Voreinstellung.
+        </li>
+        <li>
+          Eine öffentliche Vorlage sehen alle angemeldeten Nutzer, mit deinem
+          Anzeigenamen, den Übungen, den Zielwerten und dem Verlauf der
+          Versionen. Auch eigene Übungen, die du darin verwendest, sind dann
+          für sie sichtbar. Andere können die Vorlage kopieren. Die Kopie
+          gehört ihnen und bleibt bestehen, auch wenn du dein Original später
+          privat stellst oder löschst.
+        </li>
+        <li>
+          Du kannst eine Vorlage jederzeit wieder privat stellen oder löschen.
+          Eine bereits gemachte Kopie lässt sich dadurch nicht zurückholen.
+        </li>
+        <li>
+          Wir können eine öffentliche Vorlage ausblenden, wenn sie gegen die
+          Regeln verstößt.
+        </li>
+      </ul>
 
       <h2>Wenn du eine KI-App verbindest</h2>
       <p>
@@ -160,8 +188,8 @@ export default function PrivacyPage() {
       <p>
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
-        Dann werden dein Profil, alle Workouts und alle Mitgliedschaften sofort
-        entfernt.
+        Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
+        Versionen und alle Mitgliedschaften sofort entfernt.
       </p>
 
       <h2>Deine Rechte</h2>

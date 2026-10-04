@@ -435,3 +435,161 @@ export function muscleGroups(exercises: readonly SearchableExercise[]): string[]
     .sort((a, b) => a.localeCompare(b, "de"));
   return [...known, ...others];
 }
+
+// ---------- Vorlagen ----------
+
+export const MAX_TEMPLATE_EXERCISES = 30;
+export const DEFAULT_TARGET_SETS = 3;
+
+export type TemplateVisibility = "private" | "public";
+
+/** Grenzt den Wert aus der Datenbank ein. Unbekanntes gilt als privat. */
+export function toTemplateVisibility(value: string): TemplateVisibility {
+  return value === "public" ? "public" : "private";
+}
+
+/** Eine Übung im Vorlagenformular. Alle Felder sind Texteingaben. */
+export type TemplateDraftEntry = {
+  exerciseId: string;
+  measure: ExerciseMeasure;
+  sets: string;
+  value: string;
+  weight: string;
+};
+
+export type TemplateExercisePayload = {
+  exercise_id: string;
+  target_sets: number;
+  target_reps?: number;
+  target_weight_kg?: number;
+  target_duration_seconds?: number;
+  target_distance_m?: number;
+};
+
+/**
+ * Macht aus dem Formularentwurf die Übungen für save_template.
+ * Sätze fehlen oder sind leer: drei. Zielwert und Gewicht sind freiwillig.
+ */
+export function buildTemplatePayload(
+  entries: readonly TemplateDraftEntry[],
+): { ok: true; exercises: TemplateExercisePayload[] } | { ok: false; error: string } {
+  if (entries.length === 0) {
+    return { ok: false, error: "Füg mindestens eine Übung hinzu." };
+  }
+  if (entries.length > MAX_TEMPLATE_EXERCISES) {
+    return { ok: false, error: `Eine Vorlage hat höchstens ${MAX_TEMPLATE_EXERCISES} Übungen.` };
+  }
+
+  const exercises: TemplateExercisePayload[] = [];
+
+  for (const [index, entry] of entries.entries()) {
+    const label = `Übung ${index + 1}`;
+
+    const sets = entry.sets.trim() === "" ? DEFAULT_TARGET_SETS : parseDecimal(entry.sets);
+    if (sets === null || !Number.isInteger(sets) || sets < 1 || sets > 20) {
+      return { ok: false, error: `${label}: Die Zahl der Sätze liegt zwischen 1 und 20.` };
+    }
+
+    const payload: TemplateExercisePayload = { exercise_id: entry.exerciseId, target_sets: sets };
+
+    if (entry.value.trim() !== "") {
+      const value = parseDecimal(entry.value);
+      if (value === null || value <= 0) {
+        return { ok: false, error: `${label}: Der Zielwert muss größer als 0 sein.` };
+      }
+      if (entry.measure === "weight_reps") {
+        if (!Number.isInteger(value)) {
+          return { ok: false, error: `${label}: Wiederholungen müssen ganze Zahlen sein.` };
+        }
+        payload.target_reps = value;
+      } else if (entry.measure === "duration") {
+        payload.target_duration_seconds = Math.round(value);
+      } else {
+        payload.target_distance_m = value;
+      }
+    }
+
+    if (entry.measure === "weight_reps" && entry.weight.trim() !== "") {
+      const weight = parseDecimal(entry.weight);
+      if (weight === null || weight > 9999) {
+        return { ok: false, error: `${label}: Das Gewicht muss eine Zahl sein, zum Beispiel 82,5.` };
+      }
+      payload.target_weight_kg = weight;
+    }
+
+    exercises.push(payload);
+  }
+
+  return { ok: true, exercises };
+}
+
+export type StoredTemplateExercise = {
+  exerciseId: string;
+  exerciseName: string;
+  measure: ExerciseMeasure;
+  targetSets: number;
+  targetReps: number | null;
+  targetWeightKg: number | null;
+  targetDurationSeconds: number | null;
+  targetDistanceM: number | null;
+};
+
+/** Zielwerte einer Übung als lesbare Zeile, z. B. "4 × 8 · 60 kg", "3 × 45 s", "3 Sätze". */
+export function formatTemplateTarget(exercise: StoredTemplateExercise): string {
+  const nbsp = " ";
+  const sets = exercise.targetSets;
+  let target: string | null = null;
+
+  if (exercise.measure === "duration" && exercise.targetDurationSeconds !== null) {
+    const { value, unit } = formatDuration(exercise.targetDurationSeconds);
+    target = `${value}${nbsp}${unit}`;
+  } else if (exercise.measure === "distance" && exercise.targetDistanceM !== null) {
+    const { value, unit } = formatDistance(exercise.targetDistanceM);
+    target = `${value}${nbsp}${unit}`;
+  } else if (exercise.measure === "weight_reps" && exercise.targetReps !== null) {
+    target = String(exercise.targetReps);
+  }
+
+  const weight =
+    exercise.measure === "weight_reps" && exercise.targetWeightKg !== null && exercise.targetWeightKg > 0
+      ? `${formatWeight(exercise.targetWeightKg)}${nbsp}kg`
+      : null;
+
+  if (target === null) return `${sets}${nbsp}${sets === 1 ? "Satz" : "Sätze"}`;
+  const line = `${sets}${nbsp}×${nbsp}${target}`;
+  return weight ? `${line} · ${weight}` : line;
+}
+
+/** Wandelt gespeicherte Übungen in den Formularentwurf zurück, mit deutschem Dezimalkomma. */
+export function toTemplateDraftEntries(
+  exercises: readonly StoredTemplateExercise[],
+): TemplateDraftEntry[] {
+  const decimal = (value: number) => String(value).replace(".", ",");
+
+  return exercises.map((exercise) => {
+    let value = "";
+    if (exercise.measure === "duration") {
+      value = exercise.targetDurationSeconds === null ? "" : String(exercise.targetDurationSeconds);
+    } else if (exercise.measure === "distance") {
+      value = exercise.targetDistanceM === null ? "" : decimal(exercise.targetDistanceM);
+    } else {
+      value = exercise.targetReps === null ? "" : String(exercise.targetReps);
+    }
+
+    return {
+      exerciseId: exercise.exerciseId,
+      measure: exercise.measure,
+      sets: String(exercise.targetSets),
+      value,
+      weight:
+        exercise.measure === "weight_reps" && exercise.targetWeightKg !== null && exercise.targetWeightKg > 0
+          ? decimal(exercise.targetWeightKg)
+          : "",
+    };
+  });
+}
+
+/** Bezeichnung der Herkunft einer Version für den Versionsverlauf. */
+export function versionSourceLabel(source: string): string {
+  return source === "ai" ? "KI" : "App";
+}
