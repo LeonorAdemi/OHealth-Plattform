@@ -121,6 +121,28 @@ Vor jedem Merge laufen automatisch (`.github/workflows/ci.yml`): Typprüfung, Li
 
 Arbeitsablauf: ein Branch je Aufgabe, Pull Request nach `main`, Squash-Merge. `main` ist jederzeit auslieferbar.
 
+### Branches und Auslieferung
+
+- `main` ist geschützt: Änderungen nur per Pull Request mit grüner CI, kein direkter Push, kein Force-Push. Sobald mehr als eine Person mitarbeitet, braucht jeder Pull Request ein Approval der anderen Person.
+- Branch-Namen: `feat/<thema>`, `fix/<thema>`, `docs/<thema>`, `chore/<thema>`. KI-Sitzungen nutzen ihre eigenen `claude/…`-Branches.
+- Jeder Push auf einen Branch erzeugt bei Vercel ein Preview-Deployment. Previews sind per Vercel-Anmeldung geschützt. Dort wird geprüft, bevor gemergt wird, auch vom Handy.
+- Ein Merge nach `main` geht automatisch in Produktion. Gemergt wird nur, wenn die CI grün ist und die Preview geprüft wurde.
+- Pull Requests bleiben klein: eine Aufgabe, möglichst nicht länger als ein Arbeitstag. Vor dem Merge wird `main` in den Branch geholt.
+
+### Zurück zu einem alten Stand
+
+- Produktion kaputt: in Vercel unter Deployments das letzte gute Deployment wählen und „Instant Rollback" ausführen. Danach in Ruhe den Fehler beheben.
+- Eine gemergte Änderung zurücknehmen: auf GitHub beim Pull Request „Revert" wählen. Das erzeugt einen neuen Pull Request, der wie jeder andere durch die CI läuft.
+- Nach jedem größeren Schritt bekommt `main` ein Release-Tag nach dem Muster `vMAJOR.MINOR.PATCH`, etwa `v0.2.0`. Tags werden nie verschoben oder gelöscht.
+
+### Datenbank in diesem Ablauf
+
+- Previews und Produktion nutzen dasselbe Supabase-Projekt. Wer auf einer Preview testet, arbeitet mit echten Daten, also nur mit Testkonten. Vor dem Start mit echten Nutzern bekommt die Preview eine eigene Datenbank.
+- Migrationen werden erst nach dem Merge auf das Projekt angewendet, nie aus einem offenen Branch.
+- Migrationen sind rückwärtsverträglich: erst hinzufügen, alte Spalten oder Tabellen erst in einem späteren Pull Request entfernen. So läuft nach einem Rollback der alte Code weiter.
+- Ein Rollback des Codes nimmt keine Migration zurück. Rückgängig gemacht wird mit einer neuen Migration.
+- Arbeiten zwei Branches gleichzeitig an Migrationen, prüft der zweite Merge, dass Reihenfolge und Inhalt zusammenpassen, und lässt die Datenbanktests auf dem aktuellen Stand laufen.
+
 ## 9. Arbeiten mit KI-Assistenten
 
 - Eine Aufgabe je Sitzung, klar umrissen. Für alles, was mehr als eine Datei betrifft, zuerst einen Plan zeigen lassen und freigeben.
