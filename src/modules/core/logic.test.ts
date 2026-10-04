@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  chatDayLabel,
+  chatTime,
+  layoutChat,
+  pushContent,
   badgeCount,
   describeNotification,
   formatAgo,
@@ -182,6 +186,7 @@ describe("Mitteilungen", () => {
       "3 neue Nachrichten zu „Lauf“, zuletzt von Ben",
     );
     expect(describeNotification({ ...base, kind: "cancelled" })).toBe("Ben hat „Lauf“ abgesagt");
+    expect(describeNotification({ ...base, kind: "reminder" })).toBe("„Lauf“ beginnt in etwa einer Stunde");
   });
 
   it("zeigt die Zeit relativ", () => {
@@ -195,5 +200,52 @@ describe("Mitteilungen", () => {
   it("kürzt den Zähler an der Glocke", () => {
     expect(badgeCount(3)).toBe("3");
     expect(badgeCount(12)).toBe("9+");
+  });
+});
+
+describe("Push", () => {
+  const base = { actorName: "Ben", title: "Lauf", count: 1, meetupId: "m1", latest: null };
+
+  it("zeigt bei Chat-Nachrichten die letzte Nachricht und öffnet den Chat", () => {
+    expect(pushContent({ ...base, kind: "message", latest: "Bin um 9 da" })).toEqual({
+      title: "Lauf",
+      body: "Ben: Bin um 9 da",
+      url: "/plan/m1/chat",
+      tag: "chat-m1",
+    });
+    expect(pushContent({ ...base, kind: "message", latest: "Um 9", count: 3 }).body).toBe("Ben: Um 9 (3 neue)");
+  });
+
+  it("nimmt sonst den Satz der Mitteilung", () => {
+    expect(pushContent({ ...base, kind: "joined" })).toMatchObject({ body: "Ben ist bei „Lauf“ dabei", url: "/plan/m1" });
+    expect(pushContent({ ...base, kind: "cancelled", meetupId: null }).url).toBe("/mitteilungen");
+  });
+});
+
+describe("Chat", () => {
+  const now = new Date("2026-10-04T12:00:00Z");
+
+  it("benennt Tage wie ein Messenger", () => {
+    expect(chatDayLabel("2026-10-04T08:00:00Z", now)).toBe("Heute");
+    expect(chatDayLabel("2026-10-03T20:00:00Z", now)).toBe("Gestern");
+    expect(chatDayLabel("2026-10-01T08:00:00Z", now)).toBe("Do, 1. Okt.");
+    expect(chatTime("2026-10-04T16:05:00Z")).toBe("18:05");
+  });
+
+  it("fasst Folgen derselben Person zusammen und trennt Tage", () => {
+    const m = (id: string, userId: string, createdAt: string) => ({ id, userId, createdAt });
+    const rows = layoutChat(
+      [
+        m("1", "ben", "2026-10-03T20:00:00Z"),
+        m("2", "ben", "2026-10-04T08:00:00Z"),
+        m("3", "ben", "2026-10-04T08:02:00Z"),
+        m("4", "anna", "2026-10-04T08:03:00Z"),
+        m("5", "anna", "2026-10-04T09:00:00Z"),
+      ],
+      now,
+    );
+    expect(rows.map((r) => r.dayLabel)).toEqual(["Gestern", "Heute", null, null, null]);
+    expect(rows.map((r) => r.firstInGroup)).toEqual([true, true, false, true, true]);
+    expect(rows.map((r) => r.lastInGroup)).toEqual([true, false, true, true, true]);
   });
 });

@@ -77,7 +77,9 @@ export default function PrivacyPage() {
           <strong>Mitteilungen:</strong> Hinweise in der App, etwa dass jemand
           ein Training geteilt, bei deinem zugesagt oder im Chat geschrieben
           hat, mit Anzeigename, Titel und Zeitpunkt, ob du sie gelesen hast,
-          und welche Mitteilungen du bekommen willst.
+          und welche Mitteilungen du bekommen willst. Schaltest du Push ein,
+          speichern wir je Gerät die Push-Adresse und die Schlüssel, die dein
+          Browser dafür erzeugt.
         </li>
         <li>
           <strong>Technische Daten:</strong> beim Aufruf der App fallen bei
@@ -149,7 +151,16 @@ export default function PrivacyPage() {
         Communities ein Training teilt, bei deinem Training zusagt, im Chat
         schreibt oder ein Training absagt. Im Profil stellst du ein, welche du
         bekommst; neue Trainings aus öffentlichen Communities sind anfangs
-        aus.
+        aus. Etwa eine Stunde vor einem Training, bei dem du dabei bist,
+        erinnern wir dich, wenn du das nicht ausschaltest.
+      </p>
+      <p>
+        Push aufs Handy schaltest du je Gerät im Profil ein und dort auch
+        wieder aus. Zugestellt wird über den Push-Dienst deines Browsers oder
+        Geräts (zum Beispiel Apple, Google oder Mozilla), der auch außerhalb
+        der EU sitzen kann. Der Inhalt (Titel des Trainings, Name und bei Chat
+        die letzte Nachricht) ist dabei verschlüsselt, sodass der Push-Dienst
+        ihn nicht lesen kann.
       </p>
 
       <h2>Wer deine Vorlagen sieht</h2>
@@ -245,7 +256,7 @@ export default function PrivacyPage() {
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
         Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
-        Chat-Nachrichten und Mitteilungen sofort entfernt. Communities, die
+        Chat-Nachrichten, Mitteilungen und Push-Abos sofort entfernt. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

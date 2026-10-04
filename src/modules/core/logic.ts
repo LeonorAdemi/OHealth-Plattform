@@ -237,10 +237,12 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
 
 // ---------- Mitteilungen ----------
 
-export type NotificationKind = "new_training" | "joined" | "message" | "cancelled";
+export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder";
 
 export function toNotificationKind(value: string): NotificationKind {
-  return value === "joined" || value === "message" || value === "cancelled" ? value : "new_training";
+  return value === "joined" || value === "message" || value === "cancelled" || value === "reminder"
+    ? value
+    : "new_training";
 }
 
 /** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
@@ -256,7 +258,33 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
         : `${n.actorName} hat zu „${n.title}“ geschrieben`;
     case "cancelled":
       return `${n.actorName} hat „${n.title}“ abgesagt`;
+    case "reminder":
+      return `„${n.title}“ beginnt in etwa einer Stunde`;
   }
+}
+
+/**
+ * Inhalt eines Pushs. Bei Chat-Nachrichten steht wie in Messengern die letzte Nachricht im
+ * Text, sonst der Satz der Mitteilung.
+ */
+export function pushContent(p: {
+  kind: NotificationKind;
+  actorName: string;
+  title: string;
+  count: number;
+  meetupId: string | null;
+  latest: string | null;
+}): { title: string; body: string; url: string; tag: string } {
+  const url = p.meetupId ? (p.kind === "message" ? `/plan/${p.meetupId}/chat` : `/plan/${p.meetupId}`) : "/mitteilungen";
+  if (p.kind === "message" && p.latest) {
+    return {
+      title: p.title,
+      body: p.count > 1 ? `${p.actorName}: ${p.latest} (${p.count} neue)` : `${p.actorName}: ${p.latest}`,
+      url,
+      tag: `chat-${p.meetupId}`,
+    };
+  }
+  return { title: "OHealth", body: describeNotification(p), url, tag: `${p.kind}-${p.meetupId ?? p.title}` };
 }
 
 /** Wann, relativ zu jetzt: "gerade eben", "vor 5 Min.", "vor 3 Std.", sonst Datum. */
@@ -278,3 +306,53 @@ export function badgeCount(count: number): string {
 
 /** Wie lange vorher ein Training unter "Gleich" erscheint. */
 export const REMINDER_HOURS = 3;
+
+// ---------- Chat ----------
+
+type ChatMessage = { id: string; userId: string; createdAt: string };
+
+/** Tagestrenner im Chat: "Heute", "Gestern", sonst "Sa, 3. Okt." (deutsche Zeit). */
+export function chatDayLabel(at: string, now: Date): string {
+  const day = berlinDateTimeParts(new Date(at)).date;
+  const today = berlinDateTimeParts(now).date;
+  const yesterday = berlinDateTimeParts(new Date(now.getTime() - 86400000)).date;
+  if (day === today) return "Heute";
+  if (day === yesterday) return "Gestern";
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short", day: "numeric", month: "short" })
+    .format(new Date(at))
+    .replace(/^(\w+)\./, "$1");
+}
+
+/** Uhrzeit einer Nachricht, z. B. "18:05". */
+export function chatTime(at: string): string {
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(
+    new Date(at),
+  );
+}
+
+/**
+ * Ordnet Nachrichten für die Anzeige: Tagestrenner vor dem ersten Beitrag eines Tages, und ob eine
+ * Nachricht eine Folge derselben Person ist (innerhalb von fünf Minuten, dann ohne Namen und enger).
+ */
+export function layoutChat<T extends ChatMessage>(
+  messages: readonly T[],
+  now: Date,
+): { message: T; dayLabel: string | null; firstInGroup: boolean; lastInGroup: boolean }[] {
+  const GAP_MS = 5 * 60 * 1000;
+  const dayOf = (m: T) => berlinDateTimeParts(new Date(m.createdAt)).date;
+  const continues = (a: T | undefined, b: T | undefined) =>
+    !!a && !!b && a.userId === b.userId && dayOf(a) === dayOf(b) &&
+    Math.abs(new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) <= GAP_MS;
+
+  return messages.map((message, i) => {
+    const prev = messages[i - 1];
+    const next = messages[i + 1];
+    const newDay = !prev || dayOf(prev) !== dayOf(message);
+    return {
+      message,
+      dayLabel: newDay ? chatDayLabel(message.createdAt, now) : null,
+      firstInGroup: newDay || !continues(prev, message),
+      lastInGroup: !continues(message, next),
+    };
+  });
+}

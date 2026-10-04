@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   DeleteMeetup,
-  MeetupChat,
   MeetupToggle,
   RemoveFromCommunity,
   ShareSettings,
@@ -40,6 +40,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const sharedIn = communities.filter((c) => meetup.sharedWith.includes(c.id));
   const managed = meetup.isMine ? [] : sharedIn.filter((c) => c.role === "admin" || c.role === "coach");
   const hasCompany = meetup.shareCount > 0 || meetup.count > 1;
+  const lastMessage = meetup.messages.at(-1);
 
   return (
     <>
@@ -126,12 +127,24 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             Chat
           </h2>
           {meetup.isJoined ? (
-            <>
-              <p className="text-muted-foreground mt-1 text-sm">Nur für alle, die dabei sind.</p>
-              <div className="mt-2">
-                <MeetupChat meetupId={meetup.id} messages={meetup.messages} />
-              </div>
-            </>
+            <Link
+              href={`/plan/${meetup.id}/chat`}
+              className="hover:bg-accent -mx-2 mt-2 flex min-h-16 items-center gap-3 rounded-lg border-b px-2 py-3 transition-colors duration-150 ease-out"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">
+                  {meetup.messages.length === 0
+                    ? "Chat öffnen"
+                    : `${meetup.messages.length} ${meetup.messages.length === 1 ? "Nachricht" : "Nachrichten"}`}
+                </span>
+                <span className="text-muted-foreground block truncate text-sm">
+                  {lastMessage
+                    ? `${lastMessage.isMe ? "Du" : lastMessage.name}: ${lastMessage.body}`
+                    : "Nur für alle, die dabei sind. Sprecht euch ab, wo ihr euch trefft."}
+                </span>
+              </span>
+              <ChevronRight size={20} strokeWidth={1.5} className="text-muted-foreground shrink-0" aria-hidden />
+            </Link>
           ) : (
             <p className="text-muted-foreground mt-2">Sag zu, dann kannst du mit den anderen schreiben.</p>
           )}
