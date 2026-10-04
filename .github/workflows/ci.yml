@@ -19,7 +19,7 @@ jobs:
       - if: steps.check.outputs.ready == 'true'
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.119.0
 
       - if: steps.check.outputs.ready == 'true'
         run: supabase db start
