@@ -7,7 +7,7 @@ import { createAgentDataSource } from "@/modules/workouts/queries";
 
 // MCP-Endpunkt für KI-Assistenten (Claude, ChatGPT und andere).
 // Anmeldung: OAuth 2.1 über Supabase Auth, Bestätigung unter /oauth/consent.
-// Zugriff: nur lesend, nur eigene Daten (docs/ENGINEERING.md, Abschnitt 5).
+// Zugriff: nur eigene Daten, lesend; schreibend nur eigene Vorlagen (docs/ENGINEERING.md, Abschnitt 5).
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;

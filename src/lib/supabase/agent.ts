@@ -7,8 +7,9 @@ import { supabaseEnv } from "@/lib/supabase/env";
 
 // Supabase-Zugang für KI-Clients, die über MCP (/api/mcp) zugreifen.
 // Das Token stellt Supabase Auth über seinen OAuth-2.1-Server aus. Es trägt den Claim
-// client_id, und die Datenbank beschränkt solche Tokens auf eigene Daten, nur lesend
-// (Migration agent_read_only, docs/ENGINEERING.md, Abschnitt 5).
+// client_id, und die Datenbank beschränkt solche Tokens auf eigene Daten, lesend, mit
+// Schreibrecht nur für eigene Vorlagen (Migrationen agent_read_only und agent_write_templates,
+// docs/ENGINEERING.md, Abschnitt 5).
 
 export type AgentClient = SupabaseClient<Database>;
 export type AgentIdentity = { userId: string; clientId: string };

@@ -305,7 +305,122 @@ export function createAgentDataSource(supabase: AgentClient, userId: string): Ag
           : [],
       );
     },
+
+    async templates() {
+      const { data, error } = await supabase
+        .from("workout_templates")
+        .select("id, name, visibility, updated_at, template_versions(version_number, template_version_exercises(count))")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .order("version_number", { referencedTable: "template_versions", ascending: false })
+        .limit(1, { referencedTable: "template_versions" })
+        .limit(50);
+      if (error) throw new Error("Vorlagen konnten nicht geladen werden.");
+      return data.map((t) => ({
+        id: t.id,
+        name: t.name,
+        visibility: toTemplateVisibility(t.visibility),
+        updatedAt: t.updated_at,
+        versionNumber: t.template_versions[0]?.version_number ?? 1,
+        exerciseCount: t.template_versions[0]?.template_version_exercises[0]?.count ?? 0,
+      }));
+    },
+
+    async template(id) {
+      const { data: template, error } = await supabase
+        .from("workout_templates")
+        .select("id, name, visibility, template_versions(id, version_number, note, source, created_at)")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .order("version_number", { referencedTable: "template_versions", ascending: false })
+        .limit(100, { referencedTable: "template_versions" })
+        .maybeSingle();
+      if (error) throw new Error("Die Vorlage konnte nicht geladen werden.");
+      const latest = template?.template_versions[0];
+      if (!template || !latest) return null;
+
+      const { data: rows, error: rowsError } = await supabase
+        .from("template_version_exercises")
+        .select(
+          "exercise_id, target_sets, target_reps, target_weight_kg, target_duration_seconds, target_distance_m, exercises(name, measure)",
+        )
+        .eq("version_id", latest.id)
+        .order("position")
+        .limit(30);
+      if (rowsError) throw new Error("Die Übungen der Vorlage konnten nicht geladen werden.");
+
+      return {
+        id: template.id,
+        name: template.name,
+        visibility: toTemplateVisibility(template.visibility),
+        versions: template.template_versions.map((v) => ({
+          number: v.version_number,
+          note: v.note,
+          source: v.source,
+          createdAt: v.created_at,
+        })),
+        exercises: rows.map((row) => ({
+          exerciseId: row.exercise_id,
+          exerciseName: row.exercises?.name ?? "Übung",
+          measure: toExerciseMeasure(row.exercises?.measure ?? "weight_reps"),
+          targetSets: row.target_sets,
+          targetReps: row.target_reps,
+          targetWeightKg: row.target_weight_kg,
+          targetDurationSeconds: row.target_duration_seconds,
+          targetDistanceM: row.target_distance_m,
+        })),
+      };
+    },
+
+    async exercises() {
+      const { data, error } = await supabase
+        .from("exercises")
+        .select("id, name, measure, muscle_group, aliases")
+        .order("name")
+        .limit(500);
+      if (error) throw new Error("Übungen konnten nicht geladen werden.");
+      return data.map((e) => ({
+        id: e.id,
+        name: e.name,
+        measure: toExerciseMeasure(e.measure),
+        muscleGroup: e.muscle_group,
+        aliases: e.aliases,
+      }));
+    },
+
+    async saveTemplate(input) {
+      // Die Datenbank legt für eine KI nur private Vorlagen an und lässt die Sichtbarkeit
+      // bestehender Vorlagen unverändert (Migration agent_write_templates).
+      const { data, error } = await supabase.rpc("save_template", {
+        p_template_id: input.templateId ?? crypto.randomUUID(),
+        p_version_id: crypto.randomUUID(),
+        p_name: input.name,
+        p_visibility: "private",
+        p_note: input.note,
+        p_exercises: input.exercises,
+      });
+      if (error || !data) throw new Error(agentSaveError(error?.code, error?.message));
+      return data;
+    },
   };
+}
+
+// Verständliche Fehler für die KI. Eigene Meldungen der Datenbank werden durchgereicht,
+// alles andere bleibt allgemein, damit keine Interna nach außen gehen.
+const KNOWN_SAVE_ERRORS = [
+  "Vorlage nicht gefunden",
+  "Eine Vorlage braucht mindestens eine Übung",
+  "Höchstens 30 Übungen je Vorlage",
+  "Höchstens 50 Vorlagen je Person",
+  "Höchstens 100 Versionen je Vorlage",
+];
+
+function agentSaveError(code?: string, message?: string): string {
+  if (code === "23503") return "Eine der Übungen gibt es nicht. Hol die exercise_id mit search_exercises.";
+  if (code === "23505") return "Vorlage nicht gefunden. Hol die template_id mit list_templates.";
+  if (code === "23514") return "Ein Wert liegt außerhalb des erlaubten Bereichs (Name 1 bis 60 Zeichen, 1 bis 20 Sätze, Werte größer als 0).";
+  const known = KNOWN_SAVE_ERRORS.find((text) => message?.includes(text));
+  return known ?? "Speichern fehlgeschlagen.";
 }
 
 // ---------- Vorlagen ----------

@@ -137,11 +137,17 @@ export default function PrivacyPage() {
       <ul>
         <li>
           Die App darf dein Profil mit Namen, deine Workouts mit allen Sätzen,
-          deine Trainingstage und deine Bestwerte lesen.
+          deine Trainingstage, deine Bestwerte und deine Vorlagen lesen.
         </li>
         <li>
-          Sie darf nichts speichern, ändern oder löschen und sieht keine Daten
-          deiner Gruppen oder anderer Personen. Das stellt die Datenbank sicher.
+          Sie darf neue private Vorlagen anlegen und neue Versionen deiner
+          Vorlagen speichern. Frühere Versionen bleiben erhalten und sind als
+          von der KI erstellt gekennzeichnet.
+        </li>
+        <li>
+          Sie darf nichts löschen, keine Vorlage veröffentlichen, keine Workouts
+          eintragen oder ändern und sieht keine Daten deiner Gruppen oder
+          anderer Personen. Das stellt die Datenbank sicher.
         </li>
         <li>
           Die gelesenen Daten gehen an den Anbieter der KI-App, den du selbst
