@@ -15,6 +15,7 @@ const setSchema = z
     duration_seconds: z.int().positive().optional(),
     distance_m: z.number().positive().optional(),
     weight_kg: z.number().min(0).max(9999),
+    rest_seconds: z.int().min(0).max(86400).optional(),
   })
   .refine(
     (s) => s.reps !== undefined || s.duration_seconds !== undefined || s.distance_m !== undefined,
@@ -53,6 +54,51 @@ export async function saveWorkout(input: unknown): Promise<Result<{ id: string }
   }
 
   revalidateWorkoutViews();
+  return { ok: true, data: { id: data } };
+}
+
+const trainingSchema = z
+  .object({
+    id: z.uuid(),
+    title: z.string().trim().max(80).optional(),
+    templateVersionId: z.uuid().nullable(),
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime(),
+    sets: z.array(setSchema).min(1, "Hak mindestens einen Satz ab.").max(200),
+  })
+  .refine((t) => Date.parse(t.finishedAt) >= Date.parse(t.startedAt), "Start und Ende passen nicht zusammen.");
+
+/**
+ * Speichert ein Training aus einer Vorlage mit Start, Ende und Pausen (log_training).
+ * Die ID vergibt der Client, damit ein wiederholter Versuch kein Duplikat erzeugt.
+ * Zusätzliche Übungen und geänderte Werte bleiben im Workout, die Vorlage ändert sich nicht.
+ */
+export async function saveTraining(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = trainingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("log_training", {
+    p_id: parsed.data.id,
+    p_title: parsed.data.title ?? "",
+    // Ohne Vorlage gestartet: Die Datenbank erwartet dann null.
+    p_template_version_id: parsed.data.templateVersionId as string,
+    p_started_at: parsed.data.startedAt,
+    p_finished_at: parsed.data.finishedAt,
+    p_sets: parsed.data.sets,
+  });
+
+  if (error || !data) {
+    return {
+      ok: false,
+      error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.",
+    };
+  }
+
+  revalidateWorkoutViews();
+  revalidatePath("/vorlagen", "layout");
   return { ok: true, data: { id: data } };
 }
 
@@ -104,4 +150,169 @@ export async function deleteWorkout(_prev: FormState, formData: FormData): Promi
 
   revalidateWorkoutViews();
   redirect("/verlauf");
+}
+
+// ---------- Vorlagen ----------
+
+const templateExerciseSchema = z.object({
+  exercise_id: z.uuid(),
+  target_sets: z.int().min(1).max(20),
+  target_reps: z.int().positive().optional(),
+  target_weight_kg: z.number().min(0).max(9999).optional(),
+  target_duration_seconds: z.int().positive().optional(),
+  target_distance_m: z.number().positive().optional(),
+});
+
+const templateSchema = z.object({
+  templateId: z.uuid().optional(),
+  versionId: z.uuid(),
+  name: z.string().trim().min(1, "Gib der Vorlage einen Namen.").max(60, "Der Name darf höchstens 60 Zeichen haben."),
+  visibility: z.enum(["private", "public"]),
+  note: z.string().trim().max(200).optional(),
+  exercises: z.array(templateExerciseSchema).min(1, "Füg mindestens eine Übung hinzu.").max(30),
+});
+
+const SAVE_FAILED = "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.";
+
+function revalidateTemplateViews(id?: string) {
+  revalidatePath("/vorlagen");
+  if (id) revalidatePath(`/vorlagen/${id}`);
+}
+
+/**
+ * Legt eine Vorlage an oder speichert eine Änderung als neue Version (save_template).
+ * Die IDs vergibt der Client, damit ein wiederholter Versuch nichts doppelt anlegt.
+ */
+export async function saveTemplate(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = templateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("save_template", {
+    p_template_id: parsed.data.templateId ?? crypto.randomUUID(),
+    p_version_id: parsed.data.versionId,
+    p_name: parsed.data.name,
+    p_visibility: parsed.data.visibility,
+    p_note: parsed.data.note ?? "",
+    p_exercises: parsed.data.exercises,
+  });
+
+  if (error || !data) return { ok: false, error: SAVE_FAILED };
+
+  revalidateTemplateViews(data);
+  return { ok: true, data: { id: data } };
+}
+
+/** Kopiert eine eigene oder öffentliche Vorlage als neue, private Vorlage (copy_template). */
+export async function copyTemplate(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = z.object({ sourceId: z.uuid(), newId: z.uuid() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Diese Vorlage gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("copy_template", {
+    p_source_id: parsed.data.sourceId,
+    p_new_id: parsed.data.newId,
+  });
+
+  if (error || !data) {
+    return { ok: false, error: "Kopieren fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
+  }
+
+  revalidateTemplateViews();
+  return { ok: true, data: { id: data } };
+}
+
+/** Stellt eine eigene Vorlage auf privat oder öffentlich. Fremde Vorlagen lässt die Datenbank nicht zu. */
+export async function setTemplateVisibility(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({ id: z.uuid(), visibility: z.enum(["private", "public"]) })
+    .safeParse({ id: formData.get("id"), visibility: formData.get("visibility") });
+  if (!parsed.success) return { error: "Diese Vorlage gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workout_templates")
+    .update({ visibility: parsed.data.visibility })
+    .eq("id", parsed.data.id)
+    .select("id");
+
+  if (error) return { error: SAVE_FAILED };
+  if (data.length === 0) return { error: "Diese Vorlage gibt es nicht mehr." };
+
+  revalidateTemplateViews(parsed.data.id);
+  return {
+    message: parsed.data.visibility === "public"
+      ? "Die Vorlage ist jetzt öffentlich."
+      : "Die Vorlage ist jetzt privat.",
+  };
+}
+
+/**
+ * Macht eine alte Version zur neuesten: Ihr Inhalt wird als neue Version gespeichert,
+ * der Verlauf bleibt vollständig erhalten.
+ */
+export async function restoreTemplateVersion(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({ id: z.uuid(), version: z.coerce.number().int().positive() })
+    .safeParse({ id: formData.get("id"), version: formData.get("version") });
+  if (!parsed.success) return { error: "Diese Version gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data: template, error: readError } = await supabase
+    .from("workout_templates")
+    .select("name, visibility, template_versions!inner(id)")
+    .eq("id", parsed.data.id)
+    .eq("template_versions.version_number", parsed.data.version)
+    .maybeSingle();
+
+  if (readError) return { error: SAVE_FAILED };
+  const versionId = template?.template_versions[0]?.id;
+  if (!template || !versionId) return { error: "Diese Version gibt es nicht mehr." };
+
+  const { data: rows, error: rowsError } = await supabase
+    .from("template_version_exercises")
+    .select(
+      "exercise_id, target_sets, target_reps, target_weight_kg, target_duration_seconds, target_distance_m",
+    )
+    .eq("version_id", versionId)
+    .order("position")
+    .limit(30);
+  if (rowsError) return { error: SAVE_FAILED };
+
+  const { error } = await supabase.rpc("save_template", {
+    p_template_id: parsed.data.id,
+    p_version_id: crypto.randomUUID(),
+    p_name: template.name,
+    p_visibility: template.visibility,
+    p_note: `Wiederhergestellt aus Version ${parsed.data.version}`,
+    p_exercises: rows.map((row) => ({
+      exercise_id: row.exercise_id,
+      target_sets: row.target_sets,
+      target_reps: row.target_reps ?? undefined,
+      target_weight_kg: row.target_weight_kg ?? undefined,
+      target_duration_seconds: row.target_duration_seconds ?? undefined,
+      target_distance_m: row.target_distance_m ?? undefined,
+    })),
+  });
+  if (error) return { error: SAVE_FAILED };
+
+  revalidateTemplateViews(parsed.data.id);
+  redirect(`/vorlagen/${parsed.data.id}`);
+}
+
+/** Löscht eine eigene Vorlage mit allen Versionen. Kopien anderer Personen bleiben bestehen. */
+export async function deleteTemplate(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "Diese Vorlage gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("workout_templates").delete().eq("id", id.data).select("id");
+
+  if (error) return { error: "Löschen fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
+  if (data.length === 0) return { error: "Diese Vorlage gibt es nicht mehr." };
+
+  revalidateTemplateViews();
+  redirect("/vorlagen");
 }

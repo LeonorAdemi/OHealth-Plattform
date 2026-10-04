@@ -2,7 +2,7 @@
 
 Workouts tracken und in der Gruppe vergleichen. Später erweitert um Physio- und Health-Module.
 
-Stand: Draft 1 mit Anmeldung (E-Mail, Apple, Google, Facebook, Passkey), Passwort zurücksetzen, Workout loggen (Katalog mit gut hundert Übungen, Suche, Icons je Muskelgruppe und Skizze je Übung), ansehen, korrigieren und löschen, Verlauf, Gruppen mit Einladungslink, Ranglisten für Konstanz und Bestwerte je Übung Profil mit Konto-Löschen sowie KI-Zugriff über MCP für Trainingstipps.
+Stand: Draft 1 mit Anmeldung (E-Mail, Apple, Google, Facebook, Passkey), Passwort zurücksetzen, Workout loggen (Katalog mit gut hundert Übungen, Suche, Icons je Muskelgruppe und Skizze je Übung), ansehen, korrigieren und löschen, Verlauf, Workout-Vorlagen mit Versionen (privat oder öffentlich, kopierbar), Gruppen mit Einladungslink, Ranglisten für Konstanz und Bestwerte je Übung Profil mit Konto-Löschen sowie KI-Zugriff über MCP für Trainingstipps.
 
 ## Einmalig einrichten
 

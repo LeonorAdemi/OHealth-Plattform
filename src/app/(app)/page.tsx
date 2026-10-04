@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
 import { isoWeek, weekGrid } from "@/modules/workouts/logic";
 import { getMyTrainingDays } from "@/modules/workouts/queries";
@@ -19,8 +20,10 @@ export default async function TodayPage() {
         <WeekGrid days={days} own size="lg" />
       </div>
 
+      <ResumeTraining className="mt-8" />
+
       <Button asChild className="mt-10 w-full md:w-auto">
-        <Link href="/workouts/neu">Workout starten</Link>
+        <Link href="/training">Workout starten</Link>
       </Button>
     </>
   );

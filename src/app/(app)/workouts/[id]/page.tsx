@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { DeleteWorkout } from "@/modules/workouts/components/delete-workout";
 import {
   APP_TIME_ZONE,
+  formatClock,
   formatSetLine,
+  formatWorkoutDuration,
   groupSetsIntoBlocks,
 } from "@/modules/workouts/logic";
 import { getWorkout } from "@/modules/workouts/queries";
@@ -41,6 +43,11 @@ export default async function WorkoutPage({
       <h1 className="text-titel mt-1 font-semibold">
         {workout.title ?? "Workout"}
       </h1>
+      {workout.startedAt && workout.finishedAt && (
+        <p className="text-muted-foreground mt-1 text-sm">
+          Dauer {formatWorkoutDuration(workout.startedAt, workout.finishedAt)}
+        </p>
+      )}
 
       <div className="mt-8 max-w-2xl space-y-8">
         {groupSetsIntoBlocks(workout.sets).map((block, index) => (
@@ -56,6 +63,11 @@ export default async function WorkoutPage({
                     {setIndex + 1}
                   </span>
                   <span className="num">{formatSetLine(set)}</span>
+                  {typeof set.restSeconds === "number" && (
+                    <span className="text-muted-foreground ml-auto text-sm">
+                      Pause <span className="num">{formatClock(set.restSeconds)}</span>
+                    </span>
+                  )}
                 </li>
               ))}
             </ol>

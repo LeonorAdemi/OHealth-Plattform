@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, History, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, History, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,12 +8,16 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
+  { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
   { href: "/gruppe", label: "Gruppe", icon: Users },
   { href: "/verlauf", label: "Verlauf", icon: History },
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" || pathname.startsWith("/workouts") : pathname.startsWith(href);
+  if (href === "/") {
+    return pathname === "/" || ["/workouts", "/training", "/uebungen"].some((p) => pathname.startsWith(p));
+  }
+  return pathname.startsWith(href);
 }
 
 // Handy: Tab-Leiste unten. Desktop: Einträge der Seitenleiste.

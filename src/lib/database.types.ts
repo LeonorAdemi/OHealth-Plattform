@@ -209,6 +209,92 @@ export type Database = {
           },
         ]
       }
+      template_version_exercises: {
+        Row: {
+          exercise_id: string
+          id: string
+          position: number
+          target_distance_m: number | null
+          target_duration_seconds: number | null
+          target_reps: number | null
+          target_sets: number
+          target_weight_kg: number | null
+          version_id: string
+        }
+        Insert: {
+          exercise_id: string
+          id?: string
+          position: number
+          target_distance_m?: number | null
+          target_duration_seconds?: number | null
+          target_reps?: number | null
+          target_sets?: number
+          target_weight_kg?: number | null
+          version_id: string
+        }
+        Update: {
+          exercise_id?: string
+          id?: string
+          position?: number
+          target_distance_m?: number | null
+          target_duration_seconds?: number | null
+          target_reps?: number | null
+          target_sets?: number
+          target_weight_kg?: number | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_version_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_version_exercises_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "template_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_versions: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          source: string
+          template_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          source?: string
+          template_id: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          source?: string
+          template_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sets: {
         Row: {
           created_at: string
@@ -218,6 +304,7 @@ export type Database = {
           id: string
           position: number
           reps: number | null
+          rest_seconds: number | null
           rpe: number | null
           set_number: number
           weight_kg: number
@@ -231,6 +318,7 @@ export type Database = {
           id?: string
           position?: number
           reps?: number | null
+          rest_seconds?: number | null
           rpe?: number | null
           set_number: number
           weight_kg?: number
@@ -244,6 +332,7 @@ export type Database = {
           id?: string
           position?: number
           reps?: number | null
+          rest_seconds?: number | null
           rpe?: number | null
           set_number?: number
           weight_kg?: number
@@ -261,7 +350,69 @@ export type Database = {
             foreignKeyName: "workout_sets_workout_id_fkey"
             columns: ["workout_id"]
             isOneToOne: false
+            referencedRelation: "v_exercise_last_sessions"
+            referencedColumns: ["workout_id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "v_exercise_sessions"
+            referencedColumns: ["workout_id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
             referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_templates: {
+        Row: {
+          copied_from: string | null
+          created_at: string
+          hidden: boolean
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          copied_from?: string | null
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          name: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Update: {
+          copied_from?: string | null
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_templates_copied_from_fkey"
+            columns: ["copied_from"]
+            isOneToOne: false
+            referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -269,29 +420,45 @@ export type Database = {
       workouts: {
         Row: {
           created_at: string
+          finished_at: string | null
           id: string
           notes: string | null
           performed_at: string
+          started_at: string | null
+          template_version_id: string | null
           title: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          started_at?: string | null
+          template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Update: {
           created_at?: string
+          finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          started_at?: string | null
+          template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workouts_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "template_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workouts_user_id_fkey"
             columns: ["user_id"]
@@ -313,6 +480,70 @@ export type Database = {
           total_distance_m: number | null
           total_volume_kg: number | null
           user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_exercise_last_sessions: {
+        Row: {
+          best_e1rm_kg: number | null
+          exercise_id: string | null
+          max_duration_seconds: number | null
+          max_reps: number | null
+          max_weight_kg: number | null
+          performed_at: string | null
+          set_count: number | null
+          total_distance_m: number | null
+          total_reps: number | null
+          total_volume_kg: number | null
+          user_id: string | null
+          workout_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_exercise_sessions: {
+        Row: {
+          best_e1rm_kg: number | null
+          exercise_id: string | null
+          max_duration_seconds: number | null
+          max_reps: number | null
+          max_weight_kg: number | null
+          performed_at: string | null
+          set_count: number | null
+          total_distance_m: number | null
+          total_reps: number | null
+          total_volume_kg: number | null
+          user_id: string | null
+          workout_id: string | null
         }
         Relationships: [
           {
@@ -379,6 +610,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      copy_template: {
+        Args: { p_new_id: string; p_source_id: string }
+        Returns: string
+      }
       delete_own_account: { Args: never; Returns: undefined }
       group_invite_preview: {
         Args: { code: string }
@@ -390,12 +625,34 @@ export type Database = {
         }[]
       }
       join_group: { Args: { code: string }; Returns: string }
+      log_training: {
+        Args: {
+          p_finished_at: string
+          p_id: string
+          p_sets: Json
+          p_started_at: string
+          p_template_version_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       log_workout: {
         Args: {
           p_id: string
           p_performed_at: string
           p_sets: Json
           p_title: string
+        }
+        Returns: string
+      }
+      save_template: {
+        Args: {
+          p_exercises: Json
+          p_name: string
+          p_note: string
+          p_template_id: string
+          p_version_id: string
+          p_visibility: string
         }
         Returns: string
       }

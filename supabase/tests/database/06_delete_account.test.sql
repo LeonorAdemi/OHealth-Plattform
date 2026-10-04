@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(11);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -32,6 +32,17 @@ insert into public.workouts (id, user_id, title) values
 insert into public.workout_sets (workout_id, exercise_id, set_number, reps, weight_kg)
 select w.id, e.id, 1, 5, 80 from public.workouts w, public.exercises e where e.name = 'Bankdrücken';
 
+-- Anna hat eine öffentliche Vorlage mit einer Version, Ben eine Kopie davon
+insert into public.workout_templates (id, user_id, name, visibility) values
+  ('40000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', 'Anna-Vorlage', 'public');
+insert into public.workout_templates (id, user_id, name, copied_from) values
+  ('40000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b', 'Ben-Kopie',
+   '40000000-0000-0000-0000-00000000000a');
+insert into public.template_versions (id, template_id, version_number) values
+  ('50000000-0000-0000-0000-00000000000a', '40000000-0000-0000-0000-00000000000a', 1);
+insert into public.template_version_exercises (version_id, exercise_id, position)
+select '50000000-0000-0000-0000-00000000000a', e.id, 1 from public.exercises e where e.name = 'Bankdrücken';
+
 -- ---------- ohne Anmeldung ----------
 set local role anon;
 select throws_ok(
@@ -50,9 +61,18 @@ select is(
   + (select count(*)::int from public.profiles where id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.workouts where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.workout_sets where workout_id = '20000000-0000-0000-0000-00000000000a')
-  + (select count(*)::int from public.group_members where user_id = '00000000-0000-0000-0000-00000000000a'),
+  + (select count(*)::int from public.group_members where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.workout_templates where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.template_versions where template_id = '40000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze und Mitgliedschaften sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften und Vorlagen mit Versionen sind vollständig weg');
+
+select results_eq(
+  $$ select name, copied_from from public.workout_templates
+     where id = '40000000-0000-0000-0000-00000000000b' $$,
+  $$ values ('Ben-Kopie'::text, null::uuid) $$,
+  'Die Kopie einer anderen Person bleibt bestehen und verliert nur den Verweis auf das Original');
 
 select results_eq(
   $$ select p.display_name, m.role from public.group_members m

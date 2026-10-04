@@ -25,7 +25,7 @@ export default async function HistoryPage() {
         <div className="mt-8">
           <p>Noch keine Workouts. Starte dein erstes.</p>
           <Button asChild className="mt-6 w-full md:w-auto">
-            <Link href="/workouts/neu">Workout starten</Link>
+            <Link href="/training">Workout starten</Link>
           </Button>
         </div>
       ) : (
