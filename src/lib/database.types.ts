@@ -18,6 +18,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          body: string
+          chat_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          chat_id: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          chat_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_reads: {
+        Row: {
+          chat_id: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Update: {
+          chat_id?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_reads_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chats: {
+        Row: {
+          created_at: string
+          group_id: string | null
+          id: string
+          kind: string
+          meetup_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind: string
+          meetup_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind?: string
+          meetup_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chats_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: true
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           aliases: string[]
@@ -907,6 +1018,17 @@ export type Database = {
       }
     }
     Functions: {
+      chat_messages_page: {
+        Args: { cid: string; max_rows?: number }
+        Returns: {
+          avatar_url: string
+          body: string
+          created_at: string
+          display_name: string
+          id: string
+          user_id: string
+        }[]
+      }
       community_bests: {
         Args: { gid: string }
         Returns: {
@@ -1001,6 +1123,7 @@ export type Database = {
         }
         Returns: string
       }
+      mark_chat_read: { Args: { cid: string }; Returns: undefined }
       meetup_chat: {
         Args: { max_rows?: number; mid: string }
         Returns: {
@@ -1040,6 +1163,22 @@ export type Database = {
         Returns: {
           display_name: string
           user_id: string
+        }[]
+      }
+      my_chats: {
+        Args: { max_rows?: number }
+        Returns: {
+          chat_id: string
+          group_id: string
+          kind: string
+          last_at: string
+          last_body: string
+          last_display_name: string
+          last_user_id: string
+          meetup_id: string
+          starts_at: string
+          title: string
+          unread: number
         }[]
       }
       my_communities: {

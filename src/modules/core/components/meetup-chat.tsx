@@ -7,7 +7,7 @@ import { startTransition, useEffect, useLayoutEffect, useOptimistic, useRef, use
 import type { FormState } from "@/lib/result";
 import { cn } from "@/lib/utils";
 
-import { deleteMeetupMessage, sendMeetupMessage } from "../actions";
+import { deleteChatMessage, sendChatMessage } from "../actions";
 import { chatTime, layoutChat } from "../logic";
 
 export type ChatMessage = { id: string; userId: string; name: string; body: string; createdAt: string; isMe: boolean };
@@ -22,11 +22,13 @@ const initial: FormState = {};
  * der Server sie bestätigt). Neue Nachrichten holt die Seite alle vier Sekunden, solange sie sichtbar ist.
  */
 export function MeetupChat({
+  chatId,
   meetupId,
   myUserId,
   messages,
   now,
 }: {
+  chatId: string;
   meetupId: string;
   myUserId: string;
   messages: readonly ChatMessage[];
@@ -79,6 +81,7 @@ export function MeetupChat({
     const id = crypto.randomUUID();
     const formData = new FormData();
     formData.set("id", id);
+    formData.set("chatId", chatId);
     formData.set("meetupId", meetupId);
     formData.set("body", body);
     setText("");
@@ -86,7 +89,7 @@ export function MeetupChat({
     nearBottom.current = true;
     startTransition(async () => {
       addOptimistic({ id, userId: myUserId, name: "", body, createdAt: new Date().toISOString(), isMe: true, pending: true });
-      const result = await sendMeetupMessage(initial, formData);
+      const result = await sendChatMessage(initial, formData);
       if (result.error) {
         setError(result.error);
         setText(body);
@@ -224,7 +227,7 @@ function DeleteMessage({ id, meetupId, onDone }: { id: string; meetupId: string;
           formData.set("id", id);
           formData.set("meetupId", meetupId);
           startTransition(async () => {
-            await deleteMeetupMessage(initial, formData);
+            await deleteChatMessage(initial, formData);
             onDone();
           });
         }}

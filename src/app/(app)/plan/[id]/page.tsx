@@ -126,7 +126,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <h2 id="chat" className="text-xl font-semibold">
             Chat
           </h2>
-          {meetup.isJoined ? (
+          {meetup.isJoined && !meetup.chatId ? (
+            <p className="text-muted-foreground mt-2">Der Chat startet, sobald jemand zusagt.</p>
+          ) : meetup.isJoined ? (
             <Link
               href={`/plan/${meetup.id}/chat`}
               className="hover:bg-accent -mx-2 mt-2 flex min-h-16 items-center gap-3 rounded-lg border-b px-2 py-3 transition-colors duration-150 ease-out"

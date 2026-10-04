@@ -77,7 +77,9 @@ export default function PrivacyPage() {
           <strong>Geplante Trainings und Chat:</strong> Trainings, die du
           planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
           Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
-          du zugesagt hast und deine Nachrichten im Chat eines Trainings.
+          du zugesagt hast, deine Nachrichten im Chat eines Trainings und bis
+          wann du einen Chat gelesen hast, damit wir ungelesene Nachrichten
+          zählen können.
         </li>
         <li>
           <strong>Mitteilungen:</strong> Hinweise in der App, etwa dass jemand

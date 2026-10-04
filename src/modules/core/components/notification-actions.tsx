@@ -5,7 +5,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { FormState } from "@/lib/result";
 
-import { markAllNotificationsRead, markMeetupNotificationsRead, updateNotificationPrefs } from "../actions";
+import { markAllNotificationsRead, markChatRead, markMeetupNotificationsRead, updateNotificationPrefs } from "../actions";
 
 export const NOTIFICATIONS_READ = "ohealth:notifications-read";
 
@@ -18,6 +18,14 @@ export function MarkAllRead({ hasUnread }: { hasUnread: boolean }) {
       void markAllNotificationsRead().then(() => window.dispatchEvent(new Event(NOTIFICATIONS_READ)));
     }
   }, [hasUnread]);
+  return null;
+}
+
+/** Merkt sich, dass der Chat bis zur neuesten Nachricht gelesen ist, solange man ihn ansieht. */
+export function MarkChatRead({ chatId, version }: { chatId: string; version: string }) {
+  useEffect(() => {
+    void markChatRead(chatId);
+  }, [chatId, version]);
   return null;
 }
 

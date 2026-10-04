@@ -412,17 +412,23 @@ export async function deleteMeetup(_prev: FormState, formData: FormData): Promis
 // ---------- Chat ----------
 
 /**
- * Schreibt eine Nachricht in den Chat eines Trainings. Nur wer zugesagt hat (RLS).
+ * Schreibt eine Nachricht in einen Chat. Nur wer Zugang hat (RLS, private.can_access_chat).
  * Die ID kommt vom Gerät: Wird nach einem Verbindungsabbruch erneut gesendet, entsteht nichts doppelt.
  */
-export async function sendMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function sendChatMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
     .object({
       id: z.uuid(),
+      chatId: z.uuid(),
       meetupId: z.uuid(),
       body: z.string().trim().min(1, "Schreib eine Nachricht.").max(1000, "Höchstens 1000 Zeichen."),
     })
-    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId"), body: formData.get("body") ?? "" });
+    .safeParse({
+      id: formData.get("id"),
+      chatId: formData.get("chatId"),
+      meetupId: formData.get("meetupId"),
+      body: formData.get("body") ?? "",
+    });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
@@ -431,8 +437,8 @@ export async function sendMeetupMessage(_prev: FormState, formData: FormData): P
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
   const { error } = await supabase
-    .from("meetup_messages")
-    .insert({ id: parsed.data.id, meetup_id: parsed.data.meetupId, user_id: userId, body: parsed.data.body });
+    .from("chat_messages")
+    .insert({ id: parsed.data.id, chat_id: parsed.data.chatId, user_id: userId, body: parsed.data.body });
   if (error && error.code !== "23505") {
     if (error.message.includes("Zu viele")) return { error: "Zu viele Nachrichten. Warte einen Moment." };
     if (error.code === "42501") return { error: "Schreiben können nur alle, die dabei sind." };
@@ -444,18 +450,26 @@ export async function sendMeetupMessage(_prev: FormState, formData: FormData): P
 }
 
 /** Löscht eine eigene Nachricht. */
-export async function deleteMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function deleteChatMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
     .object({ id: z.uuid(), meetupId: z.uuid() })
     .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId") });
   if (!parsed.success) return { error: "Diese Nachricht gibt es nicht mehr." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("meetup_messages").delete().eq("id", parsed.data.id);
+  const { error } = await supabase.from("chat_messages").delete().eq("id", parsed.data.id);
   if (error) return { error: "Die Nachricht konnte nicht gelöscht werden." };
 
   revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
   return {};
+}
+
+/** Merkt sich, dass man einen Chat bis jetzt gelesen hat. Wiederholbar. */
+export async function markChatRead(chatId: string): Promise<void> {
+  const id = z.uuid().safeParse(chatId);
+  if (!id.success) return;
+  const supabase = await createClient();
+  await supabase.rpc("mark_chat_read", { cid: id.data });
 }
 
 // ---------- Mitteilungen ----------

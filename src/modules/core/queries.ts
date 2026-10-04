@@ -252,17 +252,26 @@ export async function getMeetup(meetupId: string) {
   if (!row) return null;
   const meetup = toMeetup(row);
 
-  const [people, shares, chat] = await Promise.all([
+  const [people, shares, chatRow] = await Promise.all([
     supabase.rpc("meetup_participant_names", { mid: meetupId }),
     supabase.from("meetup_shares").select("group_id").eq("meetup_id", meetupId).limit(100),
-    meetup.isJoined ? supabase.rpc("meetup_chat", { mid: meetupId }) : Promise.resolve({ data: [], error: null }),
+    // Den Chat gibt es, sobald jemand außer der planenden Person zusagt; sehen nur, wer dabei ist (RLS).
+    meetup.isJoined
+      ? supabase.from("chats").select("id").eq("meetup_id", meetupId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
-  if (people.error || shares.error || chat.error) throw new Error("Das Training konnte nicht geladen werden.");
+  if (people.error || shares.error || chatRow.error) throw new Error("Das Training konnte nicht geladen werden.");
+  const chatId = chatRow.data?.id ?? null;
+  const chat = chatId
+    ? await supabase.rpc("chat_messages_page", { cid: chatId })
+    : { data: [], error: null };
+  if (chat.error) throw new Error("Das Training konnte nicht geladen werden.");
 
   return {
     ...meetup,
     participants: people.data.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
     sharedWith: shares.data.map((s) => s.group_id),
+    chatId,
     messages: chat.data.map((m) => ({
       id: m.id,
       userId: m.user_id,
