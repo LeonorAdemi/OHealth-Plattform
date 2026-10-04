@@ -216,7 +216,7 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
 const authorizationId = z.string().trim().min(1).max(200).regex(/^[A-Za-z0-9._~-]+$/);
 
 /**
- * Erlaubt oder verweigert einer KI-App den Lesezugriff und leitet zur App zurück.
+ * Erlaubt oder verweigert einer KI-App den Zugriff und leitet zur App zurück.
  * Was die KI lesen darf, legt die Datenbank fest (Migration agent_read_only).
  */
 export async function decideAgentAccess(_prev: FormState, formData: FormData): Promise<FormState> {

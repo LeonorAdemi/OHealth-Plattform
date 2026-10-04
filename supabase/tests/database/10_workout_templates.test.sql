@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(37);
+select plan(36);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -223,7 +223,7 @@ select throws_ok(
   null, 'Höchstens 50 Vorlagen je Person',
   'Ben: die 51. Vorlage wird abgelehnt');
 
--- KI-Token von Anna: liest nur Eigenes, schreibt nichts
+-- KI-Token von Anna: liest nur Eigenes, löscht nichts
 reset role;
 set local request.jwt.claims to '';
 update public.workout_templates set hidden = false where id = '40000000-0000-0000-0000-00000000000a';
@@ -238,18 +238,14 @@ select results_eq(
 select is(
   (select count(*)::int from public.template_versions),
   2, 'KI: sieht nur die Versionen eigener Vorlagen');
-select throws_ok(
-  $$ select public.save_template(null, gen_random_uuid(), 'Von der KI', 'private', null,
-       (select jsonb_build_array(jsonb_build_object('exercise_id', id)) from public.exercises where name = 'Bankdrücken')) $$,
-  '42501', null, 'KI: kann noch keine Vorlage anlegen');
-update public.workout_templates set name = 'KI' where id = '40000000-0000-0000-0000-00000000000a';
+-- Was eine KI schreiben darf, prüft 12_agent_templates. Löschen darf sie nie.
 delete from public.workout_templates where id = '40000000-0000-0000-0000-00000000000a';
 
 -- Löschen: Versionen und Übungen verschwinden mit der Vorlage
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated"}';
 select is(
   (select name from public.workout_templates where id = '40000000-0000-0000-0000-00000000000a'),
-  'Oberkörper A', 'Anna: eine KI kann die Vorlage weder ändern noch löschen');
+  'Oberkörper A', 'Anna: eine KI kann die Vorlage nicht löschen');
 delete from public.workout_templates where id = '40000000-0000-0000-0000-00000000000a';
 select is(
   (select count(*)::int from public.template_versions

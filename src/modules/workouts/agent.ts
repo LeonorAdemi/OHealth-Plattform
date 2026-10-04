@@ -12,9 +12,14 @@ import {
   formatSetLine,
   formatWeight,
   groupSetsIntoBlocks,
+  formatTemplateTarget,
   isoWeek,
+  searchExercises,
   weekKeys,
   type StoredSet,
+  type StoredTemplateExercise,
+  type TemplateExercisePayload,
+  type TemplateVisibility,
 } from "./logic";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -26,6 +31,57 @@ export type AgentDataSource = {
   workoutsSince(since: Date, limit: number): Promise<AgentWorkout[]>;
   trainingDaysSince(day: string): Promise<string[]>;
   bests(): Promise<AgentBest[]>;
+  /** Eigene Vorlagen, zuletzt geänderte zuerst */
+  templates(): Promise<AgentTemplateSummary[]>;
+  /** Eine eigene Vorlage mit Versionsverlauf und den Übungen der neuesten Version */
+  template(id: string): Promise<AgentTemplate | null>;
+  /** Alle Übungen, die die Person verwenden kann (Katalog und eigene) */
+  exercises(): Promise<AgentExercise[]>;
+  /** Legt eine Vorlage an oder speichert eine neue Version. Gibt die ID der Vorlage zurück. */
+  saveTemplate(input: AgentTemplateInput): Promise<string>;
+};
+
+export type AgentExercise = {
+  id: string;
+  name: string;
+  muscleGroup: string | null;
+  measure: ExerciseMeasure;
+  aliases: string[];
+};
+
+export type AgentTemplateSummary = {
+  id: string;
+  name: string;
+  visibility: TemplateVisibility;
+  updatedAt: string;
+  versionNumber: number;
+  exerciseCount: number;
+};
+
+export type AgentTemplate = {
+  id: string;
+  name: string;
+  visibility: TemplateVisibility;
+  versions: { number: number; note: string | null; source: string; createdAt: string }[];
+  exercises: StoredTemplateExercise[];
+};
+
+/** templateId null: neue Vorlage */
+export type AgentTemplateInput = {
+  templateId: string | null;
+  name: string;
+  note: string;
+  exercises: TemplateExercisePayload[];
+};
+
+/** Übung, wie eine KI sie beim Anlegen oder Ändern einer Vorlage angibt. */
+export type AgentExerciseInput = {
+  exercise_id: string;
+  sets: number;
+  reps?: number;
+  weight_kg?: number;
+  duration_seconds?: number;
+  distance_m?: number;
 };
 
 export type AgentWorkout = {
@@ -123,4 +179,78 @@ export function describeBests(bests: readonly AgentBest[]) {
         a.exerciseName.localeCompare(b.exerciseName, "de"),
     )
     .map((b) => ({ uebung: b.exerciseName, muskelgruppe: b.muscleGroup, bestwert: describeBest(b) }));
+}
+
+// ---------- Vorlagen ----------
+
+const MEASURE_LABEL: Record<ExerciseMeasure, string> = {
+  weight_reps: "Wiederholungen und Gewicht",
+  duration: "Dauer in Sekunden",
+  distance: "Strecke in Metern",
+};
+
+const dayFormat = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+/** Übungen der KI in die Nutzlast für save_template übersetzen. */
+export function toTemplatePayload(exercises: readonly AgentExerciseInput[]): TemplateExercisePayload[] {
+  return exercises.map((e) => ({
+    exercise_id: e.exercise_id,
+    target_sets: e.sets,
+    ...(e.reps !== undefined ? { target_reps: e.reps } : {}),
+    ...(e.weight_kg !== undefined ? { target_weight_kg: e.weight_kg } : {}),
+    ...(e.duration_seconds !== undefined ? { target_duration_seconds: e.duration_seconds } : {}),
+    ...(e.distance_m !== undefined ? { target_distance_m: e.distance_m } : {}),
+  }));
+}
+
+export function describeTemplateList(templates: readonly AgentTemplateSummary[]) {
+  return templates.map((t) => ({
+    template_id: t.id,
+    name: t.name,
+    sichtbarkeit: t.visibility === "public" ? "öffentlich" : "privat",
+    aktuelleVersion: t.versionNumber,
+    uebungen: t.exerciseCount,
+    geaendert: dayFormat.format(new Date(t.updatedAt)),
+  }));
+}
+
+export function describeTemplate(template: AgentTemplate) {
+  return {
+    template_id: template.id,
+    name: template.name,
+    sichtbarkeit: template.visibility === "public" ? "öffentlich" : "privat",
+    aktuelleVersion: template.versions[0]?.number ?? 1,
+    versionen: template.versions.map((v) => ({
+      version: v.number,
+      datum: dayFormat.format(new Date(v.createdAt)),
+      von: v.source === "ai" ? "KI" : "App",
+      notiz: v.note,
+    })),
+    uebungen: template.exercises.map((e) => ({
+      exercise_id: e.exerciseId,
+      name: e.exerciseName,
+      messart: MEASURE_LABEL[e.measure],
+      ziel: plain(formatTemplateTarget(e)),
+      sets: e.targetSets,
+      reps: e.targetReps,
+      weight_kg: e.targetWeightKg,
+      duration_seconds: e.targetDurationSeconds,
+      distance_m: e.targetDistanceM,
+    })),
+  };
+}
+
+/** Übungssuche für die KI, mit IDs zum Anlegen von Vorlagen. */
+export function describeExerciseSearch(exercises: readonly AgentExercise[], query: string, limit = 15) {
+  return searchExercises(exercises, query, limit).map((e) => ({
+    exercise_id: e.id,
+    name: e.name,
+    muskelgruppe: e.muscleGroup,
+    messart: MEASURE_LABEL[e.measure],
+  }));
 }
