@@ -22,6 +22,7 @@ import {
   formatDistance,
   formatDuration,
   formatSetLine,
+  formatWorkoutWhen,
   formatTemplateTarget,
   groupSetsIntoBlocks,
   formatWeight,
@@ -690,5 +691,23 @@ describe("Korrektur behält die Pausen", () => {
         { exercise_id: "b", set_number: 2, reps: 8, weight_kg: 60, rest_seconds: 95 },
       ],
     });
+  });
+});
+
+describe("Letzte Workouts: Zeitangabe", () => {
+  // Sonntag, 4. Oktober 2026, 13:46 Uhr deutscher Zeit
+  const now = new Date("2026-10-04T11:46:00Z");
+
+  it("sagt Heute und Gestern in deutscher Zeit", () => {
+    expect(formatWorkoutWhen("2026-10-04T11:42:49Z", now)).toBe("Heute, 13:42");
+    expect(formatWorkoutWhen("2026-10-03T07:10:00Z", now)).toBe("Gestern, 09:10");
+  });
+
+  it("ordnet ein Workout kurz nach Mitternacht deutscher Zeit dem neuen Tag zu", () => {
+    expect(formatWorkoutWhen("2026-10-03T22:30:00Z", now)).toBe("Heute, 00:30");
+  });
+
+  it("nennt ältere Workouts mit Wochentag und Datum", () => {
+    expect(formatWorkoutWhen("2026-09-28T16:05:00Z", now)).toMatch(/^Mo\.?, 28\. Sept\.?, 18:05$/);
   });
 });
