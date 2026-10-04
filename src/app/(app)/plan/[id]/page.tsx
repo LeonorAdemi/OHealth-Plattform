@@ -13,6 +13,7 @@ import {
   ShareSettings,
 } from "@/modules/core/components/meetup-forms";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
+import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
 import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull } from "@/modules/core/logic";
 import { getMeetup, getMyCommunities } from "@/modules/core/queries";
 
@@ -42,6 +43,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
+      <MarkMeetupRead meetupId={meetup.id} version={`${meetup.count}-${meetup.messages.at(-1)?.id ?? ""}`} />
       <p className="text-sm">
         <Link href="/" className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4">
           Heute

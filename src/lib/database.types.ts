@@ -311,6 +311,115 @@ export type Database = {
           },
         ]
       }
+      notification_prefs: {
+        Row: {
+          cancelled: boolean
+          joined: boolean
+          message: boolean
+          new_training_private: boolean
+          new_training_public: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled?: boolean
+          joined?: boolean
+          message?: boolean
+          new_training_private?: boolean
+          new_training_public?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          cancelled?: boolean
+          joined?: boolean
+          message?: boolean
+          new_training_private?: boolean
+          new_training_public?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          actor_name: string
+          count: number
+          created_at: string
+          group_id: string | null
+          id: string
+          kind: string
+          meetup_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name: string
+          count?: number
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind: string
+          meetup_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string
+          count?: number
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          kind?: string
+          meetup_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

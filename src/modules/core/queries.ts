@@ -7,7 +7,7 @@ import { toExerciseMeasure } from "@/lib/domain";
 import type { AgentClient } from "@/lib/supabase/agent";
 import { createClient } from "@/lib/supabase/server";
 
-import { communityKind } from "./logic";
+import { communityKind, toNotificationKind } from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
@@ -252,6 +252,67 @@ export async function getMeetup(meetupId: string) {
       createdAt: m.created_at,
       isMe: m.user_id === userId,
     })),
+  };
+}
+
+// ---------- Mitteilungen ----------
+
+/** Die letzten eigenen Mitteilungen, neueste zuerst. */
+export async function getNotifications(limit = 50) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, kind, meetup_id, group_id, actor_name, title, count, created_at, read_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error("Mitteilungen konnten nicht geladen werden.");
+  return data.map((n) => ({
+    id: n.id,
+    kind: toNotificationKind(n.kind),
+    meetupId: n.meetup_id,
+    groupId: n.group_id,
+    actorName: n.actor_name,
+    title: n.title,
+    count: n.count,
+    createdAt: n.created_at,
+    isUnread: n.read_at === null,
+  }));
+}
+
+/** Zahl der ungelesenen Mitteilungen für die Glocke. */
+export async function getUnreadNotificationCount() {
+  const { supabase } = await requireUser();
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export const NOTIFICATION_DEFAULTS = {
+  newTrainingPrivate: true,
+  newTrainingPublic: false,
+  joined: true,
+  message: true,
+  cancelled: true,
+};
+
+/** Eigene Einstellungen für Mitteilungen. Ohne gespeicherte Zeile gelten die Voreinstellungen. */
+export async function getNotificationPrefs() {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("notification_prefs")
+    .select("new_training_private, new_training_public, joined, message, cancelled")
+    .maybeSingle();
+  if (error) throw new Error("Einstellungen konnten nicht geladen werden.");
+  if (!data) return NOTIFICATION_DEFAULTS;
+  return {
+    newTrainingPrivate: data.new_training_private,
+    newTrainingPublic: data.new_training_public,
+    joined: data.joined,
+    message: data.message,
+    cancelled: data.cancelled,
   };
 }
 

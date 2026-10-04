@@ -54,6 +54,7 @@ insert into public.meetup_participants (meetup_id, user_id) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a');
 insert into public.meetup_messages (meetup_id, user_id, body) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', 'Bin dabei');
+insert into public.notification_prefs (user_id, message) values ('00000000-0000-0000-0000-00000000000a', false);
 
 -- ---------- ohne Anmeldung ----------
 set local role anon;
@@ -78,9 +79,11 @@ select is(
   + (select count(*)::int from public.template_versions where template_id = '40000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetups where created_by = '00000000-0000-0000-0000-00000000000a')
-  + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a'),
+  + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.notifications where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.notification_prefs where user_id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Chat-Nachrichten sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings, Chat-Nachrichten und Mitteilungen sind vollständig weg');
 
 select results_eq(
   $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,

@@ -454,6 +454,62 @@ export async function deleteMeetupMessage(_prev: FormState, formData: FormData):
   return {};
 }
 
+// ---------- Mitteilungen ----------
+
+/** Zahl der ungelesenen Mitteilungen, für die Glocke (fragt regelmäßig nach). */
+export async function fetchUnreadCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  return error ? 0 : (count ?? 0);
+}
+
+/** Markiert alle eigenen Mitteilungen als gelesen, etwa beim Öffnen der Mitteilungen. */
+export async function markAllNotificationsRead(): Promise<void> {
+  const supabase = await createClient();
+  // Ohne Neuladen: Die offene Seite zeigt "Neu" noch für diesen Besuch, die Glocke setzt sich selbst zurück.
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+}
+
+/** Markiert die Mitteilungen zu einem Training als gelesen, sobald man es ansieht. */
+export async function markMeetupNotificationsRead(meetupId: string): Promise<void> {
+  const id = z.uuid().safeParse(meetupId);
+  if (!id.success) return;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("meetup_id", id.data)
+    .is("read_at", null)
+    .select("id");
+  if (data && data.length > 0) revalidatePath("/", "layout");
+}
+
+/** Speichert, welche Mitteilungen man bekommen will. */
+export async function updateNotificationPrefs(_prev: FormState, formData: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const on = (name: string) => formData.get(name) === "on";
+  const { error } = await supabase.from("notification_prefs").upsert({
+    user_id: userId,
+    new_training_private: on("newTrainingPrivate"),
+    new_training_public: on("newTrainingPublic"),
+    joined: on("joined"),
+    message: on("message"),
+    cancelled: on("cancelled"),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
+
+  revalidatePath("/profil");
+  return { message: "Gespeichert" };
+}
+
 // ---------- Passwort zurücksetzen ----------
 
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {

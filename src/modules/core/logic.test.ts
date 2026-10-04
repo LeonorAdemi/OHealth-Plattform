@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  badgeCount,
+  describeNotification,
+  formatAgo,
   berlinDateTimeParts,
   berlinWeek,
   berlinLocalToDate,
@@ -166,5 +169,31 @@ describe("Wochenplan", () => {
     expect(week.to.toISOString()).toBe("2026-10-11T22:00:00.000Z");
     const later = berlinWeek(new Date("2026-10-04T10:00:00Z"), 4);
     expect(later.from.toISOString()).toBe("2026-10-25T23:00:00.000Z");
+  });
+});
+
+describe("Mitteilungen", () => {
+  it("beschreibt jede Art in einem Satz", () => {
+    const base = { actorName: "Ben", title: "Lauf", count: 1 };
+    expect(describeNotification({ ...base, kind: "new_training" })).toBe("Ben plant „Lauf“");
+    expect(describeNotification({ ...base, kind: "joined" })).toBe("Ben ist bei „Lauf“ dabei");
+    expect(describeNotification({ ...base, kind: "message" })).toBe("Ben hat zu „Lauf“ geschrieben");
+    expect(describeNotification({ ...base, kind: "message", count: 3 })).toBe(
+      "3 neue Nachrichten zu „Lauf“, zuletzt von Ben",
+    );
+    expect(describeNotification({ ...base, kind: "cancelled" })).toBe("Ben hat „Lauf“ abgesagt");
+  });
+
+  it("zeigt die Zeit relativ", () => {
+    const now = new Date("2026-10-04T12:00:00Z");
+    expect(formatAgo("2026-10-04T11:59:40Z", now)).toBe("gerade eben");
+    expect(formatAgo("2026-10-04T11:55:00Z", now)).toBe("vor 5\u00a0Min.");
+    expect(formatAgo("2026-10-04T09:00:00Z", now)).toBe("vor 3\u00a0Std.");
+    expect(formatAgo("2026-10-01T09:00:00Z", now)).toBe("1. Okt.");
+  });
+
+  it("kürzt den Zähler an der Glocke", () => {
+    expect(badgeCount(3)).toBe("3");
+    expect(badgeCount(12)).toBe("9+");
   });
 });

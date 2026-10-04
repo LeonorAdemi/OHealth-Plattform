@@ -234,3 +234,47 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
   const me = ranked.find((r) => r.row.isMe);
   return me && me.rank > n ? [...top, me] : top;
 }
+
+// ---------- Mitteilungen ----------
+
+export type NotificationKind = "new_training" | "joined" | "message" | "cancelled";
+
+export function toNotificationKind(value: string): NotificationKind {
+  return value === "joined" || value === "message" || value === "cancelled" ? value : "new_training";
+}
+
+/** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
+export function describeNotification(n: { kind: NotificationKind; actorName: string; title: string; count: number }): string {
+  switch (n.kind) {
+    case "new_training":
+      return `${n.actorName} plant „${n.title}“`;
+    case "joined":
+      return `${n.actorName} ist bei „${n.title}“ dabei`;
+    case "message":
+      return n.count > 1
+        ? `${n.count} neue Nachrichten zu „${n.title}“, zuletzt von ${n.actorName}`
+        : `${n.actorName} hat zu „${n.title}“ geschrieben`;
+    case "cancelled":
+      return `${n.actorName} hat „${n.title}“ abgesagt`;
+  }
+}
+
+/** Wann, relativ zu jetzt: "gerade eben", "vor 5 Min.", "vor 3 Std.", sonst Datum. */
+export function formatAgo(at: string, now: Date): string {
+  const minutes = Math.floor((now.getTime() - new Date(at).getTime()) / 60000);
+  if (minutes < 1) return "gerade eben";
+  if (minutes < 60) return `vor ${minutes}\u00a0Min.`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `vor ${hours}\u00a0Std.`;
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "short" }).format(
+    new Date(at),
+  );
+}
+
+/** Zähler an der Glocke: ab 10 nur noch "9+". */
+export function badgeCount(count: number): string {
+  return count > 9 ? "9+" : String(count);
+}
+
+/** Wie lange vorher ein Training unter "Gleich" erscheint. */
+export const REMINDER_HOURS = 3;

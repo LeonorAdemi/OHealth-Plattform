@@ -74,6 +74,12 @@ export default function PrivacyPage() {
           du zugesagt hast und deine Nachrichten im Chat eines Trainings.
         </li>
         <li>
+          <strong>Mitteilungen:</strong> Hinweise in der App, etwa dass jemand
+          ein Training geteilt, bei deinem zugesagt oder im Chat geschrieben
+          hat, mit Anzeigename, Titel und Zeitpunkt, ob du sie gelesen hast,
+          und welche Mitteilungen du bekommen willst.
+        </li>
+        <li>
           <strong>Technische Daten:</strong> beim Aufruf der App fallen bei
           unseren Dienstleistern Protokolldaten an, zum Beispiel IP-Adresse,
           Zeitpunkt und aufgerufene Seite.
@@ -137,6 +143,13 @@ export default function PrivacyPage() {
         haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
         kannst du jederzeit löschen. Entfernt die planende Person das
         Training, wird der Chat mit gelöscht.
+      </p>
+      <p>
+        Mitteilungen siehst nur du. Sie entstehen, wenn jemand in deinen
+        Communities ein Training teilt, bei deinem Training zusagt, im Chat
+        schreibt oder ein Training absagt. Im Profil stellst du ein, welche du
+        bekommst; neue Trainings aus öffentlichen Communities sind anfangs
+        aus.
       </p>
 
       <h2>Wer deine Vorlagen sieht</h2>
@@ -231,8 +244,8 @@ export default function PrivacyPage() {
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
         kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
-        Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen
-        und Chat-Nachrichten sofort entfernt. Communities, die
+        Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
+        Chat-Nachrichten und Mitteilungen sofort entfernt. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

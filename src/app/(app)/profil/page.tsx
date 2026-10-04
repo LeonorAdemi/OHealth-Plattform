@@ -7,9 +7,10 @@ import { signOut } from "@/modules/core/actions";
 import { ConnectedAgent, McpAddress } from "@/modules/core/components/agent-access";
 import { DeleteAccount } from "@/modules/core/components/delete-account";
 import { PasskeySetup } from "@/modules/core/components/passkey-setup";
+import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
 import { DisplayNameForm } from "@/modules/core/components/simple-forms";
 import { passkeysEnabled } from "@/modules/core/logic";
-import { getAgentGrants, getProfile } from "@/modules/core/queries";
+import { getAgentGrants, getNotificationPrefs, getProfile } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Profil" };
 
@@ -24,7 +25,12 @@ async function appOrigin() {
 }
 
 export default async function ProfilePage() {
-  const [profile, grants, origin] = await Promise.all([getProfile(), getAgentGrants(), appOrigin()]);
+  const [profile, grants, origin, prefs] = await Promise.all([
+    getProfile(),
+    getAgentGrants(),
+    appOrigin(),
+    getNotificationPrefs(),
+  ]);
 
   return (
     <>
@@ -35,6 +41,14 @@ export default async function ProfilePage() {
         <p className="text-muted-foreground mt-3 max-w-sm text-sm">
           So erscheinst du in den Ranglisten deiner Gruppen.
         </p>
+      </section>
+
+      <section className="mt-10 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">
+        <h2 id="mitteilungen-titel" className="text-xl font-semibold">
+          Mitteilungen
+        </h2>
+        <p className="text-muted-foreground mt-1 mb-2 text-sm">Wofür die Glocke dir Bescheid gibt.</p>
+        <NotificationPrefsForm prefs={prefs} />
       </section>
 
       {passkeysEnabled(process.env.NEXT_PUBLIC_PASSKEYS) && (

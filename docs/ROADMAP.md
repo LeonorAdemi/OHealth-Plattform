@@ -15,6 +15,7 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 7 | KI-Zugriff über MCP für Trainingstipps | Trainingstipps aus den eigenen Daten, ohne KI in der App zu betreiben | Gebaut und getestet. Offen: OAuth-Server in Supabase einschalten, Test mit Claude nach dem Deployment |
 | 8 | Öffentliche Communities (z. B. „Laufen München“) | Gemeinschaftseffekt über den Freundeskreis hinaus | Erledigt: Übersicht mit Suche, eigene Communities öffentlich oder privat, Teilen-Link, Rangliste (Migrationen public_communities, community_phase_a, Tests 09 und 13) |
 | 9 | Wochenplan, geteilte Trainings und Chat | Aus der Rangliste wird gemeinsames Training: Woche planen, mit Communities teilen, andere sagen zu und sprechen sich im Chat ab | Erledigt (Migrationen community_search_and_meetups, planned_trainings_and_chat, Test 14). Später denkbar: Zusage erst nach Bestätigung, Erinnerung, Chat in Echtzeit statt alle zehn Sekunden |
+| 10 | Mitteilungen | Ohne Bescheid kommt niemand zurück: neue Trainings, Zusagen, Chat und Absagen erscheinen an der Glocke | In der App erledigt (Migration notifications, Test 15). Offen: Push aufs Handy (Service Worker, Web-Push-Schlüssel, Versand und Erinnerungen) |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.
 
