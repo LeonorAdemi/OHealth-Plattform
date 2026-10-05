@@ -28,6 +28,17 @@ Abgerufen am 5. Oktober 2026.
 - Firmenfitness in Deutschland (rund 1,5 Mio. Nutzer von Aggregatoren, +21 %): [Wellhub Studie 2025](https://wellhub.com/de-de/ressourcen/studie-markt-firmenfitness-2025/), [Deloitte](https://www.deloitte.com/de/de/about/press-room/deutscher-fitnessmarkt-waechst-trotz-schwaechelnder-wirtschaft.html)
 - Kleinunternehmerregelung ab 2025 (25.000 € / 100.000 €): [sevdesk](https://sevdesk.de/blog/kleinunternehmerregelung-2025/), [selbststaendigkeit.de](https://selbststaendigkeit.de/buchhaltung-fuer-gruender/ustg-kleinunternehmer/)
 
+## Datenbasiertes Geschäftsmodell (11)
+
+Abgerufen am 5. Oktober 2026.
+
+- Strava Metro kostenlos für Städte, Verkauf an Städte schwierig, rund 90 % des Umsatzes aus Abos: [Micromobility Report](https://micromobilityreport.com.au/infrastructure/integration-and-data/strava-metro-data-now-available-free-of-charge/), [endurance.biz](https://endurance.biz/2020/industry-news/strava-metro-now-free-for-urban-planners-around-the-world/), [Sacra](https://sacra.com/chat/h/542830dc-20e2-44b8-b831-1fb30775cad1)
+- Gesundheitsdaten nach Art. 9 DSGVO, noyb gegen Fitbit: [netzpolitik.org](https://netzpolitik.org/2023/dsgvo-fitbit-soll-illegal-daten-verarbeiten/), [Dr. Datenschutz](https://www.dr-datenschutz.de/noyb-beschwerden-gegen-fitness-tracking-unternehmen-fitbit/)
+- Flo Health und die US-Handelsbehörde FTC: [MobiHealthNews](https://www.mobihealthnews.com/news/fertility-app-flo-health-settles-ftc-over-sensitive-data-sharing-complaint)
+- Strava-Heatmap und Militärstützpunkte 2018: [Engadget](https://www.engadget.com/2018/03/13/after-exposing-secret-military-bases-strava-restricts-data-visi/), [Fortune](https://www.fortune.com/2018/01/29/strava-heat-map-fitbit-fitness-tracking-military)
+- European Health Data Space (Verordnung (EU) 2025/327, Weiternutzung ab 2031, Wellness-Apps einbezogen): [EU-Kommission](https://health.ec.europa.eu/ehealth-digital-health-and-care/european-health-data-space-regulation-ehds_de), [Noerr](https://www.noerr.com/de/insights/der-european-health-data-space-kommt-ein-ueberblick)
+- Bonusprogramme der Krankenkassen und Apps: [Ärzteblatt](https://www.aerzteblatt.de/news/daten-aus-smartphone-apps-koennten-fuer-bonusprogramme-nutzbar-sein-1d3f8622-e14e-4854-a491-c6481e8cfb7b), [techbook](https://www.techbook.de/easylife/darum-zahlen-krankenkassen-fuer-wearables)
+
 ## Code
 
 Alle Angaben zur Ausgangslage stammen aus dem Repository (Zeilenzahlen, Seiten, Migrationen, Tests) auf dem Stand des Pull Requests #8.

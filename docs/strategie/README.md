@@ -36,6 +36,7 @@ In der Bewertung erreicht diese Option 4,2 von 5 Punkten. Zwei getrennte Apps ko
 | 08 | [Umsetzungsplan](08-umsetzungsplan.md) | Datenmodell, Arbeitspakete mit Abnahmekriterien, Zeitplan bis Januar 2027, Pilot München |
 | 09 | [Strategie-Review](09-strategie-review.md) | Kritische Prüfung nach AP1 und AP2, neu geschnittene Arbeitspakete N0 bis N6, Tore und Zeitplan (freigegeben) |
 | 10 | [Erlösmodell](10-erloesmodell.md) | Wie OHealth kurz-, mittel- und langfristig Geld verdient: Quellen, Größenordnungen, Fahrplan, Rechtliches |
+| 11 | [Datenbasiertes Geschäftsmodell](11-datenmodell.md) | Wo Daten Geld bringen und wo nicht: Auswertungen statt Datenverkauf, Krankenkassen mit Einwilligung, Leitplanken |
 | | [Quellen](quellen.md) | Belege und Annahmen |
 
 ## Vorgehen
