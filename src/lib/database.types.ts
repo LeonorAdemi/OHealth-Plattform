@@ -195,6 +195,36 @@ export type Database = {
           },
         ]
       }
+      cities: {
+        Row: {
+          aliases: string[]
+          country: string
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          status: string
+        }
+        Insert: {
+          aliases?: string[]
+          country: string
+          id: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          status?: string
+        }
+        Update: {
+          aliases?: string[]
+          country?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           aliases: string[]
@@ -317,6 +347,7 @@ export type Database = {
       groups: {
         Row: {
           city: string | null
+          city_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -325,10 +356,12 @@ export type Database = {
           invite_code: string
           name: string
           sport: string | null
+          sport_id: string | null
           type: string
         }
         Insert: {
           city?: string | null
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -337,10 +370,12 @@ export type Database = {
           invite_code?: string
           name: string
           sport?: string | null
+          sport_id?: string | null
           type?: string
         }
         Update: {
           city?: string | null
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -349,14 +384,29 @@ export type Database = {
           invite_code?: string
           name?: string
           sport?: string | null
+          sport_id?: string | null
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "groups_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "groups_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
             referencedColumns: ["id"]
           },
         ]
@@ -663,6 +713,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           city: string | null
+          city_id: string | null
           created_at: string
           display_name: string
           id: string
@@ -673,6 +724,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
           display_name: string
           id: string
@@ -683,13 +735,22 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
           display_name?: string
           id?: string
           is_private?: boolean
           sports?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -774,6 +835,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sports: {
+        Row: {
+          aliases: string[]
+          category: string
+          has_distance: boolean
+          has_elevation: boolean
+          has_sets: boolean
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          aliases?: string[]
+          category: string
+          has_distance?: boolean
+          has_elevation?: boolean
+          has_sets?: boolean
+          id: string
+          name: string
+          position?: number
+        }
+        Update: {
+          aliases?: string[]
+          category?: string
+          has_distance?: boolean
+          has_elevation?: boolean
+          has_sets?: boolean
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: []
       }
       template_version_exercises: {
         Row: {
@@ -986,10 +1080,16 @@ export type Database = {
       workouts: {
         Row: {
           created_at: string
+          distance_m: number | null
+          duration_minutes: number | null
+          elevation_m: number | null
+          feeling: number | null
           finished_at: string | null
           id: string
           notes: string | null
           performed_at: string
+          source: string
+          sport_id: string
           started_at: string | null
           template_version_id: string | null
           title: string | null
@@ -997,10 +1097,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
+          feeling?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          source?: string
+          sport_id?: string
           started_at?: string | null
           template_version_id?: string | null
           title?: string | null
@@ -1008,16 +1114,29 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
+          feeling?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          source?: string
+          sport_id?: string
           started_at?: string | null
           template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workouts_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workouts_template_version_id_fkey"
             columns: ["template_version_id"]

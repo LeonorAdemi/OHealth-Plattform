@@ -30,7 +30,7 @@ Beschlossen am 5. Oktober 2026. Details, Abnahmekriterien und Zeitplan stehen in
 | Nr. | Schritt | Warum an dieser Stelle | Stand |
 | --- | --- | --- | --- |
 | 17 | Vorbereitung: Pull Request #8 mergen, Migrationen einspielen, `v0.2.0` | Produktion auf aktuellem Stand | Offen |
-| 18 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Offen |
+| 18 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Erledigt (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
 | 19 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Offen |
 | 20 | „Warst du dabei?" nach Events | Gemeinsames Training zählt automatisch | Offen |
 | 21 | Bestwerte und Profil je Sportart | Fortschritt auch außerhalb des Krafttrainings | Offen |

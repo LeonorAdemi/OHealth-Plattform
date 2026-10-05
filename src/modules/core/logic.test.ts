@@ -21,6 +21,8 @@ import {
   communityKind,
   describeCommunity,
   describeProfile,
+  matchesSport,
+  toSportCategory,
   normalizeSports,
   uniqueSports,
   enabledProviders,
@@ -307,5 +309,23 @@ describe("Profil", () => {
     expect(describeProfile({ city: "München", sports: ["Laufen", "Yoga"] })).toBe("München · Laufen, Yoga");
     expect(describeProfile({ city: null, sports: ["Laufen"] })).toBe("Laufen");
     expect(describeProfile({ city: null, sports: [] })).toBe("");
+  });
+});
+
+describe("Sportarten", () => {
+  const fussball = { name: "Fußball", aliases: ["Soccer", "Kicken"] };
+
+  it("findet über Namen und Suchbegriffe, ohne Umlaute und Groß- und Kleinschreibung", () => {
+    expect(matchesSport(fussball, "fuss")).toBe(true);
+    expect(matchesSport(fussball, "FUẞ")).toBe(true);
+    expect(matchesSport(fussball, "kick")).toBe(true);
+    expect(matchesSport(fussball, "tennis")).toBe(false);
+  });
+  it("leere Suche zeigt alles", () => {
+    expect(matchesSport(fussball, "  ")).toBe(true);
+  });
+  it("unbekannte Bereiche landen unter Sonstiges", () => {
+    expect(toSportCategory("klettern")).toBe("klettern");
+    expect(toSportCategory("quidditch")).toBe("sonstiges");
   });
 });

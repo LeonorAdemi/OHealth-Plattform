@@ -9,7 +9,7 @@ import type { AgentClient } from "@/lib/supabase/agent";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 
-import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind } from "./logic";
+import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind, toSportCategory } from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
@@ -136,6 +136,40 @@ export async function getMyCommunity(id: string) {
   const mine = await getMyCommunities();
   return mine.find((c) => c.id === id) ?? null;
 }
+
+// ---------- Sportarten und Städte ----------
+
+/** Katalog der Sportarten, in fester Reihenfolge. Je Anfrage nur einmal geladen. */
+export const getSports = cache(async () => {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("sports")
+    .select("id, name, category, has_distance, has_elevation, has_sets, aliases")
+    .order("position")
+    .limit(200);
+  if (error) throw new Error("Sportarten konnten nicht geladen werden.");
+  return data.map((s) => ({
+    id: s.id,
+    name: s.name,
+    category: toSportCategory(s.category),
+    hasDistance: s.has_distance,
+    hasElevation: s.has_elevation,
+    hasSets: s.has_sets,
+    aliases: s.aliases,
+  }));
+});
+
+export type Sport = Awaited<ReturnType<typeof getSports>>[number];
+
+/** Städte: live zuerst, dann geplante, jeweils nach Name. */
+export const getCities = cache(async () => {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("cities").select("id, name, country, status").order("name").limit(200);
+  if (error) throw new Error("Städte konnten nicht geladen werden.");
+  return data
+    .map((c) => ({ id: c.id, name: c.name, country: c.country, isLive: c.status === "live" }))
+    .sort((a, b) => Number(b.isLive) - Number(a.isLive) || a.name.localeCompare(b.name, "de"));
+});
 
 // ---------- Chats ----------
 

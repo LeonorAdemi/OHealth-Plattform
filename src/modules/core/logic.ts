@@ -83,6 +83,39 @@ export function describeCommunity(c: { sport: string | null; city: string | null
   return [c.sport, c.city, members].filter(Boolean).join(" · ");
 }
 
+// ---------- Sportarten ----------
+
+export type SportCategory = "ausdauer" | "outdoor" | "kraft" | "klettern" | "ballsport" | "koerper" | "sonstiges";
+
+/** Überschriften der Bereiche im Katalog, in der Reihenfolge der Anzeige. */
+export const SPORT_CATEGORY_LABEL: Record<SportCategory, string> = {
+  ausdauer: "Ausdauer",
+  outdoor: "Outdoor",
+  kraft: "Kraft und Fitness",
+  klettern: "Klettern",
+  ballsport: "Ballsport",
+  koerper: "Körper und Geist",
+  sonstiges: "Sonstiges",
+};
+
+export function toSportCategory(value: string): SportCategory {
+  return value in SPORT_CATEGORY_LABEL ? (value as SportCategory) : "sonstiges";
+}
+
+/** Sucht im Katalog nach Name oder Suchbegriff, ohne Groß- und Kleinschreibung und Umlaute zu unterscheiden. */
+export function matchesSport(sport: { name: string; aliases: readonly string[] }, query: string): boolean {
+  const fold = (t: string) =>
+    t
+      .toLocaleLowerCase("de-DE")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/ß/g, "ss")
+      .trim();
+  const q = fold(query);
+  if (!q) return true;
+  return [sport.name, ...sport.aliases].some((t) => fold(t).includes(q));
+}
+
 // ---------- Profil ----------
 
 export const MAX_SPORTS = 5;
