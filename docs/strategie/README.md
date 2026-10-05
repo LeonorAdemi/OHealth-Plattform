@@ -34,6 +34,7 @@ In der Bewertung erreicht diese Option 4,2 von 5 Punkten. Zwei getrennte Apps ko
 | 06 | [Bewertung](06-bewertung.md) | Gewichtete Bewertung und Robustheit |
 | 07 | [Empfehlung und Fahrplan](07-empfehlung-und-fahrplan.md) | Empfehlung, 90-Tage-Plan, Kennzahlen, Entscheidungspunkte, Risiken |
 | 08 | [Umsetzungsplan](08-umsetzungsplan.md) | Datenmodell, Arbeitspakete mit Abnahmekriterien, Zeitplan bis Januar 2027, Pilot München |
+| 09 | [Strategie-Review](09-strategie-review.md) | Kritische Prüfung nach AP1 und AP2, neu geschnittene Arbeitspakete N0 bis N6, Tore und Zeitplan (Vorschlag) |
 | | [Quellen](quellen.md) | Belege und Annahmen |
 
 ## Vorgehen
