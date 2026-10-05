@@ -9,7 +9,7 @@ import type { AgentClient } from "@/lib/supabase/agent";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 
-import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind } from "./logic";
+import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind, toSportCategory } from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
@@ -25,7 +25,7 @@ export async function getProfile() {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, bio, city, sports")
+    .select("id, display_name, avatar_url, bio, city, sports, is_private")
     .eq("id", userId)
     .single();
 
@@ -41,7 +41,7 @@ export async function getPersonProfile(personId: string) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, bio, city, sports")
+    .select("id, display_name, avatar_url, bio, city, sports, is_private")
     .eq("id", personId)
     .maybeSingle();
 
@@ -137,7 +137,35 @@ export async function getMyCommunity(id: string) {
   return mine.find((c) => c.id === id) ?? null;
 }
 
+// ---------- Sportarten ----------
+
+/** Katalog der Sportarten, in fester Reihenfolge. Je Anfrage nur einmal geladen. */
+export const getSports = cache(async () => {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("sports")
+    .select("id, name, category, has_distance, has_elevation, has_sets, aliases")
+    .order("position")
+    .limit(200);
+  if (error) throw new Error("Sportarten konnten nicht geladen werden.");
+  return data.map((s) => ({
+    id: s.id,
+    name: s.name,
+    category: toSportCategory(s.category),
+    hasDistance: s.has_distance,
+    hasElevation: s.has_elevation,
+    hasSets: s.has_sets,
+    aliases: s.aliases,
+  }));
+});
+
+export type Sport = Awaited<ReturnType<typeof getSports>>[number];
+
 // ---------- Chats ----------
+
+function toChatKind(kind: string): "meetup" | "community" | "direct" {
+  return kind === "community" || kind === "direct" ? kind : "meetup";
+}
 
 /** Eigene Chats, neueste Nachricht zuerst, mit Zahl der ungelesenen Nachrichten. */
 export async function getMyChats(limit = 50) {
@@ -146,9 +174,12 @@ export async function getMyChats(limit = 50) {
   if (error) throw new Error("Chats konnten nicht geladen werden.");
   return data.map((c) => ({
     id: c.chat_id,
-    kind: c.kind === "community" ? ("community" as const) : ("meetup" as const),
+    kind: toChatKind(c.kind),
     meetupId: c.meetup_id,
     groupId: c.group_id,
+    otherUserId: c.other_user_id,
+    otherAvatarUrl: c.other_avatar_url,
+    request: c.request_state === "incoming" || c.request_state === "outgoing" ? c.request_state : null,
     title: c.title,
     startsAt: c.starts_at,
     last: c.last_at
@@ -191,16 +222,29 @@ export async function getUnreadChatCount() {
 export async function getChat(chatId: string) {
   const { supabase, userId } = await requireUser();
   const [chat, messages] = await Promise.all([
-    supabase.from("chats").select("id, kind, meetup_id, group_id").eq("id", chatId).maybeSingle(),
+    supabase
+      .from("chats")
+      .select("id, kind, meetup_id, group_id, user_low, user_high, requested_by, accepted_at")
+      .eq("id", chatId)
+      .maybeSingle(),
     supabase.rpc("chat_messages_page", { cid: chatId }),
   ]);
   if (chat.error || messages.error) throw new Error("Der Chat konnte nicht geladen werden.");
   if (!chat.data) return null;
   return {
     id: chat.data.id,
-    kind: chat.data.kind === "community" ? ("community" as const) : ("meetup" as const),
+    kind: toChatKind(chat.data.kind),
     meetupId: chat.data.meetup_id,
     groupId: chat.data.group_id,
+    // Im Privatchat die andere Person
+    otherUserId: chat.data.user_low === userId ? chat.data.user_high : chat.data.user_low,
+    // Nachrichtenanfrage: an mich (incoming) oder von mir, noch nicht angenommen (outgoing)
+    request:
+      chat.data.kind === "direct" && !chat.data.accepted_at
+        ? chat.data.requested_by === userId
+          ? ("outgoing" as const)
+          : ("incoming" as const)
+        : null,
     messages: messages.data.map((m) => ({
       id: m.id,
       userId: m.user_id,
@@ -210,6 +254,138 @@ export async function getChat(chatId: string) {
       isMe: m.user_id === userId,
     })),
   };
+}
+
+// ---------- Folgen ----------
+
+export type FollowList = "followers" | "following" | "requests";
+
+/** Eigene Follower, Gefolgte oder offene Anfragen an mich. */
+export async function getMyFollows(list: FollowList) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_follows", { list });
+  if (error) throw new Error("Die Liste konnte nicht geladen werden.");
+  return data.map((f) => ({
+    userId: f.user_id,
+    name: f.display_name,
+    avatarUrl: f.avatar_url,
+    since: f.since,
+    followsBack: f.follows_back,
+  }));
+}
+
+/** Zahl der offenen Folgen-Anfragen an mich. */
+export async function getFollowRequestCount() {
+  const { supabase, userId } = await requireUser();
+  const { count, error } = await supabase
+    .from("follows")
+    .select("follower_id", { count: "exact", head: true })
+    .eq("followee_id", userId)
+    .eq("status", "pending");
+  return error ? 0 : (count ?? 0);
+}
+
+export type FollowState = {
+  /** Folge ich der Person? */
+  following: "none" | "pending" | "accepted";
+  /** Folgt die Person mir (bestätigt)? */
+  followsMe: boolean;
+  /** Hat sie angefragt, mir zu folgen? */
+  requestedMe: boolean;
+  blocked: boolean;
+};
+
+/** Wie ich zu einer Person stehe. */
+export async function getFollowState(personId: string): Promise<FollowState> {
+  const { supabase, userId } = await requireUser();
+  const [follows, block] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("follower_id, status")
+      .or(`and(follower_id.eq.${userId},followee_id.eq.${personId}),and(follower_id.eq.${personId},followee_id.eq.${userId})`)
+      .limit(2),
+    supabase.from("blocks").select("blocked_id").eq("blocked_id", personId).maybeSingle(),
+  ]);
+  if (follows.error || block.error) throw new Error("Folgen konnte nicht geladen werden.");
+  const mine = follows.data.find((f) => f.follower_id === userId);
+  const theirs = follows.data.find((f) => f.follower_id === personId);
+  return {
+    following: mine ? (mine.status === "accepted" ? "accepted" : "pending") : "none",
+    followsMe: theirs?.status === "accepted",
+    requestedMe: theirs?.status === "pending",
+    blocked: Boolean(block.data),
+  };
+}
+
+const profileStatsSchema = z.object({
+  followers: z.number(),
+  following: z.number(),
+  can_see: z.boolean(),
+  days: z.array(z.string()).optional(),
+  bests: z
+    .array(z.object({ exercise: z.string(), e1rm: z.number(), max_weight: z.number().nullable() }))
+    .optional(),
+  events: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        starts_at: z.string(),
+        place: z.string().nullable(),
+        visible: z.boolean(),
+        invite_code: z.string().nullable(),
+      }),
+    )
+    .optional(),
+  communities: z
+    .array(z.object({ id: z.string(), name: z.string(), invite_code: z.string(), is_member: z.boolean() }))
+    .optional(),
+});
+
+/** Kacheln eines Profils. Ohne Recht auf die Inhalte nur Follower- und Folgt-Zahl. */
+export async function getProfileStats(personId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("profile_stats", { target: personId });
+  if (error) throw new Error("Das Profil konnte nicht geladen werden.");
+  const parsed = profileStatsSchema.safeParse(data);
+  if (!parsed.success) return null;
+  const p = parsed.data;
+  return {
+    followers: p.followers,
+    following: p.following,
+    canSee: p.can_see,
+    days: p.days ?? [],
+    bests: (p.bests ?? []).map((b) => ({ exercise: b.exercise, e1rm: b.e1rm, maxWeight: b.max_weight })),
+    events: (p.events ?? []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      startsAt: e.starts_at,
+      place: e.place,
+      href: e.visible ? `/plan/${e.id}` : e.invite_code ? `/beitreten/${e.invite_code}` : null,
+    })),
+    communities: (p.communities ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      href: c.is_member ? `/community/${c.id}` : `/beitreten/${c.invite_code}`,
+    })),
+  };
+}
+
+/** Menschen finden: mit Suchbegriff nach Namen, sonst Vorschläge aus den eigenen Communities. */
+export async function searchPeople(search: string, limit = 20) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("people_search", { search: search || undefined, max_rows: limit });
+  if (error) throw new Error("Die Suche hat nicht geklappt.");
+  return data.map((p) => ({
+    userId: p.user_id,
+    name: p.display_name,
+    avatarUrl: p.avatar_url,
+    isPrivate: p.is_private,
+    city: p.city,
+    sports: p.sports,
+    following: p.follow_status === "accepted" ? ("accepted" as const) : p.follow_status === "pending" ? ("pending" as const) : ("none" as const),
+    followsMe: p.follows_me,
+  }));
 }
 
 /** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */
@@ -353,7 +529,7 @@ export async function getNotifications(limit = 50) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, kind, meetup_id, group_id, actor_name, title, count, created_at, read_at")
+    .select("id, kind, meetup_id, group_id, actor_id, actor_name, title, count, created_at, read_at")
     // Chat-Nachrichten zählt der Tab „Chats“; als Mitteilung dienen sie nur noch dem Push.
     .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .order("created_at", { ascending: false })
@@ -364,6 +540,7 @@ export async function getNotifications(limit = 50) {
     kind: toNotificationKind(n.kind),
     meetupId: n.meetup_id,
     groupId: n.group_id,
+    actorId: n.actor_id,
     actorName: n.actor_name,
     title: n.title,
     count: n.count,
@@ -392,6 +569,8 @@ export const NOTIFICATION_DEFAULTS = {
   cancelled: true,
   reminder: true,
   communityMessage: false,
+  friends: true,
+  directMessage: true,
 };
 
 /** Eigene Einstellungen für Mitteilungen. Ohne gespeicherte Zeile gelten die Voreinstellungen. */
@@ -399,7 +578,7 @@ export async function getNotificationPrefs() {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notification_prefs")
-    .select("new_training_private, new_training_public, joined, message, cancelled, reminder, community_message")
+    .select("new_training_private, new_training_public, joined, message, cancelled, reminder, community_message, friends, direct_message")
     .maybeSingle();
   if (error) throw new Error("Einstellungen konnten nicht geladen werden.");
   if (!data) return NOTIFICATION_DEFAULTS;
@@ -411,6 +590,8 @@ export async function getNotificationPrefs() {
     cancelled: data.cancelled,
     reminder: data.reminder,
     communityMessage: data.community_message,
+    friends: data.friends,
+    directMessage: data.direct_message,
   };
 }
 
@@ -424,6 +605,7 @@ const pushPayloadSchema = z.object({
   count: z.number(),
   meetup_id: z.string().nullable(),
   chat_id: z.string().nullable().optional(),
+  actor_id: z.string().nullable().optional(),
   latest: z.string().nullable(),
   vapid_public_key: z.string().nullable(),
   vapid_private_key: z.string().nullable(),
@@ -449,6 +631,7 @@ export async function getPushPayload(notificationId: string, secret: string) {
     count: p.count,
     meetupId: p.meetup_id,
     chatId: p.chat_id ?? null,
+    actorId: p.actor_id ?? null,
     latest: p.latest,
     vapid: p.vapid_public_key && p.vapid_private_key ? { publicKey: p.vapid_public_key, privateKey: p.vapid_private_key } : null,
     subscriptions: p.subscriptions,

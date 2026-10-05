@@ -21,7 +21,24 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 | 13 | Tab „Chats" | Neue Nachrichten unten rechts statt an der Glocke; die Glocke zeigt nur noch Zusagen, neue Trainings und Erinnerungen | Erledigt (Migration chat_inbox, Test 19): Chat-Liste mit ungelesenen Nachrichten, Event- und Community-Chats unter /chats, Push öffnet den Chat |
 | 14 | Event-Chat unter jedem Event | Entsteht, sobald jemand zusagt; nur wer dabei ist, liest und schreibt | Erledigt: Chat-Zeile unter jedem Training auf Pinnwand und in „Gemeinsam trainieren“, ohne Zusage „Chat nach Zusage“ |
 | 15 | Chat je Community | Alle Mitglieder schreiben; Grenze von 30 Nachrichten pro Minute, Verwaltung kann löschen, Push anfangs aus | Erledigt (Migration community_chat, Test 20). Coaching-Gruppen ohne Chat |
-| 16 | Freundschaften und Privatchats | Anfrage senden und annehmen, erst danach privat schreiben; blockieren | Offen |
+| 16 | Folgen, Profile und Privatchats | Wie bei Instagram: öffentlichen Konten folgen, privaten nach Bestätigung; Profil mit Trainingstagen, Serie, Bestwerten, kommenden Events und Communities statt Bildern; Nachrichten an öffentliche Konten und an Konten, denen man folgt, als Anfrage | Erledigt (Migrationen friends_and_direct_chats und follows, Test 21). Konten sind anfangs privat |
+
+## Nächste Phase: Sport-Community (Option C)
+
+Beschlossen am 5. Oktober 2026. Details, Abnahmekriterien und Zeitplan stehen in `docs/strategie/08-umsetzungsplan.md`.
+
+| Nr. | Schritt | Warum an dieser Stelle | Stand |
+| --- | --- | --- | --- |
+| 17 | Vorbereitung: Pull Request #8 mergen, Migrationen einspielen, `v0.2.0` | Produktion auf aktuellem Stand | Offen |
+| 18 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Im Pull Request #8 (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
+| 19 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Im Pull Request #8 (Migration log_activity, Test 23): „Aktivität eintragen“ unter /aktivitaet/neu mit Sportart, Dauer, Distanz, Höhenmetern, Gefühl und Notiz; Listen und Detailansicht zeigen Sportart und Dauer; „Workout“ heißt in der Oberfläche „Aktivität“ |
+| 20 | „Warst du dabei?" nach Events | Gemeinsames Training zählt automatisch | Offen |
+| 21 | Bestwerte und Profil je Sportart | Fortschritt auch außerhalb des Krafttrainings | Offen |
+| 22 | Einstieg mit Sportarten, Stadt und Vorschlägen | Keine leere App für Neue | Offen |
+| 23 | Navigation Heute, Entdecken, Gruppen, Chats | Klares Versprechen | Offen |
+| 24 | Melden und Moderation | Vertrauen vor dem öffentlichen Start | Offen |
+| 25 | Öffentliche Event-Seite, wiederkehrende Events, Warteliste | Werkzeug, das WhatsApp ersetzt | Offen |
+| 26 | Kennzahlen und Ende-zu-Ende-Tests (zusammen mit Schritt 5) | Pilot messen und absichern | Offen |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.
 

@@ -51,16 +51,16 @@ export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
 
 /** Was Mitglieder voneinander sehen, je nach Art. Steht beim Erstellen und in der Community. */
 export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
-  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Workouts.",
-  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Workouts.",
-  coaching: "Beitritt nur über den Link. Der Coach sieht die Workouts aller Mitglieder, sie sehen einander nicht.",
+  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Aktivitäten.",
+  coaching: "Beitritt nur über den Link. Der Coach sieht die Aktivitäten aller Mitglieder, sie sehen einander nicht.",
 };
 
 /** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
 export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
-  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
-  private: "Wenn du beitrittst, sehen die Mitglieder deine Workouts und du ihre.",
-  coaching: "Wenn du beitrittst, sieht der Coach deine Workouts. Die anderen Mitglieder sehen sie nicht.",
+  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private: "Wenn du beitrittst, sehen die Mitglieder deine Aktivitäten und du ihre.",
+  coaching: "Wenn du beitrittst, sieht der Coach deine Aktivitäten. Die anderen Mitglieder sehen sie nicht.",
 };
 
 /** Vorschläge für die Sportart. Frei eintippen geht trotzdem. */
@@ -81,6 +81,39 @@ export const SPORT_SUGGESTIONS = [
 export function describeCommunity(c: { sport: string | null; city: string | null; memberCount: number }): string {
   const members = `${c.memberCount}\u00a0${c.memberCount === 1 ? "Mitglied" : "Mitglieder"}`;
   return [c.sport, c.city, members].filter(Boolean).join(" · ");
+}
+
+// ---------- Sportarten ----------
+
+export type SportCategory = "ausdauer" | "outdoor" | "kraft" | "klettern" | "ballsport" | "koerper" | "sonstiges";
+
+/** Überschriften der Bereiche im Katalog, in der Reihenfolge der Anzeige. */
+export const SPORT_CATEGORY_LABEL: Record<SportCategory, string> = {
+  ausdauer: "Ausdauer",
+  outdoor: "Outdoor",
+  kraft: "Kraft und Fitness",
+  klettern: "Klettern",
+  ballsport: "Ballsport",
+  koerper: "Körper und Geist",
+  sonstiges: "Sonstiges",
+};
+
+export function toSportCategory(value: string): SportCategory {
+  return value in SPORT_CATEGORY_LABEL ? (value as SportCategory) : "sonstiges";
+}
+
+/** Sucht im Katalog nach Name oder Suchbegriff, ohne Groß- und Kleinschreibung und Umlaute zu unterscheiden. */
+export function matchesSport(sport: { name: string; aliases: readonly string[] }, query: string): boolean {
+  const fold = (t: string) =>
+    t
+      .toLocaleLowerCase("de-DE")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/ß/g, "ss")
+      .trim();
+  const q = fold(query);
+  if (!q) return true;
+  return [sport.name, ...sport.aliases].some((t) => fold(t).includes(q));
 }
 
 // ---------- Profil ----------
@@ -266,19 +299,38 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
 
 // ---------- Mitteilungen ----------
 
-export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder" | "community_message";
+export type NotificationKind =
+  | "new_training"
+  | "joined"
+  | "message"
+  | "cancelled"
+  | "reminder"
+  | "community_message"
+  | "direct_message"
+  | "follow_request"
+  | "new_follower"
+  | "follow_accepted"
+  | "message_request";
+
+const NOTIFICATION_KINDS: readonly NotificationKind[] = [
+  "new_training",
+  "joined",
+  "message",
+  "cancelled",
+  "reminder",
+  "community_message",
+  "direct_message",
+  "follow_request",
+  "new_follower",
+  "follow_accepted",
+  "message_request",
+];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
-export const CHAT_NOTIFICATION_KINDS = ["message", "community_message"] as const;
+export const CHAT_NOTIFICATION_KINDS = ["message", "community_message", "direct_message", "message_request"] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
-  return value === "joined" ||
-    value === "message" ||
-    value === "cancelled" ||
-    value === "reminder" ||
-    value === "community_message"
-    ? value
-    : "new_training";
+  return NOTIFICATION_KINDS.find((k) => k === value) ?? "new_training";
 }
 
 /** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
@@ -300,6 +352,16 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return n.count > 1
         ? `${n.count} neue Nachrichten in „${n.title}“, zuletzt von ${n.actorName}`
         : `${n.actorName} hat in „${n.title}“ geschrieben`;
+    case "follow_request":
+      return `${n.actorName} möchte dir folgen`;
+    case "new_follower":
+      return `${n.actorName} folgt dir jetzt`;
+    case "follow_accepted":
+      return `${n.actorName} hat deine Anfrage angenommen`;
+    case "message_request":
+      return `${n.actorName} möchte dir schreiben`;
+    case "direct_message":
+      return n.count > 1 ? `${n.count} neue Nachrichten von ${n.actorName}` : `${n.actorName} hat dir geschrieben`;
   }
 }
 
@@ -314,20 +376,32 @@ export function pushContent(p: {
   count: number;
   meetupId: string | null;
   chatId?: string | null;
+  actorId?: string | null;
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
+  const isChat =
+    p.kind === "message" ||
+    p.kind === "community_message" ||
+    p.kind === "direct_message" ||
+    p.kind === "message_request";
   const url =
-    (p.kind === "message" || p.kind === "community_message") && p.chatId
+    isChat && p.chatId
       ? `/chats/${p.chatId}`
-      : p.meetupId
-        ? p.kind === "message"
-          ? `/plan/${p.meetupId}/chat`
-          : `/plan/${p.meetupId}`
-        : "/mitteilungen";
-  if ((p.kind === "message" || p.kind === "community_message") && p.latest) {
+      : p.kind === "follow_request"
+        ? "/verbindungen?tab=anfragen"
+        : (p.kind === "new_follower" || p.kind === "follow_accepted") && p.actorId
+          ? `/person/${p.actorId}`
+          : p.meetupId
+            ? p.kind === "message"
+              ? `/plan/${p.meetupId}/chat`
+              : `/plan/${p.meetupId}`
+            : "/mitteilungen";
+  if (isChat && p.latest) {
+    // Im Privatchat steht der Name schon im Titel, wie in Messengern
+    const text = p.kind === "direct_message" ? p.latest : `${p.actorName}: ${p.latest}`;
     return {
       title: p.title,
-      body: p.count > 1 ? `${p.actorName}: ${p.latest} (${p.count} neue)` : `${p.actorName}: ${p.latest}`,
+      body: p.count > 1 ? `${text} (${p.count} neue)` : text,
       url,
       tag: `chat-${p.chatId ?? p.meetupId}`,
     };

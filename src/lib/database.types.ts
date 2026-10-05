@@ -18,6 +18,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           body: string
@@ -92,25 +125,37 @@ export type Database = {
       }
       chats: {
         Row: {
+          accepted_at: string | null
           created_at: string
           group_id: string | null
           id: string
           kind: string
           meetup_id: string | null
+          requested_by: string | null
+          user_high: string | null
+          user_low: string | null
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           kind: string
           meetup_id?: string | null
+          requested_by?: string | null
+          user_high?: string | null
+          user_low?: string | null
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           kind?: string
           meetup_id?: string | null
+          requested_by?: string | null
+          user_high?: string | null
+          user_low?: string | null
         }
         Relationships: [
           {
@@ -127,7 +172,58 @@ export type Database = {
             referencedRelation: "meetups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chats_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_user_high_fkey"
+            columns: ["user_high"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_user_low_fkey"
+            columns: ["user_low"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      cities: {
+        Row: {
+          aliases: string[]
+          country: string
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          status: string
+        }
+        Insert: {
+          aliases?: string[]
+          country: string
+          id: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          status?: string
+        }
+        Update: {
+          aliases?: string[]
+          country?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          status?: string
+        }
+        Relationships: []
       }
       exercises: {
         Row: {
@@ -173,6 +269,45 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          followee_id: string
+          follower_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          followee_id: string
+          follower_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_followee_id_fkey"
+            columns: ["followee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           group_id: string
@@ -212,6 +347,7 @@ export type Database = {
       groups: {
         Row: {
           city: string | null
+          city_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -220,10 +356,12 @@ export type Database = {
           invite_code: string
           name: string
           sport: string | null
+          sport_id: string | null
           type: string
         }
         Insert: {
           city?: string | null
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -232,10 +370,12 @@ export type Database = {
           invite_code?: string
           name: string
           sport?: string | null
+          sport_id?: string | null
           type?: string
         }
         Update: {
           city?: string | null
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -244,14 +384,29 @@ export type Database = {
           invite_code?: string
           name?: string
           sport?: string | null
+          sport_id?: string | null
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "groups_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "groups_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
             referencedColumns: ["id"]
           },
         ]
@@ -426,6 +581,8 @@ export type Database = {
         Row: {
           cancelled: boolean
           community_message: boolean
+          direct_message: boolean
+          friends: boolean
           joined: boolean
           message: boolean
           new_training_private: boolean
@@ -437,6 +594,8 @@ export type Database = {
         Insert: {
           cancelled?: boolean
           community_message?: boolean
+          direct_message?: boolean
+          friends?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean
@@ -448,6 +607,8 @@ export type Database = {
         Update: {
           cancelled?: boolean
           community_message?: boolean
+          direct_message?: boolean
+          friends?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean
@@ -470,6 +631,7 @@ export type Database = {
         Row: {
           actor_id: string | null
           actor_name: string
+          chat_id: string | null
           count: number
           created_at: string
           group_id: string | null
@@ -483,6 +645,7 @@ export type Database = {
         Insert: {
           actor_id?: string | null
           actor_name: string
+          chat_id?: string | null
           count?: number
           created_at?: string
           group_id?: string | null
@@ -496,6 +659,7 @@ export type Database = {
         Update: {
           actor_id?: string | null
           actor_name?: string
+          chat_id?: string | null
           count?: number
           created_at?: string
           group_id?: string | null
@@ -512,6 +676,13 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
             referencedColumns: ["id"]
           },
           {
@@ -542,30 +713,44 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           city: string | null
+          city_id: string | null
           created_at: string
           display_name: string
           id: string
+          is_private: boolean
           sports: string[]
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
           display_name: string
           id: string
+          is_private?: boolean
           sports?: string[]
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          city_id?: string | null
           created_at?: string
           display_name?: string
           id?: string
+          is_private?: boolean
           sports?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -650,6 +835,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sports: {
+        Row: {
+          aliases: string[]
+          category: string
+          has_distance: boolean
+          has_elevation: boolean
+          has_sets: boolean
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          aliases?: string[]
+          category: string
+          has_distance?: boolean
+          has_elevation?: boolean
+          has_sets?: boolean
+          id: string
+          name: string
+          position?: number
+        }
+        Update: {
+          aliases?: string[]
+          category?: string
+          has_distance?: boolean
+          has_elevation?: boolean
+          has_sets?: boolean
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: []
       }
       template_version_exercises: {
         Row: {
@@ -862,10 +1080,16 @@ export type Database = {
       workouts: {
         Row: {
           created_at: string
+          distance_m: number | null
+          duration_minutes: number | null
+          elevation_m: number | null
+          feeling: number | null
           finished_at: string | null
           id: string
           notes: string | null
           performed_at: string
+          source: string
+          sport_id: string
           started_at: string | null
           template_version_id: string | null
           title: string | null
@@ -873,10 +1097,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
+          feeling?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          source?: string
+          sport_id?: string
           started_at?: string | null
           template_version_id?: string | null
           title?: string | null
@@ -884,16 +1114,29 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
+          feeling?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
           performed_at?: string
+          source?: string
+          sport_id?: string
           started_at?: string | null
           template_version_id?: string | null
           title?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workouts_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workouts_template_version_id_fkey"
             columns: ["template_version_id"]
@@ -1021,6 +1264,7 @@ export type Database = {
       }
     }
     Functions: {
+      block_person: { Args: { target: string }; Returns: undefined }
       chat_messages_page: {
         Args: { cid: string; max_rows?: number }
         Returns: {
@@ -1095,6 +1339,7 @@ export type Database = {
         Returns: string
       }
       delete_own_account: { Args: never; Returns: undefined }
+      follow_person: { Args: { target: string }; Returns: string }
       group_invite_preview: {
         Args: { code: string }
         Returns: {
@@ -1106,6 +1351,19 @@ export type Database = {
       }
       join_group: { Args: { code: string }; Returns: string }
       leave_group: { Args: { gid: string }; Returns: undefined }
+      log_activity: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_feeling?: number
+          p_id: string
+          p_notes?: string
+          p_performed_at: string
+          p_sport_id: string
+        }
+        Returns: string
+      }
       log_training: {
         Args: {
           p_finished_at: string
@@ -1179,6 +1437,9 @@ export type Database = {
           last_display_name: string
           last_user_id: string
           meetup_id: string
+          other_avatar_url: string
+          other_user_id: string
+          request_state: string
           starts_at: string
           title: string
           unread: number
@@ -1199,11 +1460,45 @@ export type Database = {
           type: string
         }[]
       }
+      my_follows: {
+        Args: { list: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          follows_back: boolean
+          since: string
+          user_id: string
+        }[]
+      }
+      open_direct_chat: { Args: { other: string }; Returns: string }
+      people_search: {
+        Args: { max_rows?: number; search?: string }
+        Returns: {
+          avatar_url: string
+          city: string
+          display_name: string
+          follow_status: string
+          follows_me: boolean
+          is_private: boolean
+          sports: string[]
+          user_id: string
+        }[]
+      }
+      profile_stats: { Args: { target: string }; Returns: Json }
       push_forget: {
         Args: { endpoint: string; secret: string }
         Returns: undefined
       }
       push_payload: { Args: { nid: string; secret: string }; Returns: Json }
+      remove_follower: { Args: { follower: string }; Returns: undefined }
+      respond_chat_request: {
+        Args: { accept: boolean; cid: string }
+        Returns: undefined
+      }
+      respond_follow_request: {
+        Args: { accept: boolean; follower: string }
+        Returns: undefined
+      }
       save_push_subscription: {
         Args: { auth: string; endpoint: string; p256dh: string }
         Returns: undefined
@@ -1219,7 +1514,22 @@ export type Database = {
         }
         Returns: string
       }
+      unblock_person: { Args: { target: string }; Returns: undefined }
+      unfollow_person: { Args: { target: string }; Returns: undefined }
       unread_chat_count: { Args: never; Returns: number }
+      update_activity: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_feeling?: number
+          p_id: string
+          p_notes?: string
+          p_performed_at: string
+          p_sport_id: string
+        }
+        Returns: string
+      }
       update_workout: {
         Args: { p_id: string; p_sets: Json; p_title: string }
         Returns: string

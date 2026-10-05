@@ -46,6 +46,8 @@ type Prefs = {
   cancelled: boolean;
   reminder: boolean;
   communityMessage: boolean;
+  friends: boolean;
+  directMessage: boolean;
 };
 
 const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
@@ -66,6 +68,12 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
     label: "Neue Nachrichten im Chat einer Community",
     hint: "Als Push aufs Handy. In großen Communities können das viele sein.",
   },
+  {
+    name: "directMessage",
+    label: "Neue Privatnachrichten und Nachrichtenanfragen",
+    hint: "Als Push aufs Handy. In der App zeigt der Tab Chats neue Nachrichten.",
+  },
+  { name: "friends", label: "Neue Follower und Folgen-Anfragen" },
   { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt" },
   { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
 ];

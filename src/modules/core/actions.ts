@@ -478,6 +478,7 @@ export async function markChatRead(chatId: string): Promise<void> {
     .is("read_at", null);
   if (chat.meetup_id) await unread.eq("kind", "message").eq("meetup_id", chat.meetup_id);
   else if (chat.group_id) await unread.eq("kind", "community_message").eq("group_id", chat.group_id);
+  else await unread.in("kind", ["direct_message", "message_request"]).eq("chat_id", id.data);
 }
 
 /** Zahl der Chats mit ungelesenen Nachrichten, für die Zahl am Tab. */
@@ -542,6 +543,8 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
     cancelled: on("cancelled"),
     reminder: on("reminder"),
     community_message: on("communityMessage"),
+    friends: on("friends"),
+    direct_message: on("directMessage"),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
@@ -627,15 +630,17 @@ const profileDetails = z.object({
     .max(60, "Die Stadt darf höchstens 60 Zeichen haben.")
     .transform((v) => v || null),
   sports: z.array(z.string().max(40, "Eine Sportart darf höchstens 40 Zeichen haben.")).max(20),
+  isPrivate: z.boolean(),
 });
 
-/** Speichert Name, Kurztext, Stadt und Sportarten und führt zurück zum Profil. */
+/** Speichert Name, Kurztext, Stadt, Sportarten und ob das Konto privat ist, und führt zurück zum Profil. */
 export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = profileDetails.safeParse({
     displayName: formData.get("displayName") ?? "",
     bio: formData.get("bio") ?? "",
     city: formData.get("city") ?? "",
     sports: formData.getAll("sports").filter((v) => typeof v === "string"),
+    isPrivate: formData.get("isPrivate") === "on",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -644,10 +649,10 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
-  const { displayName, bio, city, sports } = parsed.data;
+  const { displayName, bio, city, sports, isPrivate } = parsed.data;
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName, bio, city, sports: normalizeSports(sports) })
+    .update({ display_name: displayName, bio, city, sports: normalizeSports(sports), is_private: isPrivate })
     .eq("id", userId);
   if (error) return { error: "Das Profil konnte nicht gespeichert werden. Versuch es erneut." };
 
@@ -719,6 +724,113 @@ export async function removeAvatar(): Promise<FormState> {
 
   revalidatePath("/", "layout");
   return { message: "Profilbild entfernt" };
+}
+
+// ---------- Folgen ----------
+
+const personId = z.uuid();
+
+function revalidateFollows(id: string) {
+  revalidatePath(`/person/${id}`);
+  revalidatePath("/verbindungen");
+  revalidatePath("/profil");
+  revalidatePath("/menschen");
+}
+
+/** Folgen: öffentlichen Konten sofort, privaten als Anfrage. */
+export async function followPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("follow_person", { target: id.data });
+  if (error) {
+    if (error.code === "54000") return { error: "Du hast viele offene Anfragen. Warte, bis einige beantwortet sind." };
+    return { error: "Folgen hat nicht geklappt. Versuch es erneut." };
+  }
+  revalidateFollows(id.data);
+  return { message: data === "pending" ? "Angefragt" : "Du folgst jetzt" };
+}
+
+/** Nicht mehr folgen oder eine Anfrage zurückziehen. */
+export async function unfollowPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unfollow_person", { target: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFollows(id.data);
+  return {};
+}
+
+/** Folgen-Anfrage annehmen oder ablehnen. */
+export async function respondFollowRequest(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Anfrage gibt es nicht mehr." };
+  const accept = formData.get("accept") === "yes";
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_follow_request", { follower: id.data, accept });
+  if (error) return { error: "Diese Anfrage gibt es nicht mehr." };
+  revalidateFollows(id.data);
+  revalidatePath("/", "layout");
+  return { message: accept ? "Angenommen" : "Abgelehnt" };
+}
+
+/** Einen Follower entfernen. */
+export async function removeFollower(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_follower", { follower: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFollows(id.data);
+  return { message: "Entfernt" };
+}
+
+/** Blockiert eine Person: kein Folgen und keine Privatchats mehr, in beide Richtungen. */
+export async function blockPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("block_person", { target: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFollows(id.data);
+  return { message: "Blockiert" };
+}
+
+export async function unblockPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unblock_person", { target: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFollows(id.data);
+  return {};
+}
+
+/**
+ * Öffnet den Privatchat mit einer Person. Wer sich gegenseitig folgt, schreibt direkt; sonst wird
+ * die erste Nachricht zur Anfrage (an öffentliche Konten und an Konten, denen ich bestätigt folge).
+ */
+export async function openDirectChat(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("open_direct_chat", { other: id.data });
+  if (error || !data) return { error: "Einem privaten Konto kannst du erst schreiben, wenn du ihm folgst." };
+  redirect(`/chats/${data}`);
+}
+
+/** Nachrichtenanfrage annehmen oder ablehnen (ablehnen löscht den Chat). */
+export async function respondChatRequest(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("chatId"));
+  if (!id.success) return { error: "Diese Anfrage gibt es nicht mehr." };
+  const accept = formData.get("accept") === "yes";
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_chat_request", { cid: id.data, accept });
+  if (error) return { error: "Diese Anfrage gibt es nicht mehr." };
+  revalidatePath("/chats", "layout");
+  if (!accept) redirect("/chats");
+  return {};
 }
 
 // ---------- Einladung ----------

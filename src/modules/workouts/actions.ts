@@ -102,6 +102,71 @@ export async function saveTraining(input: unknown): Promise<Result<{ id: string 
   return { ok: true, data: { id: data } };
 }
 
+const activitySchema = z.object({
+  id: z.uuid(),
+  sportId: z.string().regex(/^[a-z0-9_]{2,30}$/, "Wähl eine Sportart."),
+  performedAt: z.iso.datetime({ offset: true }),
+  durationMinutes: z.int("Gib eine Dauer ein.").min(1, "Gib eine Dauer ein.").max(1440, "Höchstens 24 Stunden."),
+  distanceM: z.number().positive().max(1_000_000).nullable(),
+  elevationM: z.int().min(0).max(20_000).nullable(),
+  feeling: z.int().min(1).max(5).nullable(),
+  notes: z.string().trim().max(500, "Die Notiz darf höchstens 500 Zeichen haben.").nullable(),
+});
+
+function activityParams(a: z.infer<typeof activitySchema>) {
+  return {
+    p_id: a.id,
+    p_sport_id: a.sportId,
+    p_performed_at: a.performedAt,
+    p_duration_minutes: a.durationMinutes,
+    // Leere Angaben schickt die App als null; die Typen der Datenbankfunktion kennen dafür undefined.
+    p_distance_m: a.distanceM ?? undefined,
+    p_elevation_m: a.elevationM ?? undefined,
+    p_feeling: a.feeling ?? undefined,
+    p_notes: a.notes ?? undefined,
+  };
+}
+
+/**
+ * Trägt eine Aktivität mit Sportart und Dauer ein (log_activity). Die ID vergibt das Gerät, ein
+ * wiederholter Versuch legt nichts doppelt an. Ob Distanz und Höhenmeter zur Sportart passen,
+ * prüft die Datenbank.
+ */
+export async function saveActivity(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = activitySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("log_activity", activityParams(parsed.data));
+  if (error || !data) {
+    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
+    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
+  }
+
+  revalidateWorkoutViews();
+  return { ok: true, data: { id: data } };
+}
+
+/** Ändert die Angaben einer eigenen Aktivität (update_activity). Sätze bleiben unberührt. */
+export async function updateActivity(input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = activitySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("update_activity", activityParams(parsed.data));
+  if (error || !data) {
+    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
+    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
+  }
+
+  revalidateWorkoutViews(data);
+  return { ok: true, data: { id: data } };
+}
+
 function revalidateWorkoutViews(id?: string) {
   revalidatePath("/");
   revalidatePath("/verlauf");
@@ -140,13 +205,13 @@ export async function updateWorkout(input: unknown): Promise<Result<{ id: string
 /** Löscht ein eigenes Workout samt Sätzen. Fremde Workouts lässt die Datenbank nicht zu. */
 export async function deleteWorkout(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = z.uuid().safeParse(formData.get("id"));
-  if (!id.success) return { error: "Dieses Workout gibt es nicht mehr." };
+  if (!id.success) return { error: "Diese Aktivität gibt es nicht mehr." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("workouts").delete().eq("id", id.data).select("id");
 
   if (error) return { error: "Löschen fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
-  if (data.length === 0) return { error: "Dieses Workout gibt es nicht mehr." };
+  if (data.length === 0) return { error: "Diese Aktivität gibt es nicht mehr." };
 
   revalidateWorkoutViews();
   redirect("/verlauf");

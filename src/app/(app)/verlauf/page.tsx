@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { APP_TIME_ZONE, summarizeSets } from "@/modules/workouts/logic";
+import { activityMinutes, APP_TIME_ZONE, describeActivity, summarizeSets } from "@/modules/workouts/logic";
 import { getRecentWorkouts } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Verlauf" };
@@ -31,9 +31,9 @@ export default async function HistoryPage() {
 
       {workouts.length === 0 ? (
         <div className="mt-8">
-          <p>Noch keine Workouts. Starte dein erstes.</p>
+          <p>Noch keine Aktivitäten. Trag deine erste ein.</p>
           <Button asChild className="mt-6 w-full md:w-auto">
-            <Link href="/training">Workout starten</Link>
+            <Link href="/aktivitaet/neu">Aktivität eintragen</Link>
           </Button>
         </div>
       ) : (
@@ -47,8 +47,21 @@ export default async function HistoryPage() {
                 <span className="text-muted-foreground block text-sm">
                   {dateFormat.format(new Date(workout.performed_at))}
                 </span>
-                <span className="mt-1 block font-medium">{workout.title ?? "Workout"}</span>
+                <span className="mt-1 block font-medium">{workout.title ?? workout.sportName}</span>
                 <span className="text-muted-foreground mt-1 block text-sm">
+                  <span className="block">
+                    {describeActivity({
+                      sportName: workout.title ? workout.sportName : "",
+                      durationMinutes: activityMinutes({
+                        durationMinutes: workout.duration_minutes,
+                        startedAt: workout.started_at,
+                        finishedAt: workout.finished_at,
+                      }),
+                      distanceM: workout.distance_m,
+                      elevationM: workout.elevation_m,
+                      setCount: 0,
+                    })}
+                  </span>
                   {summarizeSets(workout.workout_sets).map((line) => (
                     <span key={line} className="block">
                       {line}

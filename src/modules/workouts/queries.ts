@@ -58,40 +58,56 @@ export async function getLeaderboard(groupId: string, now: Date) {
   );
 }
 
-/** Die letzten eigenen Workouts mit ihren Sätzen. */
+/** Die letzten eigenen Aktivitäten mit Sportart und Sätzen. */
 export async function getRecentWorkouts(limit = 20) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, started_at, finished_at, workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
+      "id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, elevation_m, sports(name), workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
     )
     .eq("user_id", userId)
     .order("performed_at", { ascending: false })
     .order("position", { referencedTable: "workout_sets" })
     .limit(limit);
 
-  if (error) throw new Error("Workouts konnten nicht geladen werden.");
-  return data;
+  if (error) throw new Error("Aktivitäten konnten nicht geladen werden.");
+  return data.map((w) => ({ ...w, sportName: w.sports?.name ?? "Aktivität" }));
 }
 
-/** Eigene Workouts in einem Zeitraum, für den Wochenplan. */
+/** Die zuletzt genutzten eigenen Sportarten, neueste zuerst, ohne Doppelte. */
+export async function getMyRecentSportIds(limit = 6) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("sport_id")
+    .eq("user_id", userId)
+    .order("performed_at", { ascending: false })
+    .limit(50);
+  if (error) return [];
+  return [...new Set(data.map((w) => w.sport_id))].slice(0, limit);
+}
+
+/** Eigene Aktivitäten in einem Zeitraum, für den Wochenplan. */
 export async function getMyWorkoutsBetween(from: Date, to: Date) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, title, performed_at, workout_sets(count)")
+    .select("id, title, performed_at, duration_minutes, distance_m, sports(name), workout_sets(count)")
     .eq("user_id", userId)
     .gte("performed_at", from.toISOString())
     .lt("performed_at", to.toISOString())
     .order("performed_at")
     .limit(100);
 
-  if (error) throw new Error("Workouts konnten nicht geladen werden.");
+  if (error) throw new Error("Aktivitäten konnten nicht geladen werden.");
   return data.map((w) => ({
     id: w.id,
     title: w.title,
     performedAt: w.performed_at,
+    sportName: w.sports?.name ?? "Aktivität",
+    durationMinutes: w.duration_minutes,
+    distanceM: w.distance_m,
     setCount: w.workout_sets[0]?.count ?? 0,
   }));
 }
@@ -185,7 +201,7 @@ export async function getGroupActivity(groupId: string, limit = 10) {
 
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, user_id, title, performed_at, started_at, finished_at, workout_sets(count)")
+    .select("id, user_id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, sports(name), workout_sets(count)")
     .in("user_id", members.map((m) => m.userId))
     .order("performed_at", { ascending: false })
     .limit(limit);
@@ -196,9 +212,12 @@ export async function getGroupActivity(groupId: string, limit = 10) {
     isMe: workout.user_id === userId,
     name: names.get(workout.user_id) ?? "Unbekannt",
     title: workout.title,
+    sportName: workout.sports?.name ?? "Aktivität",
     performedAt: workout.performed_at,
     startedAt: workout.started_at,
     finishedAt: workout.finished_at,
+    durationMinutes: workout.duration_minutes,
+    distanceM: workout.distance_m,
     setCount: workout.workout_sets[0]?.count ?? 0,
   }));
 }
@@ -266,20 +285,20 @@ export async function getGroupBests(groupId: string, selectedExerciseId?: string
   return { exercises, selected, ranking };
 }
 
-/** Ein eigenes Workout mit seinen Sätzen in gespeicherter Reihenfolge. null, wenn es nicht existiert. */
+/** Eine eigene Aktivität mit Angaben und Sätzen in gespeicherter Reihenfolge. null, wenn es sie nicht gibt. */
 export async function getWorkout(id: string) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, started_at, finished_at, workout_sets(reps, duration_seconds, distance_m, weight_kg, rest_seconds, position, exercises(id, name, measure))",
+      "id, title, performed_at, started_at, finished_at, sport_id, duration_minutes, distance_m, elevation_m, feeling, notes, sports(name, has_sets), workout_sets(reps, duration_seconds, distance_m, weight_kg, rest_seconds, position, exercises(id, name, measure))",
     )
     .eq("id", id)
     .eq("user_id", userId)
     .order("position", { referencedTable: "workout_sets" })
     .maybeSingle();
 
-  if (error) throw new Error("Das Workout konnte nicht geladen werden.");
+  if (error) throw new Error("Die Aktivität konnte nicht geladen werden.");
   if (!data) return null;
 
   const sets: StoredSet[] = data.workout_sets.flatMap((row) =>
@@ -305,6 +324,14 @@ export async function getWorkout(id: string) {
     performedAt: data.performed_at,
     startedAt: data.started_at,
     finishedAt: data.finished_at,
+    sportId: data.sport_id,
+    sportName: data.sports?.name ?? "Aktivität",
+    sportHasSets: data.sports?.has_sets ?? false,
+    durationMinutes: data.duration_minutes,
+    distanceM: data.distance_m,
+    elevationM: data.elevation_m,
+    feeling: data.feeling,
+    notes: data.notes,
     sets,
   };
 }

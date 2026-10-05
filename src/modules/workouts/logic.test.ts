@@ -12,7 +12,6 @@ import {
   formatClock,
   formatLastSets,
   formatSessionSummary,
-  formatWorkoutDuration,
   parseTrainingSession,
   planTrainingEntries,
   reopenSet,
@@ -39,6 +38,12 @@ import {
   type StoredSet,
   weekGrid,
   weekKeys,
+  weekStreak,
+  activityMinutes,
+  describeActivity,
+  formatActivityDuration,
+  parseDistanceKm,
+  parseDurationMinutes,
 } from "./logic";
 
 // Samstag, 3. Oktober 2026, 12:00 Uhr deutscher Zeit
@@ -512,12 +517,6 @@ describe("Training: Zeiten", () => {
     expect(formatClock(3723)).toBe("1:02:03");
     expect(formatClock(-5)).toBe("0:00");
   });
-
-  it("nennt die Dauer eines Workouts in Minuten und Stunden", () => {
-    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T08:52:30Z")).toBe("52 min");
-    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T09:05:00Z")).toBe("1 h 05 min");
-    expect(formatWorkoutDuration("2026-10-04T08:00:00Z", "2026-10-04T08:00:30Z")).toBe("unter 1 min");
-  });
 });
 
 describe("Training: Vorbelegung", () => {
@@ -709,5 +708,70 @@ describe("Letzte Workouts: Zeitangabe", () => {
 
   it("nennt ältere Workouts mit Wochentag und Datum", () => {
     expect(formatWorkoutWhen("2026-09-28T16:05:00Z", now)).toMatch(/^Mo\.?, 28\. Sept\.?, 18:05$/);
+  });
+});
+
+describe("Serie in Wochen", () => {
+  // Sonntag, 4. Oktober 2026, mittags deutscher Zeit
+  const now = new Date("2026-10-04T10:00:00Z");
+
+  it("zählt aufeinanderfolgende Wochen bis zur laufenden", () => {
+    expect(weekStreak(["2026-10-01", "2026-09-22", "2026-09-14"], now)).toBe(3);
+  });
+  it("die laufende Woche ohne Training beendet die Serie nicht", () => {
+    expect(weekStreak(["2026-09-22", "2026-09-14"], new Date("2026-09-28T10:00:00Z"))).toBe(2);
+  });
+  it("eine Woche Pause beendet die Serie", () => {
+    expect(weekStreak(["2026-10-01", "2026-09-14"], now)).toBe(1);
+  });
+  it("ohne Training keine Serie", () => {
+    expect(weekStreak([], now)).toBe(0);
+  });
+});
+
+describe("Aktivität", () => {
+  it("Dauer als Minuten oder Stunden", () => {
+    expect(formatActivityDuration(45)).toBe("45\u00a0min");
+    expect(formatActivityDuration(90)).toBe("1\u00a0h 30\u00a0min");
+    expect(formatActivityDuration(120)).toBe("2\u00a0h 00\u00a0min");
+  });
+  it("Kurzbeschreibung je nach Angaben", () => {
+    expect(describeActivity({ sportName: "Laufen", durationMinutes: 45, distanceM: 8200, setCount: 0 })).toBe(
+      "Laufen · 45\u00a0min · 8,2\u00a0km",
+    );
+    expect(describeActivity({ sportName: "Bouldern", durationMinutes: 90, distanceM: null, setCount: 0 })).toBe(
+      "Bouldern · 1\u00a0h 30\u00a0min",
+    );
+    expect(describeActivity({ sportName: "Krafttraining", durationMinutes: null, distanceM: null, setCount: 12 })).toBe(
+      "Krafttraining · 12\u00a0Sätze",
+    );
+    expect(
+      describeActivity({ sportName: "Wandern", durationMinutes: 240, distanceM: 14500, elevationM: 1200, setCount: 0 }),
+    ).toBe("Wandern · 4\u00a0h 00\u00a0min · 14,5\u00a0km · 1.200\u00a0Hm");
+  });
+  it("Dauer eingetragen oder aus Start und Ende", () => {
+    expect(activityMinutes({ durationMinutes: 45, startedAt: null, finishedAt: null })).toBe(45);
+    expect(
+      activityMinutes({ durationMinutes: null, startedAt: "2026-10-04T10:00:00Z", finishedAt: "2026-10-04T11:10:00Z" }),
+    ).toBe(70);
+    expect(activityMinutes({ durationMinutes: null, startedAt: null, finishedAt: null })).toBeNull();
+    expect(
+      activityMinutes({ durationMinutes: null, startedAt: "2026-10-01T10:00:00Z", finishedAt: "2026-10-04T11:10:00Z" }),
+    ).toBeNull();
+  });
+
+  it("Dauer aus Stunden und Minuten", () => {
+    expect(parseDurationMinutes("1", "30")).toBe(90);
+    expect(parseDurationMinutes("", "45")).toBe(45);
+    expect(parseDurationMinutes("0", "0")).toBeNull();
+    expect(parseDurationMinutes("1", "75")).toBeNull();
+    expect(parseDurationMinutes("25", "0")).toBeNull();
+    expect(parseDurationMinutes("x", "5")).toBeNull();
+  });
+  it("Distanz in Kilometern", () => {
+    expect(parseDistanceKm("8,2")).toBe(8200);
+    expect(parseDistanceKm("  ")).toBeNull();
+    expect(parseDistanceKm("abc")).toBeNaN();
+    expect(parseDistanceKm("0")).toBeNaN();
   });
 });

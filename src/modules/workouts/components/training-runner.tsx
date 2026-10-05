@@ -399,7 +399,7 @@ export function TrainingRunner({
           </p>
         )}
         <Button className="w-full md:w-auto" disabled={saving} onClick={finish}>
-          {saving ? "Wird gesendet" : "Workout beenden"}
+          {saving ? "Wird gesendet" : "Training beenden"}
         </Button>
       </div>
 

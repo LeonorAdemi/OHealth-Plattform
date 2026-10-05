@@ -151,7 +151,7 @@ export function WorkoutForm({
   return (
     <div className="max-w-xl space-y-8">
       <div className="space-y-2">
-        <Label htmlFor="title">Name des Workouts (optional)</Label>
+        <Label htmlFor="title">Name (optional)</Label>
         <Input
           id="title"
           value={draft.title}
@@ -265,7 +265,7 @@ export function WorkoutForm({
           </p>
         )}
         <Button className="w-full md:w-auto" disabled={saving} onClick={submit}>
-          {saving ? "Wird gesendet" : existing ? "Änderungen speichern" : "Workout speichern"}
+          {saving ? "Wird gesendet" : existing ? "Änderungen speichern" : "Aktivität speichern"}
         </Button>
       </div>
     </div>

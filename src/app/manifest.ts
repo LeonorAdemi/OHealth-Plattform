@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "OHealth",
     short_name: "OHealth",
-    description: "Workouts tracken und in der Gruppe vergleichen.",
+    description: "Jede Sportart tracken und in der Gruppe vergleichen.",
     lang: "de",
     start_url: "/",
     display: "standalone",

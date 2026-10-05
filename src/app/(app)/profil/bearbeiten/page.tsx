@@ -21,7 +21,7 @@ export default async function EditProfilePage() {
       </p>
       <h1 className="text-titel mt-2 font-semibold">Profil bearbeiten</h1>
       <p className="text-muted-foreground mt-2 max-w-xl text-sm">
-        Bild, Name und Angaben sehen alle, mit denen du in einer Gruppe oder Community bist.
+        Bild, Name und Angaben sehen alle, mit denen du in einer Gruppe oder Community bist, deine Follower und bei einem öffentlichen Konto alle angemeldeten Nutzer.
       </p>
 
       <section className="mt-8" aria-label="Profilbild">

@@ -21,6 +21,8 @@ import {
   communityKind,
   describeCommunity,
   describeProfile,
+  matchesSport,
+  toSportCategory,
   normalizeSports,
   uniqueSports,
   enabledProviders,
@@ -227,6 +229,26 @@ describe("Push", () => {
     });
   });
 
+  it("Privatchat: Name im Titel, Nachricht ohne Namen", () => {
+    const direct = { ...base, kind: "direct_message" as const, title: "Ben", latest: "Lust?", chatId: "c3", meetupId: null };
+    expect(pushContent(direct)).toEqual({ title: "Ben", body: "Lust?", url: "/chats/c3", tag: "chat-c3" });
+  });
+
+  it("Folgen: Anfrage führt zu den Anfragen, neuer Follower zum Profil", () => {
+    expect(pushContent({ ...base, kind: "follow_request", meetupId: null, actorId: "u1" })).toMatchObject({
+      body: "Ben möchte dir folgen",
+      url: "/verbindungen?tab=anfragen",
+    });
+    expect(pushContent({ ...base, kind: "new_follower", meetupId: null, actorId: "u1" }).url).toBe("/person/u1");
+  });
+
+  it("Nachrichtenanfrage: ohne Inhalt, öffnet den Chat", () => {
+    expect(pushContent({ ...base, kind: "message_request", meetupId: null, chatId: "c4" })).toMatchObject({
+      body: "Ben möchte dir schreiben",
+      url: "/chats/c4",
+    });
+  });
+
   it("nimmt sonst den Satz der Mitteilung", () => {
     expect(pushContent({ ...base, kind: "joined" })).toMatchObject({ body: "Ben ist bei „Lauf“ dabei", url: "/plan/m1" });
     expect(pushContent({ ...base, kind: "cancelled", meetupId: null }).url).toBe("/mitteilungen");
@@ -287,5 +309,23 @@ describe("Profil", () => {
     expect(describeProfile({ city: "München", sports: ["Laufen", "Yoga"] })).toBe("München · Laufen, Yoga");
     expect(describeProfile({ city: null, sports: ["Laufen"] })).toBe("Laufen");
     expect(describeProfile({ city: null, sports: [] })).toBe("");
+  });
+});
+
+describe("Sportarten", () => {
+  const fussball = { name: "Fußball", aliases: ["Soccer", "Kicken"] };
+
+  it("findet über Namen und Suchbegriffe, ohne Umlaute und Groß- und Kleinschreibung", () => {
+    expect(matchesSport(fussball, "fuss")).toBe(true);
+    expect(matchesSport(fussball, "FUẞ")).toBe(true);
+    expect(matchesSport(fussball, "kick")).toBe(true);
+    expect(matchesSport(fussball, "tennis")).toBe(false);
+  });
+  it("leere Suche zeigt alles", () => {
+    expect(matchesSport(fussball, "  ")).toBe(true);
+  });
+  it("unbekannte Bereiche landen unter Sonstiges", () => {
+    expect(toSportCategory("klettern")).toBe("klettern");
+    expect(toSportCategory("quidditch")).toBe("sonstiges");
   });
 });

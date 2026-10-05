@@ -125,7 +125,7 @@ export function AvatarPicker({ path, name }: { path: string | null; name: string
 export function ProfileForm({
   profile,
 }: {
-  profile: { display_name: string; bio: string | null; city: string | null; sports: string[] };
+  profile: { display_name: string; bio: string | null; city: string | null; sports: string[]; is_private: boolean };
 }) {
   const [state, action, pending] = useActionState(updateProfile, {});
   const [bio, setBio] = useState(profile.bio ?? "");
@@ -253,6 +253,25 @@ export function ProfileForm({
           <input key={sport} type="hidden" name="sports" value={sport} />
         ))}
       </fieldset>
+
+      <div className="space-y-2">
+        <label className="flex min-h-11 items-start gap-3">
+          <input
+            type="checkbox"
+            name="isPrivate"
+            defaultChecked={profile.is_private}
+            className="accent-primary mt-1 size-5 shrink-0"
+          />
+          <span>
+            <span className="block font-medium">Privates Konto</span>
+            <span className="text-muted-foreground block text-sm">
+              Privat: Wer dir folgen will, braucht deine Bestätigung, und nur Follower sehen deine Trainingstage,
+              Bestwerte und Events. Schreiben können dir nur Follower. Öffentlich: Alle können dich finden, dir
+              folgen und dir eine Nachricht als Anfrage schicken.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <Feedback state={state} />
       <Button type="submit" className="w-full md:w-auto" disabled={pending}>

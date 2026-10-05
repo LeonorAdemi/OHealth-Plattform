@@ -4,15 +4,34 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { ChatRequestBar } from "@/modules/core/components/chat-request";
 import { ChatThread } from "@/modules/core/components/chat-thread";
 import { MarkChatRead, MarkMeetupRead } from "@/modules/core/components/notification-actions";
 import { describeMeetupCount, formatMeetupWhen } from "@/modules/core/logic";
-import { getChat, getMeetup, getMyCommunity, requireUser } from "@/modules/core/queries";
+import { getChat, getMeetup, getMyCommunity, getPersonProfile, requireUser } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Chat" };
 
 /** Kopfzeile: worum es im Chat geht, mit Link dorthin. */
-async function chatHeader(chat: { kind: "meetup" | "community"; meetupId: string | null; groupId: string | null }) {
+async function chatHeader(chat: {
+  kind: "meetup" | "community" | "direct";
+  request: "incoming" | "outgoing" | null;
+  meetupId: string | null;
+  groupId: string | null;
+  otherUserId: string | null;
+}) {
+  if (chat.kind === "direct" && chat.otherUserId) {
+    const person = await getPersonProfile(chat.otherUserId);
+    if (!person) return null;
+    return {
+      href: `/person/${person.id}`,
+      backLabel: "Zum Profil",
+      title: person.display_name,
+      detail: chat.request ? "Nachrichtenanfrage" : "Privat, nur ihr beide",
+      emptyHint: `Noch keine Nachrichten. Schreib ${person.display_name} etwas.`,
+      canModerate: false,
+    };
+  }
   if (chat.kind === "meetup" && chat.meetupId) {
     const meetup = await getMeetup(chat.meetupId);
     if (!meetup) return null;
@@ -70,6 +89,12 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
           <p className="text-muted-foreground truncate text-sm">{header.detail}</p>
         </Link>
       </header>
+      {chat.request === "incoming" && <ChatRequestBar chatId={chat.id} name={header.title} />}
+      {chat.request === "outgoing" && (
+        <p className="text-muted-foreground border-b py-3 text-sm">
+          {header.title} sieht deine Nachricht als Anfrage und entscheidet, ob ihr chattet.
+        </p>
+      )}
       <ChatThread
         chatId={chat.id}
         myUserId={userId}
