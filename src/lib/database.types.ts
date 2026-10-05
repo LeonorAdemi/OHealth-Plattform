@@ -1424,6 +1424,7 @@ export type Database = {
         }[]
       }
       join_group: { Args: { code: string }; Returns: string }
+      join_public_meetup: { Args: { mid: string }; Returns: string }
       leave_group: { Args: { gid: string }; Returns: undefined }
       log_activity: {
         Args: {
@@ -1590,11 +1591,38 @@ export type Database = {
         Returns: string
       }
       profile_stats: { Args: { target: string }; Returns: Json }
+      public_meetup_preview: {
+        Args: { mid: string }
+        Returns: {
+          community_name: string
+          distance_m: number
+          duration_minutes: number
+          elevation_m: number
+          id: string
+          is_joined: boolean
+          level: string
+          max_participants: number
+          note: string
+          pace_seconds_per_km: number
+          pace_unit: string
+          participant_count: number
+          place: string
+          speed_kmh: number
+          sport_name: string
+          starts_at: string
+          title: string
+          weekly: boolean
+        }[]
+      }
       push_forget: {
         Args: { endpoint: string; secret: string }
         Returns: undefined
       }
       push_payload: { Args: { nid: string; secret: string }; Returns: Json }
+      record_signup_source: {
+        Args: { p_campaign?: string; p_source: string }
+        Returns: boolean
+      }
       remove_follower: { Args: { follower: string }; Returns: undefined }
       respond_chat_request: {
         Args: { accept: boolean; cid: string }

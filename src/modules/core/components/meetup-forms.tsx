@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -14,6 +14,7 @@ import {
   createMeetup,
   deleteMeetup,
   joinMeetup,
+  joinPublicMeetup,
   leaveMeetup,
   removeMeetupShare,
   updateMeetup,
@@ -514,6 +515,42 @@ export function DeleteMeetup({ meetupId, shared, inSeries }: { meetupId: string;
           Abbrechen
         </Button>
       </div>
+    </form>
+  );
+}
+
+/**
+ * Zusagen über den öffentlichen Link. autoJoin: Wer vor der Anmeldung „zusagen“ gewählt hat, sagt
+ * nach der Rückkehr ohne weiteren Tipp zu.
+ */
+export function PublicMeetupJoin({
+  meetupId,
+  campaign,
+  autoJoin,
+}: {
+  meetupId: string;
+  campaign: string | null;
+  autoJoin: boolean;
+}) {
+  const [state, action, pending] = useActionState(joinPublicMeetup, initial);
+  const form = useRef<HTMLFormElement>(null);
+  const sent = useRef(false);
+
+  useEffect(() => {
+    if (autoJoin && !sent.current) {
+      sent.current = true;
+      form.current?.requestSubmit();
+    }
+  }, [autoJoin]);
+
+  return (
+    <form ref={form} action={action} className="space-y-3">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      {campaign && <input type="hidden" name="quelle" value={campaign} />}
+      <ErrorText error={state.error} />
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? "Wird zugesagt" : "Ich bin dabei"}
+      </Button>
     </form>
   );
 }

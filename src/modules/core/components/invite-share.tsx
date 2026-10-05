@@ -4,14 +4,31 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-// Teilt den Einladungslink über das Teilen-Menü des Geräts, sonst über die Zwischenablage.
-// Mit compact nur der Button, etwa im Kopf einer Community.
-export function InviteShare({ url, groupName, compact = false }: { url: string; groupName: string; compact?: boolean }) {
+// Teilt einen Link (Einladung in eine Community oder öffentliches Event) über das Teilen-Menü des
+// Geräts, sonst über die Zwischenablage. Mit compact nur der Button, etwa im Kopf einer Community.
+export function InviteShare({
+  url,
+  groupName,
+  text: customText,
+  compact = false,
+  label = "Teilen",
+  align = "end",
+}: {
+  url: string;
+  groupName?: string;
+  /** Begleittext beim Teilen; ohne Angabe die Einladung in die Community */
+  text?: string;
+  compact?: boolean;
+  /** Beschriftung des kompakten Buttons */
+  label?: string;
+  /** Ausrichtung des kompakten Buttons: rechts im Kopf einer Community, sonst links */
+  align?: "start" | "end";
+}) {
   const [status, setStatus] = useState<string | null>(null);
 
   async function share() {
     setStatus(null);
-    const text = `Komm in meine Community „${groupName}“ bei OHealth.`;
+    const text = customText ?? `Komm in meine Community „${groupName}“ bei OHealth.`;
 
     if (typeof navigator.share === "function") {
       try {
@@ -32,9 +49,9 @@ export function InviteShare({ url, groupName, compact = false }: { url: string; 
 
   if (compact) {
     return (
-      <div className="flex flex-col items-end gap-1">
+      <div className={align === "end" ? "flex flex-col items-end gap-1" : "flex flex-col items-start gap-1"}>
         <Button variant="outline" size="sm" onClick={share}>
-          Teilen
+          {label}
         </Button>
         {status && (
           <p role="status" className="text-sm">

@@ -102,6 +102,13 @@ export default function PrivacyPage() {
           unseren Dienstleistern Protokolldaten an, zum Beispiel IP-Adresse,
           Zeitpunkt und aufgerufene Seite.
         </li>
+        <li>
+          <strong>Herkunft:</strong> Registrierst du dich über den Link eines
+          Trainings oder einer Community, speichern wir das einmal, gegebenenfalls
+          mit einer Kennung aus dem Link (etwa für einen Aushang). Wir werten das
+          nur zusammengefasst aus, um zu sehen, welche Wege neue Mitglieder bringen.
+          Andere sehen es nicht, und es verschwindet mit deinem Konto.
+        </li>
       </ul>
       <p>
         Die Stadt trägst du selbst ein, wenn du willst. Wir erheben keine
@@ -167,6 +174,14 @@ export default function PrivacyPage() {
         Die verknüpfte Vorlage sehen andere nicht. Gib als Treffpunkt einen
         öffentlichen Ort an, keine Privatadresse. Wer eine Community verwaltet,
         kann ein Training von ihrer Pinnwand nehmen.
+      </p>
+      <p>
+        Ist ein Training in einer öffentlichen Community geteilt, gibt es einen
+        Link dazu, den Mitglieder weitergeben können. Über diesen Link sieht
+        jede Person, auch ohne Konto, Titel, Zeit, Treffpunkt, Sportart, Notiz,
+        die Zahl der Zusagen und den Namen der Community, aber nie, wer es plant
+        oder wer zugesagt hat. Wer über den Link zusagt, tritt damit auch der
+        öffentlichen Community bei.
       </p>
       <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt

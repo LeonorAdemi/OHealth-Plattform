@@ -444,6 +444,38 @@ export async function getCommunityPreview(code: string) {
   };
 }
 
+/**
+ * Vorschau eines Events für den öffentlichen Link (public_meetup_preview): nur kommende Events in
+ * öffentlichen Communities, ohne Namen. Funktioniert auch ohne Anmeldung. null, wenn es nicht
+ * öffentlich ist.
+ */
+export async function getPublicMeetup(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("public_meetup_preview", { mid: id });
+  if (error) throw new Error("Das Training konnte nicht geladen werden.");
+  const row = data[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    startsAt: row.starts_at,
+    place: row.place,
+    note: row.note,
+    maxParticipants: row.max_participants,
+    count: row.participant_count,
+    sportName: row.sport_name,
+    durationMinutes: row.duration_minutes,
+    distanceM: row.distance_m,
+    elevationM: row.elevation_m,
+    paceSecondsPerKm: row.pace_seconds_per_km,
+    speedKmh: row.speed_kmh,
+    level: toMeetupLevel(row.level),
+    weekly: row.weekly,
+    communityName: row.community_name,
+    isJoined: row.is_joined,
+  };
+}
+
 // ---------- Geplante Trainings ----------
 
 type FeedScope = "board" | "mine" | "communities" | "single";

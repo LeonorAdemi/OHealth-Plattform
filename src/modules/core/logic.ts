@@ -146,8 +146,26 @@ export function describeProfile(p: { city: string | null; sports: readonly strin
 }
 
 /** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */
-export function joinAfterAuthPath(code: string): string {
-  return `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
+export function joinAfterAuthPath(code: string, campaign: string | null = null): string {
+  const base = `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
+  return campaign ? `${base}&quelle=${campaign}` : base;
+}
+
+/**
+ * Kennung aus ?quelle= in einem geteilten Link, etwa „sticker-boulderwelt“. Nur Kleinbuchstaben,
+ * Ziffern und Bindestriche, höchstens 40 Zeichen; alles andere zählt als keine Kennung.
+ */
+export function campaignTag(value: string | string[] | undefined): string | null {
+  return typeof value === "string" && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
+}
+
+/** Öffentlicher Link zu einem Event. Mit zusagen: nach Anmeldung oder Registrierung gleich zusagen. */
+export function publicEventPath(id: string, options: { zusagen?: boolean; campaign?: string | null } = {}): string {
+  const params = new URLSearchParams();
+  if (options.zusagen) params.set("zusagen", "1");
+  if (options.campaign) params.set("quelle", options.campaign);
+  const query = params.toString();
+  return query ? `/e/${id}?${query}` : `/e/${id}`;
 }
 
 // ---------- Treffen ----------

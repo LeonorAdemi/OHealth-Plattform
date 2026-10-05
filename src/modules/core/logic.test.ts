@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  campaignTag,
+  publicEventPath,
   describeMeetupDetails,
   describeWeekly,
   meetupFormValues,
@@ -103,6 +105,7 @@ describe("Community", () => {
 
   it("baut den Rückweg zum Beitritt nach der Registrierung", () => {
     expect(joinAfterAuthPath("isar-code")).toBe("/beitreten/isar-code?beitreten=1");
+    expect(joinAfterAuthPath("isar-code", "sticker-zhs")).toBe("/beitreten/isar-code?beitreten=1&quelle=sticker-zhs");
   });
 });
 
@@ -494,5 +497,23 @@ describe("Events je Sportart", () => {
     expect(meetupErrorMessage({ code: "23514", message: "Den Tag änderst du nur für einen einzelnen Termin" })).toBe(
       "Den Tag änderst du nur für einen einzelnen Termin.",
     );
+  });
+});
+
+describe("Öffentlicher Event-Link und Herkunft", () => {
+  it("baut den Link zum Event, mit Zusage nach der Anmeldung und Kennung der Herkunft", () => {
+    expect(publicEventPath("m1")).toBe("/e/m1");
+    expect(publicEventPath("m1", { zusagen: true, campaign: "sticker-boulderwelt" })).toBe(
+      "/e/m1?zusagen=1&quelle=sticker-boulderwelt",
+    );
+  });
+
+  it("nimmt als Kennung nur kurze Wörter aus Kleinbuchstaben, Ziffern und Bindestrichen", () => {
+    expect(campaignTag("sticker-boulderwelt")).toBe("sticker-boulderwelt");
+    expect(campaignTag("Sticker")).toBeNull();
+    expect(campaignTag("a b")).toBeNull();
+    expect(campaignTag("x".repeat(41))).toBeNull();
+    expect(campaignTag(["a", "b"])).toBeNull();
+    expect(campaignTag(undefined)).toBeNull();
   });
 });

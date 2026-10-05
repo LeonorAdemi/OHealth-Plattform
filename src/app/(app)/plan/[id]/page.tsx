@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { requestOrigin } from "@/lib/request-origin";
 import { cn } from "@/lib/utils";
+import { InviteShare } from "@/modules/core/components/invite-share";
 import {
   DeleteMeetup,
   MeetupToggle,
@@ -21,8 +23,9 @@ import {
   isMeetupFull,
   meetupDetailRows,
   meetupTimeRange,
+  publicEventPath,
 } from "@/modules/core/logic";
-import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
+import { getChatSummaries, getMeetup, getMyCommunities, getPublicMeetup } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
 
@@ -33,12 +36,25 @@ const longDate = new Intl.DateTimeFormat("de-DE", {
   month: "long",
 });
 
-export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PlanPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ zugesagt?: string }>;
+}) {
+  const [{ id }, { zugesagt }] = await Promise.all([params, searchParams]);
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const [meetup, communities, chats] = await Promise.all([getMeetup(id), getMyCommunities(), getChatSummaries()]);
+  const [meetup, communities, chats, publicMeetup] = await Promise.all([
+    getMeetup(id),
+    getMyCommunities(),
+    getChatSummaries(),
+    getPublicMeetup(id),
+  ]);
   if (!meetup) notFound();
+  // Öffentlicher Link nur für kommende Events in öffentlichen Communities (prüft die Datenbank)
+  const publicUrl = publicMeetup ? `${await requestOrigin()}${publicEventPath(id)}` : null;
 
   const isPast = new Date(meetup.startsAt) <= new Date();
   const full = isMeetupFull(meetup.count, meetup.maxParticipants);
@@ -68,6 +84,20 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           {meetup.seriesId && <p className="text-muted-foreground mt-1 text-sm">{describeWeekly(meetup.startsAt)}</p>}
         </div>
       </div>
+
+      {zugesagt === "1" && meetup.isJoined && !isPast && (
+        <div role="status" className="mt-6 max-w-2xl border-y py-4">
+          <p className="font-medium">Du bist dabei.</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Trag dir das Training in den Kalender ein. Für eine Erinnerung vorher: OHealth zum Home-Bildschirm
+            hinzufügen und unter{" "}
+            <Link href="/profil/einstellungen" className="text-foreground underline underline-offset-4">
+              Einstellungen
+            </Link>{" "}
+            die Mitteilungen einschalten.
+          </p>
+        </div>
+      )}
 
       <dl className="mt-6 max-w-2xl">
         {meetupDetailRows(meetup).map((row) => (
@@ -135,6 +165,15 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               In Kalender eintragen
             </a>
           </p>
+        )}
+        {publicUrl && meetup.isJoined && (
+          <InviteShare
+            url={publicUrl}
+            compact
+            align="start"
+            label="Link teilen"
+            text={`${meetup.title} bei OHealth. Komm mit.`}
+          />
         )}
       </div>
 

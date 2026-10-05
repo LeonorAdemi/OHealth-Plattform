@@ -146,7 +146,15 @@ export function JoinPublicButton({ id, name }: { id: string; name: string }) {
  * Beitritt aus einem Teilen-Link. Mit autoJoin hat die Person schon vor der Registrierung
  * „Beitreten" gewählt: Dann läuft der Beitritt nach der Anmeldung ohne weiteren Tipp.
  */
-export function AcceptCommunityInvite({ code, autoJoin }: { code: string; autoJoin: boolean }) {
+export function AcceptCommunityInvite({
+  code,
+  autoJoin,
+  campaign = null,
+}: {
+  code: string;
+  autoJoin: boolean;
+  campaign?: string | null;
+}) {
   const [state, action, pending] = useActionState(acceptInvite, initial);
   const form = useRef<HTMLFormElement>(null);
   const sent = useRef(false);
@@ -161,6 +169,7 @@ export function AcceptCommunityInvite({ code, autoJoin }: { code: string; autoJo
   return (
     <form ref={form} action={action} className="space-y-3">
       <input type="hidden" name="code" value={code} />
+      {campaign && <input type="hidden" name="quelle" value={campaign} />}
       <Feedback state={state} />
       <Button type="submit" className="w-full md:w-auto" disabled={pending}>
         {pending ? "Wird beigetreten" : "Beitreten"}

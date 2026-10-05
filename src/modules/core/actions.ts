@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import {
   berlinLocalToDate,
+  campaignTag,
   CHAT_NOTIFICATION_KINDS,
   groupTypeFor,
   MAX_BIO,
@@ -472,6 +473,33 @@ export async function joinMeetup(_prev: FormState, formData: FormData): Promise<
 
   revalidatePath("/", "layout");
   return {};
+}
+
+/**
+ * Sagt über den öffentlichen Link zu (join_public_meetup). Wer noch nicht Mitglied ist, tritt
+ * dabei der öffentlichen Community bei. Läuft nach ausdrücklichem Tipp oder, wer vor der
+ * Registrierung „zusagen“ gewählt hat, direkt nach der Anmeldung.
+ */
+export async function joinPublicMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("join_public_meetup", { mid: id.data });
+  if (error) {
+    if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
+    if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
+    if (error.code === "42501") return { error: "Zu diesem Training kannst du über den Link nicht zusagen." };
+    return { error: MEETUP_FAILED };
+  }
+  // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
+  await supabase.rpc("record_signup_source", {
+    p_source: "event_link",
+    p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
+  });
+
+  revalidatePath("/", "layout");
+  redirect(`/plan/${id.data}?zugesagt=1`);
 }
 
 /** Sagt für ein Training ab. Damit schließt sich auch der Chat. */
@@ -960,6 +988,11 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
+  // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
+  await supabase.rpc("record_signup_source", {
+    p_source: "group_link",
+    p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
+  });
 
   revalidatePath("/community");
   redirect(`/community/${data}`);
