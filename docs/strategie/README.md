@@ -2,6 +2,8 @@
 
 Stand: 5. Oktober 2026. Entscheidungsvorlage für die Frage, ob OHealth als eine App weitergeführt oder in einen Fitness-Tracker und einen Event-Organizer getrennt wird.
 
+> **Beschlossen am 5. Oktober 2026:** Option C. In der Oberfläche heißt es „Aktivität", Start in München mit Option für weitere Städte, alle gängigen Sportarten lassen sich tracken. Den konkreten Plan beschreibt [08 Umsetzungsplan](08-umsetzungsplan.md).
+
 ## Die Antwort zuerst
 
 **Eine App, aber mit klarer Rangfolge: Gemeinsamer Sport führt, Training ist die Gewohnheitsebene darunter.** Nicht trennen, aber auch nicht beide Teile gleich laut nebeneinander stellen.
@@ -31,6 +33,7 @@ In der Bewertung erreicht diese Option 4,2 von 5 Punkten. Zwei getrennte Apps ko
 | 05 | [Optionen](05-optionen.md) | Fünf Produktstrukturen im Detail |
 | 06 | [Bewertung](06-bewertung.md) | Gewichtete Bewertung und Robustheit |
 | 07 | [Empfehlung und Fahrplan](07-empfehlung-und-fahrplan.md) | Empfehlung, 90-Tage-Plan, Kennzahlen, Entscheidungspunkte, Risiken |
+| 08 | [Umsetzungsplan](08-umsetzungsplan.md) | Datenmodell, Arbeitspakete mit Abnahmekriterien, Zeitplan bis Januar 2027, Pilot München |
 | | [Quellen](quellen.md) | Belege und Annahmen |
 
 ## Vorgehen
