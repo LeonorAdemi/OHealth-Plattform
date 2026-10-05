@@ -87,10 +87,12 @@ export default async function PlanPage({
 
       {zugesagt === "1" && meetup.isJoined && !isPast && (
         <div role="status" className="mt-6 max-w-2xl border-y py-4">
-          <p className="font-medium">Du bist dabei.</p>
+          <p className="font-medium">Zusage gespeichert.</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Trag dir das Training in den Kalender ein. Für eine Erinnerung vorher: OHealth zum Home-Bildschirm
-            hinzufügen und unter{" "}
+            <a href={`/plan/${meetup.id}/kalender`} className="text-foreground underline underline-offset-4">
+              In den Kalender eintragen
+            </a>
+            . Für eine Erinnerung vorher: OHealth zum Home-Bildschirm hinzufügen und unter{" "}
             <Link href="/profil/einstellungen" className="text-foreground underline underline-offset-4">
               Einstellungen
             </Link>{" "}
@@ -122,6 +124,7 @@ export default async function PlanPage({
           <dt className="text-muted-foreground w-28 shrink-0 text-sm">Geteilt</dt>
           <dd className="min-w-0 break-words">
             {meetup.shareCount === 0 ? "Privat, nur für dich" : sharedIn.map((c) => c.name).join(", ") || "In einer deiner Communities"}
+            {publicUrl && <span className="text-muted-foreground block text-sm">Über den Link für alle sichtbar, ohne Namen</span>}
           </dd>
         </div>
         {hasCompany && (

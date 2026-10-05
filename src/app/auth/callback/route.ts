@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
 // Ziel nach der Anmeldung über Google und nach dem Bestätigungslink aus der
@@ -9,8 +10,7 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
 
   // Nur interne Ziele zulassen, damit der Link nicht auf fremde Seiten umleiten kann.
-  let next = searchParams.get("next") ?? "/";
-  if (!next.startsWith("/") || next.startsWith("//")) next = "/";
+  const next = safeNextPath(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();

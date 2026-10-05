@@ -489,6 +489,7 @@ export async function joinPublicMeetup(_prev: FormState, formData: FormData): Pr
   if (error) {
     if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
     if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
+    if (error.message.includes("Nicht angemeldet")) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
     if (error.code === "42501") return { error: "Zu diesem Training kannst du über den Link nicht zusagen." };
     return { error: MEETUP_FAILED };
   }

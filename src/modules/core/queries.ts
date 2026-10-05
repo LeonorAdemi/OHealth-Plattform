@@ -460,7 +460,6 @@ export async function getPublicMeetup(id: string) {
     title: row.title,
     startsAt: row.starts_at,
     place: row.place,
-    note: row.note,
     maxParticipants: row.max_participants,
     count: row.participant_count,
     sportName: row.sport_name,

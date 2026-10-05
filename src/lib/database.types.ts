@@ -1602,7 +1602,6 @@ export type Database = {
           is_joined: boolean
           level: string
           max_participants: number
-          note: string
           pace_seconds_per_km: number
           pace_unit: string
           participant_count: number

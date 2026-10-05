@@ -7,14 +7,19 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(30);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
   ('00000000-0000-0000-0000-00000000000b', 'ben@example.com'),
   ('00000000-0000-0000-0000-00000000000c', 'cleo@example.com'),
   ('00000000-0000-0000-0000-00000000000d', 'dana@example.com'),
-  ('00000000-0000-0000-0000-00000000000e', 'emil@example.com');
+  ('00000000-0000-0000-0000-00000000000e', 'emil@example.com'),
+  ('00000000-0000-0000-0000-00000000000f', 'finn@example.com');
+-- Wie im echten Betrieb trägt Auth das Datum der Registrierung ein.
+update auth.users set created_at = now() where created_at is null;
+-- Emil ist schon länger dabei (auch in auth.users, das niemand selbst ändern kann)
+update auth.users set created_at = now() - interval '3 days' where id = '00000000-0000-0000-0000-00000000000e';
 update public.profiles set display_name = 'Anna Planerin' where id = '00000000-0000-0000-0000-00000000000a';
 -- Emil ist schon länger dabei
 update public.profiles set created_at = now() - interval '3 days' where id = '00000000-0000-0000-0000-00000000000e';
@@ -22,19 +27,27 @@ update public.profiles set created_at = now() - interval '3 days' where id = '00
 insert into public.groups (id, name, type, invite_code, created_by, hidden) values
   ('10000000-0000-0000-0000-000000000001', 'Lauftreff Isar', 'community', 'lauf-code', '00000000-0000-0000-0000-00000000000a', false),
   ('10000000-0000-0000-0000-000000000002', 'Annas Crew', 'friends', 'crew-code', '00000000-0000-0000-0000-00000000000a', false),
-  ('10000000-0000-0000-0000-000000000003', 'Ausgeblendet', 'community', 'weg-code', '00000000-0000-0000-0000-00000000000a', true);
+  ('10000000-0000-0000-0000-000000000003', 'Ausgeblendet', 'community', 'weg-code', '00000000-0000-0000-0000-00000000000a', true),
+  ('10000000-0000-0000-0000-000000000004', 'Reha', 'coaching', 'reha-code', '00000000-0000-0000-0000-00000000000a', false);
 
 insert into public.meetups (id, created_by, title, starts_at, place, sport_id, duration_minutes, max_participants) values
   ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'Isarlauf', now() + interval '1 day', 'Brücke', 'laufen', 60, 3),
   ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a', 'Nur Crew', now() + interval '1 day', null, 'laufen', 60, null),
   ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000000a', 'Ausgeblendet', now() + interval '1 day', null, 'laufen', 60, null),
-  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000a', 'Privat', now() + interval '1 day', null, 'laufen', 60, null);
+  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000a', 'Privat', now() + interval '1 day', null, 'laufen', 60, null),
+  ('60000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000000a', 'Coaching', now() + interval '1 day', null, 'laufen', 60, null),
+  ('60000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-00000000000a', 'Gleich vorbei', now() + interval '1 minute', null, 'laufen', 60, null);
 insert into public.meetup_shares (meetup_id, group_id) values
   ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001'),
   ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002'),
-  ('60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003');
+  ('60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003'),
+  ('60000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000004'),
+  ('60000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001'),
+  -- auch in der ausgeblendeten Community geteilt: Vorschau nennt die öffentliche
+  ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003');
 insert into public.blocks (blocker_id, blocked_id) values
-  ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000d');
+  ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000d'),
+  ('00000000-0000-0000-0000-00000000000f', '00000000-0000-0000-0000-00000000000a');
 
 -- ---------- Ohne Konto ----------
 set local role anon;
@@ -53,6 +66,8 @@ select is_empty($$ select 1 from public.public_meetup_preview('60000000-0000-000
   'Ohne Konto: Events einer ausgeblendeten Community bleiben verborgen');
 select is_empty($$ select 1 from public.public_meetup_preview('60000000-0000-0000-0000-000000000004') $$,
   'Ohne Konto: private Events bleiben verborgen');
+select is_empty($$ select 1 from public.public_meetup_preview('60000000-0000-0000-0000-000000000005') $$,
+  'Ohne Konto: Events einer Coaching-Gruppe bleiben verborgen');
 select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000001') $$,
   '42501', null, 'Ohne Konto: keine Zusage');
 select throws_ok($$ select public.record_signup_source('event_link') $$,
@@ -61,6 +76,12 @@ select throws_ok($$ select public.record_signup_source('event_link') $$,
 -- ---------- Cleo kommt über den Link ----------
 set local role authenticated;
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
+select is((select community_name from public.public_meetup_preview('60000000-0000-0000-0000-000000000001')),
+  'Lauftreff Isar', 'Cleo: sieht die Vorschau schon vor dem Beitritt, mit der öffentlichen Community');
+select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000003') $$,
+  '42501', null, 'Cleo: sagt bei einer ausgeblendeten Community nicht über den Link zu');
+select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000005') $$,
+  '42501', null, 'Cleo: tritt über den Link keiner Coaching-Gruppe bei');
 select is(public.join_public_meetup('60000000-0000-0000-0000-000000000001'),
   '60000000-0000-0000-0000-000000000001'::uuid, 'Cleo: sagt über den Link zu');
 select is(public.join_public_meetup('60000000-0000-0000-0000-000000000001'),
@@ -87,7 +108,9 @@ set local role authenticated;
 
 -- ---------- Grenzen ----------
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000e", "role": "authenticated"}';
-select is(public.record_signup_source('event_link'), false, 'Emil: Für ein älteres Konto gibt es keine Herkunft');
+update public.profiles set created_at = now() where id = '00000000-0000-0000-0000-00000000000e';
+select is(public.record_signup_source('event_link'), false,
+  'Emil: Für ein älteres Konto gibt es keine Herkunft, auch wenn er sein Profil verändert');
 select is(public.join_public_meetup('60000000-0000-0000-0000-000000000001'),
   '60000000-0000-0000-0000-000000000001'::uuid, 'Emil: sagt zu, damit ist das Training voll');
 
@@ -96,12 +119,36 @@ select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-00
   'P0001', 'Dieses Training ist voll', 'Ben: Ist das Training voll, gibt es keine Zusage mehr');
 
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000d", "role": "authenticated"}';
+select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000002') $$,
+  '42501', null, 'Dana: von der planenden Person blockiert, keine Zusage über den Link');
+insert into public.group_members (group_id, user_id)
+values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000d');
+reset role;
+update public.meetups set max_participants = null where id = '60000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select throws_ok(
+  $$ insert into public.meetup_participants (meetup_id, user_id)
+     values ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000d') $$,
+  '42501', null, 'Dana: auch als Mitglied über die Pinnwand keine Zusage');
+
+set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000f", "role": "authenticated"}';
 select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000001') $$,
-  '42501', null, 'Dana: von der planenden Person blockiert, keine Zusage');
+  '42501', null, 'Finn: hat die planende Person blockiert, keine Zusage');
+
+-- ---------- Vergangen ----------
+reset role;
+update public.meetups set starts_at = now() - interval '1 minute' where id = '60000000-0000-0000-0000-000000000006';
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
+select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000006') $$,
+  'P0001', 'Dieses Training hat schon stattgefunden', 'Cleo: zu einem vergangenen Training gibt es keine Zusage');
 
 -- ---------- KI ----------
 set local request.jwt.claims to
   '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated", "client_id": "claude"}';
+select is_empty($$ select 1 from public.public_meetup_preview('60000000-0000-0000-0000-000000000001') $$,
+  'KI: sieht keine Vorschau');
+select is(public.record_signup_source('event_link'), false, 'KI: hält keine Herkunft fest');
 select throws_ok($$ select public.join_public_meetup('60000000-0000-0000-0000-000000000001') $$,
   '42501', null, 'KI: sagt nicht zu');
 

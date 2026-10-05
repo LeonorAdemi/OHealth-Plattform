@@ -159,6 +159,12 @@ export function campaignTag(value: string | string[] | undefined): string | null
   return typeof value === "string" && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
 }
 
+/**
+ * Cookie, das der Tipp auf „Konto erstellen und zusagen“ setzt. Nur dann sagt die Seite nach der
+ * Rückkehr ohne weiteren Tipp zu; ein präparierter Link allein reicht nicht.
+ */
+export const JOIN_INTENT_COOKIE = "ohealth_zusage";
+
 /** Öffentlicher Link zu einem Event. Mit zusagen: nach Anmeldung oder Registrierung gleich zusagen. */
 export function publicEventPath(id: string, options: { zusagen?: boolean; campaign?: string | null } = {}): string {
   const params = new URLSearchParams();

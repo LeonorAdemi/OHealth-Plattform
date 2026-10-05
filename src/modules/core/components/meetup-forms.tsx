@@ -20,7 +20,13 @@ import {
   updateMeetup,
   updateMeetupShares,
 } from "../actions";
-import { MEETUP_LEVEL_LABEL, MEETUP_LEVELS, type MeetupFormValues, type MeetupLevel } from "../logic";
+import {
+  JOIN_INTENT_COOKIE,
+  MEETUP_LEVEL_LABEL,
+  MEETUP_LEVELS,
+  type MeetupFormValues,
+  type MeetupLevel,
+} from "../logic";
 import type { Sport } from "../queries";
 
 import { SportPicker } from "./sport-picker";
@@ -333,6 +339,7 @@ export function MeetupForm({
           <legend className="mb-1 text-sm font-medium">Teilen mit</legend>
           <p className="text-muted-foreground pb-1 text-sm">
             Mitglieder der gewählten Communities sehen das Training auf der Pinnwand und können zusagen.
+            In öffentlichen Communities gibt es dazu einen Link, über den alle es sehen, ohne Namen.
           </p>
           <ShareChoices communities={communities} selected={preselected} />
         </fieldset>
@@ -552,5 +559,34 @@ export function PublicMeetupJoin({
         {pending ? "Wird zugesagt" : "Ich bin dabei"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Registrieren oder Anmelden, um über den öffentlichen Link zuzusagen. Der Tipp merkt sich für eine
+ * halbe Stunde, dass diese Person zusagen will, damit die Zusage nach der Rückkehr von selbst läuft.
+ */
+export function PublicMeetupAuthLinks({ meetupId, next }: { meetupId: string; next: string }) {
+  const remember = () => {
+    document.cookie = `${JOIN_INTENT_COOKIE}=${meetupId}; Max-Age=1800; Path=/; SameSite=Lax`;
+  };
+  const encoded = encodeURIComponent(next);
+  return (
+    <div className="space-y-4">
+      <Button asChild className="w-full">
+        <Link href={`/registrieren?next=${encoded}`} onClick={remember}>
+          Konto erstellen und zusagen
+        </Link>
+      </Button>
+      <p className="text-sm">
+        <Link
+          href={`/login?next=${encoded}`}
+          onClick={remember}
+          className="inline-flex min-h-11 items-center underline underline-offset-4"
+        >
+          Ich habe schon ein Konto
+        </Link>
+      </p>
+    </div>
   );
 }

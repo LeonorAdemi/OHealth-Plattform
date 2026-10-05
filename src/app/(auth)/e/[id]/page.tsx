@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import { requestOrigin } from "@/lib/request-origin";
 import { createClient } from "@/lib/supabase/server";
-import { PublicMeetupJoin } from "@/modules/core/components/meetup-forms";
+import { PublicMeetupAuthLinks, PublicMeetupJoin } from "@/modules/core/components/meetup-forms";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import {
   campaignTag,
@@ -15,6 +14,7 @@ import {
   describeMeetupDetails,
   describeWeekly,
   isMeetupFull,
+  JOIN_INTENT_COOKIE,
   meetupDetailRows,
   meetupTimeRange,
   publicEventPath,
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const when = `${shortDate.format(new Date(meetup.startsAt))}, ${meetupTimeRange(meetup.startsAt, meetup.durationMinutes)} Uhr`;
   const description = [
-    describeMeetupDetails({ ...meetup, title: meetup.title }),
+    describeMeetupDetails(meetup),
     meetup.place,
     describeMeetupCount(meetup.count, meetup.maxParticipants),
     meetup.communityName,
@@ -96,6 +96,9 @@ export default async function PublicEventPage({
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
+  // Von selbst zusagen nur, wer vorher hier auf „zusagen“ getippt hat (Cookie), nicht schon wegen
+  // eines präparierten Links mit ?zusagen=1.
+  const intended = (await cookies()).get(JOIN_INTENT_COOKIE)?.value === id;
   const campaign = campaignTag(quelle);
   const next = publicEventPath(id, { zusagen: true, campaign });
   const full = isMeetupFull(meetup.count, meetup.maxParticipants);
@@ -130,12 +133,6 @@ export default async function PublicEventPage({
             <dd className="min-w-0 break-words">{meetup.place}</dd>
           </div>
         )}
-        {meetup.note && (
-          <div className="flex min-h-14 items-center gap-4 border-b py-3">
-            <dt className="text-muted-foreground w-24 shrink-0 text-sm">Notiz</dt>
-            <dd className="min-w-0 break-words">{meetup.note}</dd>
-          </div>
-        )}
         <div className="flex min-h-14 items-center gap-4 border-b py-3">
           <dt className="text-muted-foreground w-24 shrink-0 text-sm">Zusagen</dt>
           <dd className="num">{describeMeetupCount(meetup.count, meetup.maxParticipants)}</dd>
@@ -147,22 +144,14 @@ export default async function PublicEventPage({
           <p className="text-muted-foreground">Dieses Training ist voll.</p>
         ) : signedIn ? (
           <div className="space-y-3">
-            <p className="text-sm">Mit der Zusage trittst du auch der Community „{meetup.communityName}“ bei.</p>
-            <PublicMeetupJoin meetupId={id} campaign={campaign} autoJoin={zusagen === "1"} />
+            <p className="text-sm">
+              Wer noch nicht Mitglied ist, tritt mit der Zusage der Community „{meetup.communityName}“ bei.
+            </p>
+            <PublicMeetupJoin meetupId={id} campaign={campaign} autoJoin={zusagen === "1" && intended} />
           </div>
         ) : (
           <div className="space-y-4">
-            <Button asChild className="w-full">
-              <Link href={`/registrieren?next=${encodeURIComponent(next)}`}>Konto erstellen und zusagen</Link>
-            </Button>
-            <p className="text-sm">
-              <Link
-                href={`/login?next=${encodeURIComponent(next)}`}
-                className="inline-flex min-h-11 items-center underline underline-offset-4"
-              >
-                Ich habe schon ein Konto
-              </Link>
-            </p>
+            <PublicMeetupAuthLinks meetupId={id} next={next} />
             <p className="text-muted-foreground text-sm">
               OHealth ist kostenlos. Wer dabei ist, siehst du nach der Zusage.
             </p>

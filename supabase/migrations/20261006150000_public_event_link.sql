@@ -4,14 +4,18 @@
 -- - public_meetup_preview zeigt ein kommendes Event ohne Anmeldung, aber nur, wenn es in einer
 --   öffentlichen, nicht ausgeblendeten Community geteilt ist. Die Vorschau nennt keine Personen:
 --   weder wer plant noch wer zugesagt hat, nur die Zahl der Zusagen und den Namen der Community.
+--   Die Notiz bleibt den Mitgliedern vorbehalten, weil sie für die Gruppe geschrieben wurde.
 -- - join_public_meetup sagt über diesen Link zu. Wer noch nicht Mitglied ist, tritt dabei der
---   öffentlichen Community bei (wie über ihren Teilen-Link). Wer von der planenden Person blockiert
---   wurde, kann nicht zusagen. Vergangene und volle Events prüft der bestehende Trigger
---   check_meetup_capacity.
+--   öffentlichen Community bei (wie über ihren Teilen-Link). Vergangene und volle Events prüft der
+--   Trigger check_meetup_capacity.
+-- - Blockierung gilt beim Zusagen jetzt auf jedem Weg und in beide Richtungen: Haben sich die
+--   planende Person und wer zusagen will gegenseitig oder einseitig blockiert, gibt es keine Zusage
+--   (check_meetup_capacity, auch für den Weg über die Pinnwand).
 -- - Woher neue Nutzer kommen (Event-Link, Community-Link, dazu eine Kennung wie
 --   „sticker-boulderwelt“), steht in private.signup_sources. Das Schema private ist über die API
 --   nicht erreichbar; geschrieben wird nur über record_signup_source, einmal je Person und nur in
---   den ersten 24 Stunden nach der Registrierung. Die Zeile hängt mit Kaskade am Profil.
+--   den ersten 24 Stunden nach der Registrierung (gemessen an auth.users, das niemand selbst ändern
+--   kann). Die Zeile hängt mit Kaskade am Profil.
 -- - Eine KI darf nichts davon.
 
 -- ---------- Herkunft ----------
@@ -44,8 +48,8 @@ begin
   end if;
   insert into private.signup_sources (user_id, source, campaign)
   select me, p_source, p_campaign
-  from public.profiles p
-  where p.id = me and p.created_at > now() - interval '24 hours'
+  from auth.users u
+  where u.id = me and u.created_at > now() - interval '24 hours'
   on conflict (user_id) do nothing;
   return found;
 end;
@@ -71,13 +75,13 @@ revoke execute on function private.public_group_of_meetup(uuid) from public, ano
 
 create function public.public_meetup_preview(mid uuid)
 returns table (
-  id uuid, title text, starts_at timestamptz, place text, note text, max_participants integer,
+  id uuid, title text, starts_at timestamptz, place text, max_participants integer,
   participant_count integer, sport_name text, pace_unit text, duration_minutes integer,
   distance_m numeric, elevation_m integer, pace_seconds_per_km integer, speed_kmh numeric, level text,
   weekly boolean, community_name text, is_joined boolean
 )
 language sql stable security definer set search_path = '' as $$
-  select m.id, m.title, m.starts_at, m.place, m.note, m.max_participants,
+  select m.id, m.title, m.starts_at, m.place, m.max_participants,
          (select count(*)::int from public.meetup_participants p where p.meetup_id = m.id),
          sp.name, sp.pace_unit, m.duration_minutes, m.distance_m, m.elevation_m,
          m.pace_seconds_per_km, m.speed_kmh, m.level,
@@ -112,13 +116,13 @@ begin
     raise exception 'Nicht erlaubt für KI-Zugriff' using errcode = '42501';
   end if;
 
-  select m.created_by into owner from public.meetups m where m.id = mid and m.starts_at > now();
+  select m.created_by into owner from public.meetups m where m.id = mid;
   gid := private.public_group_of_meetup(mid);
-  if owner is null or gid is null then
+  if owner is null or gid is null or private.is_blocked_between(owner, me) then
     raise exception 'Dieses Training ist nicht öffentlich' using errcode = '42501';
   end if;
-  if exists (select 1 from public.blocks b where b.blocker_id = owner and b.blocked_id = me) then
-    raise exception 'Dieses Training ist nicht öffentlich' using errcode = '42501';
+  if (select m.starts_at from public.meetups m where m.id = mid) <= now() then
+    raise exception 'Dieses Training hat schon stattgefunden';
   end if;
 
   insert into public.group_members (group_id, user_id) values (gid, me) on conflict do nothing;
@@ -130,3 +134,38 @@ $$;
 
 revoke execute on function public.join_public_meetup(uuid) from public, anon;
 grant execute on function public.join_public_meetup(uuid) to authenticated;
+
+-- ---------- Blockierung beim Zusagen ----------
+
+create or replace function private.check_meetup_capacity()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  starts timestamptz;
+  max_n  integer;
+  owner  uuid;
+begin
+  -- Erst die Berechtigung, sonst würde jemand ohne Zugang erfahren, ob ein Training voll ist.
+  -- Ohne Anmeldung (Betreiber im SQL-Editor) entfällt die Prüfung.
+  if (select auth.uid()) is not null
+     and (new.user_id is distinct from (select auth.uid()) or not private.can_see_meetup(new.meetup_id)) then
+    raise exception 'Keine Berechtigung für dieses Training' using errcode = '42501';
+  end if;
+
+  select m.starts_at, m.max_participants, m.created_by into starts, max_n, owner
+  from public.meetups m where m.id = new.meetup_id for update;
+
+  -- Blockiert in einer der beiden Richtungen: keine Zusage
+  if (select auth.uid()) is not null and private.is_blocked_between(owner, new.user_id) then
+    raise exception 'Keine Berechtigung für dieses Training' using errcode = '42501';
+  end if;
+  if starts < now() then
+    raise exception 'Dieses Training hat schon stattgefunden';
+  end if;
+  if max_n is not null and (
+    select count(*) from public.meetup_participants p where p.meetup_id = new.meetup_id
+  ) >= max_n then
+    raise exception 'Dieses Training ist voll';
+  end if;
+  return new;
+end;
+$$;
