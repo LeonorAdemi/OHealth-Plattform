@@ -19,7 +19,7 @@ export function TermsCheckbox() {
       <span className="text-sm">
         Ich bin mindestens {MIN_AGE} Jahre alt und akzeptiere die{" "}
         <Link href="/nutzungsbedingungen" target="_blank" className="underline underline-offset-4">
-          Nutzungsbedingungen
+          Nutzungsbedingungen<span className="sr-only"> (öffnet in neuem Tab)</span>
         </Link>
         .
       </span>

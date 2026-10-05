@@ -98,7 +98,15 @@ export function RemoveMember({ groupId, userId, name }: { groupId: string; userI
     <form action={action} className="flex flex-wrap items-center justify-end gap-2">
       <input type="hidden" name="groupId" value={groupId} />
       <input type="hidden" name="userId" value={userId} />
-      <Button type="submit" variant="outline" size="sm" disabled={pending} aria-label={`${name} wirklich entfernen`}>
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        aria-label={`${name} wirklich entfernen`}
+        // Der Button „Entfernen“ verschwindet; der Fokus bleibt an dieser Stelle
+        autoFocus
+      >
         Wirklich entfernen
       </Button>
       <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>

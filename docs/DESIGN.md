@@ -184,7 +184,7 @@ Der Chat eines Trainings oder einer Community folgt bewusst dem Muster bekannter
 - Tagestrenner („Heute“, „Gestern“, „Do, 1. Okt.“) als kleine Fläche in Nebel, mittig.
 - Eingabe unten fest, rundes Feld und runder Senden-Button in Eisen. Am Rechner sendet Enter.
 - Ein Tipp auf eine Nachricht zeigt darunter die möglichen Aktionen als Textlinks: „Nachricht löschen“ (eigene, oder als Verwaltung) und „Melden“ (fremde). „Melden“ klappt die Arten als Umriss-Buttons auf, ein Tipp sendet.
-- Ausgeblendete Nachrichten bleiben als Blase stehen, kursiv und gedämpft: „Ausgeblendet nach Meldungen“.
+- Ausgeblendete Nachrichten bleiben als Blase stehen, kursiv und gedämpft: „Ausgeblendet nach Meldungen“. Wer sie geschrieben hat oder die Community verwaltet, sieht den Text mit dem Hinweis „Für andere ausgeblendet nach Meldungen“.
 
 ### Melden
 

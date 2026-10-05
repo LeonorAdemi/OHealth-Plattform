@@ -4,6 +4,7 @@ import { ArrowUp, Check, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useLayoutEffect, useOptimistic, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import type { FormState } from "@/lib/result";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ export type ChatMessage = {
   userId: string;
   name: string;
   body: string;
-  /** Nach Meldungen ausgeblendet, ohne Text */
+  /** Nach Meldungen ausgeblendet; Text nur für die Person, die schrieb, und die Verwaltung */
   hidden?: boolean;
   createdAt: string;
   isMe: boolean;
@@ -159,10 +160,13 @@ export function ChatThread({
                         {!m.isMe && firstInGroup && (
                           <span className="mb-0.5 block text-xs font-semibold">{m.name}</span>
                         )}
-                        {m.hidden ? (
+                        {m.hidden && !m.body ? (
                           <span className="italic opacity-70">Ausgeblendet nach Meldungen</span>
                         ) : (
                           <span className="break-words whitespace-pre-line">{m.body}</span>
+                        )}
+                        {m.hidden && m.body && (
+                          <span className="block text-xs italic opacity-70">Für andere ausgeblendet nach Meldungen</span>
                         )}
                         <span
                           className={cn(
@@ -307,16 +311,19 @@ function ReportMessage({ id }: { id: string }) {
     <div className="w-full py-1" role="group" aria-label="Nachricht melden als">
       <p className="text-muted-foreground text-sm">Melden als</p>
       <div className="mt-1 flex flex-wrap gap-2">
-        {REPORT_CATEGORIES.map((c) => (
-          <button
+        {REPORT_CATEGORIES.map((c, i) => (
+          <Button
             key={c}
             type="button"
+            variant="outline"
+            size="sm"
             disabled={pending}
             onClick={() => send(c)}
-            className="border-input hover:bg-accent focus-visible:outline-ring inline-flex min-h-11 items-center rounded-lg border px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-9"
+            // Der Link „Melden“ verschwindet beim Aufklappen; der Fokus geht zur ersten Art
+            autoFocus={i === 0}
           >
             {REPORT_CATEGORY_LABEL[c]}
-          </button>
+          </Button>
         ))}
       </div>
       {result?.error && (

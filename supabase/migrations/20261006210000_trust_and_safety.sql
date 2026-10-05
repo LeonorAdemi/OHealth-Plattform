@@ -3,21 +3,28 @@
 --
 -- - Melden: Neben Communities und Personen lassen sich jetzt auch Chat-Nachrichten und Events
 --   melden, mit einer Art (Belästigung, Spam, unangemessen, Sonstiges) und optional einem Text.
---   Gemeldet werden kann nur, was man selbst sieht, nichts Eigenes, jedes Ziel einmal je Person
---   und höchstens 30 Meldungen am Tag. Wer gemeint ist (reported_user_id), trägt die Datenbank bei
---   Nachricht und Event selbst ein. Meldungen sieht nur, wer meldet; der Betreiber prüft sie im
+--   Nachrichten und Events nur, wenn man sie sieht; nichts Eigenes; jedes Ziel einmal je Person;
+--   höchstens 30 Meldungen am Tag. Wer gemeint ist (reported_user_id), trägt die Datenbank bei
+--   Nachricht und Event selbst ein, bei Communities bleibt es leer. Meldungen sieht nur, wer meldet; der Betreiber prüft sie im
 --   Supabase-Dashboard. Die alte Bedingung „Community oder Person“ prüft jetzt der Trigger beim
 --   Anlegen, damit das Löschen eines gemeldeten Kontos nicht mehr an ihr scheitert.
 -- - Ausblenden: Haben drei verschiedene Personen dieselbe Nachricht gemeldet, ist sie für alle
---   ausgeblendet (chat_messages.hidden_at). Den Text sehen dann nur noch, wer sie geschrieben hat
---   und wer die Community verwaltet; im Chat steht ein Platzhalter, in der Übersicht und bei den
---   ungelesenen Nachrichten zählt sie nicht mehr.
+--   anderen ausgeblendet (chat_messages.hidden_at). Den Text sehen dann nur noch, wer sie
+--   geschrieben hat, und die Verwaltung der Community; alle anderen sehen einen Platzhalter. In
+--   Übersicht, ungelesenen Nachrichten und Push zählt sie nicht mehr. Damit Zweitkonten nicht
+--   beliebig ausblenden: Es zählen nur Meldungen von Konten, die älter als einen Tag sind, und
+--   Nachrichten der Verwaltung werden nie automatisch ausgeblendet (die prüft der Betreiber).
+--   Das gilt auch in der alten Tabelle meetup_messages, sonst ließe es sich umgehen.
 -- - Mitglieder entfernen: Wer eine Community verwaltet, entfernt Mitglieder ohne Verwaltungsrolle
---   (remove_group_member). Die Person kann 30 Tage lang nicht wieder beitreten, auf keinem Weg
---   (group_bans, Trigger an group_members). Andere Verwaltende lassen sich nicht mehr entfernen.
+--   nur über remove_group_member. Die Person verliert dabei auch ihre Zusagen zu kommenden Events,
+--   die sie nur über diese Community sieht (und damit deren Chats), und kann 30 Tage lang nicht
+--   wieder beitreten, auf keinem Weg (group_bans, Trigger an group_members). Andere Verwaltende
+--   lassen sich nicht entfernen. Direkt löschen darf man nur die eigene Mitgliedschaft.
 -- - Zustimmung: terms_acceptances hält fest, wann jemand welcher Fassung der Nutzungsbedingungen
---   zugestimmt und das Mindestalter bestätigt hat. Bei der Registrierung kommt die Fassung aus den
---   Metadaten des Kontos, später über accept_terms.
+--   zugestimmt und das Mindestalter bestätigt hat. Gültig ist nur die aktuelle Fassung
+--   (private.current_terms_version, muss zu TERMS_VERSION in src/lib/legal.ts passen). Bei der
+--   Registrierung kommt sie aus den Metadaten des Kontos, später über accept_terms. Geprüft wird
+--   die Zustimmung in der Oberfläche (App-Layout), nicht bei jedem Datenbankzugriff.
 -- - Eine KI darf nichts davon.
 
 -- ---------- Meldungen ----------
@@ -36,7 +43,9 @@ create unique index reports_message_once_idx on public.reports (reporter_id, mes
 create unique index reports_meetup_once_idx on public.reports (reporter_id, meetup_id) where meetup_id is not null;
 create index reports_message_idx on public.reports (message_id) where message_id is not null;
 create index reports_meetup_idx on public.reports (meetup_id) where meetup_id is not null;
+-- Ersetzt reports_reporter_idx (Fremdschlüssel und Tageszählung)
 create index reports_reporter_time_idx on public.reports (reporter_id, created_at);
+drop index public.reports_reporter_idx;
 
 -- Prüft eine neue Meldung und trägt bei Nachricht und Event ein, wer gemeint ist. Mit erhöhten
 -- Rechten, weil sie Nachricht und Event auch dann lesen muss, wenn RLS sie nur teilweise zeigt.
@@ -69,9 +78,23 @@ begin
       raise exception 'Dieses Training gibt es nicht' using errcode = '42501';
     end if;
     new.reported_user_id := author;
-  elsif new.group_id is null
-    and not exists (select 1 from public.profiles p where p.id = new.reported_user_id) then
-    raise exception 'Diese Person gibt es nicht' using errcode = '42501';
+  elsif new.group_id is not null then
+    new.reported_user_id := null;
+    if exists (select 1 from public.reports r where r.reporter_id = me and r.group_id = new.group_id) then
+      raise exception 'Schon gemeldet' using errcode = '23505';
+    end if;
+  else
+    -- Person: gleiche Antwort, ob es sie gibt oder nicht
+    if not exists (select 1 from public.profiles p where p.id = new.reported_user_id) then
+      raise exception 'Keine Berechtigung' using errcode = '42501';
+    end if;
+    if exists (
+      select 1 from public.reports r
+      where r.reporter_id = me and r.reported_user_id = new.reported_user_id
+        and r.group_id is null and r.message_id is null and r.meetup_id is null
+    ) then
+      raise exception 'Schon gemeldet' using errcode = '23505';
+    end if;
   end if;
 
   if new.reported_user_id = me then
@@ -94,12 +117,29 @@ alter table public.chat_messages add column hidden_at timestamptz;
 
 comment on column public.chat_messages.hidden_at is 'Ausgeblendet nach drei Meldungen verschiedener Personen';
 
+-- Zählt nur Meldungen von Konten, die älter als einen Tag sind, und blendet Nachrichten der
+-- Verwaltung einer Community nie automatisch aus. Die Sperre auf der Nachricht verhindert, dass
+-- zwei gleichzeitige Meldungen einander nicht mitzählen.
 create function private.hide_reported_message()
 returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  msg public.chat_messages%rowtype;
 begin
-  if new.message_id is not null
-     and (select count(*) from public.reports r where r.message_id = new.message_id) >= 3 then
-    update public.chat_messages set hidden_at = now() where id = new.message_id and hidden_at is null;
+  if new.message_id is null then
+    return new;
+  end if;
+  select * into msg from public.chat_messages where id = new.message_id for update;
+  if msg.id is null or msg.hidden_at is not null or exists (
+    select 1 from public.chats c
+    join public.group_members gm on gm.group_id = c.group_id
+    where c.id = msg.chat_id and gm.user_id = msg.user_id and gm.role in ('admin', 'coach')
+  ) then
+    return new;
+  end if;
+  if (select count(*) from public.reports r
+      join public.profiles p on p.id = r.reporter_id
+      where r.message_id = msg.id and p.created_at < now() - interval '1 day') >= 3 then
+    update public.chat_messages set hidden_at = now() where id = msg.id;
   end if;
   return new;
 end;
@@ -110,12 +150,28 @@ create trigger hide_reported_message after insert on public.reports
 
 revoke execute on function private.check_report(), private.hide_reported_message() from public, anon, authenticated;
 
+-- Die alte Tabelle der Event-Chats (Brücke aus der Migration chats) hat dieselben Nachrichten mit
+-- gleicher ID. Auch dort ist eine ausgeblendete Nachricht nur für die Person lesbar, die sie
+-- geschrieben hat.
+create function private.is_hidden_message(mid uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.chat_messages x where x.id = mid and x.hidden_at is not null);
+$$;
+
+revoke execute on function private.is_hidden_message(uuid) from public, anon;
+grant execute on function private.is_hidden_message(uuid) to authenticated;
+
+create policy meetup_messages_hidden on public.meetup_messages
+  as restrictive for select to authenticated
+  using (user_id = (select auth.uid()) or not private.is_hidden_message(id));
+
 -- Ausgeblendete Nachrichten liest nur, wer sie geschrieben hat oder die Community verwaltet.
 create policy chat_messages_hidden on public.chat_messages
   as restrictive for select to authenticated
   using (hidden_at is null or user_id = (select auth.uid()) or private.can_moderate_chat(chat_id));
 
--- Der Chat zeigt ausgeblendete Nachrichten als Platzhalter ohne Text.
+-- Der Chat zeigt ausgeblendete Nachrichten als Platzhalter ohne Text, außer für die Person, die sie
+-- geschrieben hat, und die Verwaltung der Community.
 drop function public.chat_messages_page(uuid, integer);
 
 create function public.chat_messages_page(cid uuid, max_rows integer default 200)
@@ -124,7 +180,9 @@ returns table (
 )
 language sql stable security definer set search_path = '' as $$
   select x.id, x.user_id, pr.display_name, pr.avatar_url,
-         case when x.hidden_at is null then x.body end, x.created_at, x.hidden_at is not null
+         case when x.hidden_at is null or x.user_id = (select auth.uid()) or private.can_moderate_chat(cid)
+              then x.body end,
+         x.created_at, x.hidden_at is not null
   from (
     select * from public.chat_messages x
     where x.chat_id = cid
@@ -217,6 +275,48 @@ returns integer language sql stable security definer set search_path = '' as $$
   ) unread;
 $$;
 
+-- Push ohne ausgeblendete Nachrichten (sonst wie in follows)
+create or replace function public.push_payload(nid uuid, secret text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  cfg    private.push_config%rowtype;
+  n      public.notifications%rowtype;
+  latest text;
+  cid    uuid;
+begin
+  select * into cfg from private.push_config c where c.secret = push_payload.secret;
+  if cfg.secret is null then
+    raise exception 'Nicht erlaubt' using errcode = '42501';
+  end if;
+  select * into n from public.notifications where id = nid;
+  if n.id is null or n.read_at is not null then
+    return null;
+  end if;
+  if n.kind = 'message' then
+    select c.id into cid from public.chats c where c.meetup_id = n.meetup_id;
+  elsif n.kind = 'community_message' then
+    select c.id into cid from public.chats c where c.group_id = n.group_id;
+  elsif n.kind in ('direct_message', 'message_request') then
+    cid := n.chat_id;
+  end if;
+  -- Bei einer Anfrage steht der Inhalt nicht im Push, wie bei Instagram.
+  if cid is not null and n.kind <> 'message_request' then
+    select left(x.body, 200) into latest
+    from public.chat_messages x
+    where x.chat_id = cid and x.hidden_at is null
+    order by x.created_at desc, x.id desc limit 1;
+  end if;
+  return jsonb_build_object(
+    'kind', n.kind, 'actor_name', n.actor_name, 'title', n.title, 'count', n.count,
+    'meetup_id', n.meetup_id, 'actor_id', n.actor_id, 'chat_id', cid, 'latest', latest,
+    'vapid_public_key', cfg.vapid_public_key, 'vapid_private_key', cfg.vapid_private_key,
+    'subscriptions', coalesce((
+      select jsonb_agg(jsonb_build_object('endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth))
+      from public.push_subscriptions s where s.user_id = n.user_id), '[]'::jsonb)
+  );
+end;
+$$;
+
 -- ---------- Mitglieder entfernen ----------
 
 create table public.group_bans (
@@ -262,10 +362,10 @@ create trigger check_group_ban before insert on public.group_members
 
 revoke execute on function private.check_group_ban() from public, anon, authenticated;
 
--- Verwaltende entfernen nur Mitglieder ohne Verwaltungsrolle, sich selbst nicht (dafür gibt es
--- leave_group, das die Verwaltung weitergibt).
+-- Direkt löscht man nur die eigene Mitgliedschaft. Andere entfernt die Verwaltung über
+-- remove_group_member, damit Sperre und Zusagen immer mitgehen.
 alter policy members_delete on public.group_members
-  using (user_id = (select auth.uid()) or (private.can_manage_group(group_id) and role = 'member'));
+  using (user_id = (select auth.uid()));
 
 create function public.remove_group_member(gid uuid, uid uuid)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -279,6 +379,16 @@ begin
   if not found then
     raise exception 'Nur Mitglieder ohne Verwaltungsrolle lassen sich entfernen' using errcode = '42501';
   end if;
+  -- Zusagen zu kommenden Events, die die Person nur über diese Community sah (fremde Events)
+  delete from public.meetup_participants p
+  using public.meetups m
+  where p.meetup_id = m.id and p.user_id = uid
+    and m.created_by <> uid and m.starts_at > now()
+    and exists (select 1 from public.meetup_shares s where s.meetup_id = m.id and s.group_id = gid)
+    and not exists (
+      select 1 from public.meetup_shares s
+      join public.group_members gm on gm.group_id = s.group_id and gm.user_id = uid
+      where s.meetup_id = m.id);
   insert into public.group_bans (group_id, user_id, banned_by, until)
   values (gid, uid, me, now() + interval '30 days')
   on conflict (group_id, user_id) do update
@@ -309,6 +419,15 @@ create policy agent_terms_acceptances_none on public.terms_acceptances
   using (not (select private.is_agent()))
   with check (not (select private.is_agent()));
 
+-- Aktuelle Fassung. Neue Fassung: neue Migration mit create or replace und TERMS_VERSION anpassen.
+create function private.current_terms_version()
+returns text language sql immutable set search_path = '' as $$
+  select '2026-10-06'::text;
+$$;
+
+revoke execute on function private.current_terms_version() from public, anon;
+grant execute on function private.current_terms_version() to authenticated;
+
 create function public.accept_terms(p_version text)
 returns void language plpgsql security definer set search_path = '' as $$
 declare
@@ -317,7 +436,7 @@ begin
   if me is null or private.is_agent() then
     raise exception 'Keine Berechtigung' using errcode = '42501';
   end if;
-  if p_version is null or p_version !~ '^\d{4}-\d{2}-\d{2}$' then
+  if p_version is distinct from private.current_terms_version() then
     raise exception 'Unbekannte Fassung' using errcode = '22023';
   end if;
   insert into public.terms_acceptances (user_id, version) values (me, p_version)
@@ -335,7 +454,7 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   v text := new.raw_user_meta_data ->> 'terms_version';
 begin
-  if v ~ '^\d{4}-\d{2}-\d{2}$' then
+  if v = private.current_terms_version() then
     insert into public.terms_acceptances (user_id, version) values (new.id, v)
     on conflict (user_id) do nothing;
   end if;

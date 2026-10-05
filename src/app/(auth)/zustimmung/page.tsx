@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { TERMS_VERSION } from "@/lib/legal";
+import { signOut } from "@/modules/core/actions";
+import { DeleteAccount } from "@/modules/core/components/delete-account";
 import { AcceptTermsForm } from "@/modules/core/components/terms-consent";
 import { getAcceptedTermsVersion } from "@/modules/core/queries";
 
@@ -21,6 +23,21 @@ export default async function ConsentPage() {
       <div className="mt-8">
         <AcceptTermsForm />
       </div>
+
+      <section className="mt-12 space-y-2" aria-labelledby="nicht-zustimmen">
+        <h2 id="nicht-zustimmen" className="text-xl font-semibold">
+          Nicht einverstanden
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          Ohne Zustimmung kannst du OHealth nicht nutzen. Du kannst dich abmelden oder dein Konto löschen.
+        </p>
+        <form action={signOut}>
+          <button type="submit" className="min-h-11 underline underline-offset-4">
+            Abmelden
+          </button>
+        </form>
+        <DeleteAccount />
+      </section>
     </>
   );
 }

@@ -260,7 +260,10 @@ export async function removeMember(_prev: FormState, formData: FormData): Promis
     gid: parsed.data.groupId,
     uid: parsed.data.userId,
   });
-  if (error) return { error: "Entfernen hat nicht geklappt. Verwaltende lassen sich nicht entfernen." };
+  if (error) {
+    if (error.code === "42501") return { error: "Nur Mitglieder ohne Verwaltungsrolle lassen sich entfernen." };
+    return { error: "Entfernen hat nicht geklappt. Versuch es erneut." };
+  }
 
   revalidatePath(`/community/${parsed.data.groupId}`);
   return { message: "Entfernt." };

@@ -172,8 +172,8 @@ export default function PrivacyPage() {
         meldest, speichern wir die Meldung mit Art, deinem Text und deinem
         Konto, damit wir sie prüfen können. Wen du gemeldet hast, erfährt die
         gemeldete Person nicht. Haben drei Personen dieselbe Nachricht
-        gemeldet, sehen sie nur noch, wer sie geschrieben hat, und wer die
-        Community verwaltet. Wirst du aus einer Community entfernt, speichern
+        gemeldet, sehen ihren Text nur noch die Person, die sie geschrieben
+        hat, und die Verwaltung der Community. Wirst du aus einer Community entfernt, speichern
         wir für 30 Tage, dass du ihr nicht wieder beitreten kannst. Wann du
         welcher Fassung der Nutzungsbedingungen zugestimmt hast, speichern wir,
         solange dein Konto besteht.

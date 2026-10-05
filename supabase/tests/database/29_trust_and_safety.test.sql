@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(41);
+select plan(51);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -38,6 +38,17 @@ insert into public.meetups (id, created_by, title, starts_at) values
   ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'Isarlauf', now() + interval '1 day');
 insert into public.meetup_shares (meetup_id, group_id) values
   ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001');
+-- Ben, Cleo und Dana sagen zu, Ben schreibt über die alte Tabelle der Event-Chats
+insert into public.meetup_participants (meetup_id, user_id) values
+  ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000b'),
+  ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c'),
+  ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000d');
+insert into public.meetup_messages (id, meetup_id, user_id, body) values
+  ('70000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-00000000000b', 'Werbung im Event');
+-- Alle Konten außer Gina sind älter als einen Tag (nur solche Meldungen blenden aus)
+update public.profiles set created_at = now() - interval '3 days'
+where id <> '00000000-0000-0000-0000-000000000010';
 
 set local role authenticated;
 
@@ -99,15 +110,44 @@ select is((select unread from public.my_chats() where group_id = '10000000-0000-
   'Cleo: die ausgeblendete Nachricht zählt nicht als ungelesen');
 
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';
-select isnt_empty($$ select 1 from public.chat_messages where id = '70000000-0000-0000-0000-000000000001' $$,
-  'Ben: sieht seine eigene ausgeblendete Nachricht');
+select results_eq(
+  $$ select body, hidden from public.chat_messages_page(
+       (select id from public.chats where group_id = '10000000-0000-0000-0000-000000000001'))
+     where id = '70000000-0000-0000-0000-000000000001' $$,
+  $$ values ('Billig Pillen kaufen'::text, true) $$,
+  'Ben: sieht im Chat den Text seiner ausgeblendeten Nachricht mit Hinweis');
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated"}';
-select isnt_empty($$ select 1 from public.chat_messages where id = '70000000-0000-0000-0000-000000000001' $$,
-  'Anna: als Verwaltung sieht sie die ausgeblendete Nachricht');
+select results_eq(
+  $$ select body, hidden from public.chat_messages_page(
+       (select id from public.chats where group_id = '10000000-0000-0000-0000-000000000001'))
+     where id = '70000000-0000-0000-0000-000000000001' $$,
+  $$ values ('Billig Pillen kaufen'::text, true) $$,
+  'Anna: als Verwaltung sieht sie den Text, um zu entscheiden');
 select lives_ok($$ delete from public.chat_messages where id = '70000000-0000-0000-0000-000000000001' $$,
   'Anna: löscht die ausgeblendete Nachricht');
 select is_empty($$ select 1 from public.chat_messages where id = '70000000-0000-0000-0000-000000000001' $$,
   'Die Nachricht ist gelöscht, die Meldungen bleiben');
+
+-- Nachrichten der Verwaltung blendet niemand automatisch aus (Meldungen als Betreiber eingetragen)
+reset role;
+set local request.jwt.claims to '{}';
+insert into public.reports (reporter_id, message_id, category)
+select u, '70000000-0000-0000-0000-000000000002', 'spam'
+from unnest(array['00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000c',
+                  '00000000-0000-0000-0000-00000000000d']::uuid[]) u;
+select is((select hidden_at from public.chat_messages where id = '70000000-0000-0000-0000-000000000002'), null,
+  'Nachrichten der Verwaltung bleiben auch nach drei Meldungen sichtbar (der Betreiber prüft)');
+insert into public.reports (reporter_id, message_id, category)
+select u, '70000000-0000-0000-0000-000000000003', 'spam'
+from unnest(array['00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000c',
+                  '00000000-0000-0000-0000-00000000000d']::uuid[]) u;
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
+select is_empty($$ select 1 from public.meetup_messages where id = '70000000-0000-0000-0000-000000000003' $$,
+  'Cleo: liest die ausgeblendete Event-Nachricht auch nicht über die alte Tabelle');
+set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';
+select isnt_empty($$ select 1 from public.meetup_messages where id = '70000000-0000-0000-0000-000000000003' $$,
+  'Ben: liest seine eigene dort weiter');
 
 -- ---------- Events und Personen melden ----------
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
@@ -121,20 +161,37 @@ select lives_ok(
   $$ insert into public.reports (reported_user_id, category) values ('00000000-0000-0000-0000-00000000000f', 'harassment') $$,
   'Cleo: meldet eine Person');
 select throws_ok(
+  $$ insert into public.reports (reported_user_id) values ('00000000-0000-0000-0000-00000000000f') $$,
+  '23505', null, 'Cleo: meldet dieselbe Person nur einmal');
+select throws_ok(
   $$ insert into public.reports (reported_user_id) values ('00000000-0000-0000-0000-00000000000c') $$,
   '42501', null, 'Cleo: meldet sich nicht selbst');
+select throws_ok(
+  $$ insert into public.reports (reported_user_id) values ('00000000-0000-0000-0000-0000000000ff') $$,
+  '42501', null, 'Ob es eine Person gibt, verrät die Meldung nicht');
+select lives_ok(
+  $$ insert into public.reports (group_id, reported_user_id, reason)
+     values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000b', 'Name') $$,
+  'Cleo: meldet eine Community');
+select is((select reported_user_id from public.reports where group_id = '10000000-0000-0000-0000-000000000001'), null,
+  'Bei einer Community trägt die Meldung keine Person ein');
+select throws_ok(
+  $$ insert into public.reports (group_id) values ('10000000-0000-0000-0000-000000000001') $$,
+  '23505', null, 'Cleo: meldet dieselbe Community nur einmal');
 
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000f", "role": "authenticated"}';
 select throws_ok(
   $$ insert into public.reports (meetup_id) values ('60000000-0000-0000-0000-000000000001') $$,
   '42501', null, 'Finn: meldet kein Event, das er nicht sieht');
 
--- Höchstens 30 Meldungen am Tag
+-- Höchstens 30 Meldungen am Tag (die ersten 30 als Betreiber eingetragen)
 reset role;
+set local request.jwt.claims to '{}';
 insert into public.reports (reporter_id, reported_user_id, category)
 select '00000000-0000-0000-0000-00000000000f', '00000000-0000-0000-0000-00000000000a', 'other'
 from generate_series(1, 30);
 set local role authenticated;
+set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000f", "role": "authenticated"}';
 select throws_ok(
   $$ insert into public.reports (reported_user_id) values ('00000000-0000-0000-0000-00000000000b') $$,
   '54000', null, 'Finn: nach 30 Meldungen an einem Tag ist Schluss');
@@ -153,6 +210,17 @@ select is_empty(
   $$ select 1 from public.group_members where group_id = '10000000-0000-0000-0000-000000000001'
        and user_id = '00000000-0000-0000-0000-00000000000d' $$,
   'Dana ist kein Mitglied mehr');
+reset role;
+select is_empty(
+  $$ select 1 from public.meetup_participants where user_id = '00000000-0000-0000-0000-00000000000d' $$,
+  'Dana verliert die Zusage zum Event der Community und damit dessen Chat');
+set local role authenticated;
+delete from public.group_members
+where group_id = '10000000-0000-0000-0000-000000000001' and user_id = '00000000-0000-0000-0000-00000000000b';
+select isnt_empty(
+  $$ select 1 from public.group_members where group_id = '10000000-0000-0000-0000-000000000001'
+       and user_id = '00000000-0000-0000-0000-00000000000b' $$,
+  'Anna: entfernt direkt niemanden, nur über remove_group_member mit Sperre');
 select throws_ok(
   $$ select public.remove_group_member('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a') $$,
   '42501', null, 'Anna: entfernt sich nicht selbst (dafür gibt es Verlassen)');
@@ -190,7 +258,7 @@ select is((select version from public.terms_acceptances where user_id = '0000000
 set local role authenticated;
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
 select lives_ok($$ select public.accept_terms('2026-10-06') $$, 'Cleo: stimmt den Nutzungsbedingungen zu');
-select throws_ok($$ select public.accept_terms('neu') $$, '22023', null, 'Nur Fassungen als Datum');
+select throws_ok($$ select public.accept_terms('2099-01-01') $$, '22023', null, 'Nur der aktuellen Fassung');
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';
 select is_empty($$ select 1 from public.terms_acceptances $$, 'Ben: sieht keine fremde Zustimmung');
 
