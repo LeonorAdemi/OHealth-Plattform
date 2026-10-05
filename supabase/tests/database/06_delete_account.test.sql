@@ -57,6 +57,9 @@ insert into public.meetup_messages (meetup_id, user_id, body) values
 insert into public.notification_prefs (user_id, message) values ('00000000-0000-0000-0000-00000000000a', false);
 -- Anna kam über einen Event-Link.
 insert into private.signup_sources (user_id, source) values ('00000000-0000-0000-0000-00000000000a', 'event_link');
+-- Anna hat geantwortet, ob sie dabei war (als Betreiber, ohne Zeitprüfung).
+insert into public.meetup_attendance (meetup_id, user_id, attended) values
+  ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', false);
 -- Anna hat eine wöchentliche Reihe.
 insert into public.meetup_series (id, created_by, next_starts_at) values
   ('70000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', now() + interval '8 weeks');

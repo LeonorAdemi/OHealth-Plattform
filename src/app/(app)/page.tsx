@@ -16,8 +16,8 @@ import { getMyTrainingDays, getMyWorkoutsBetween, getRecentWorkouts } from "@/mo
 const MAX_WEEKS_BACK = 8;
 const MAX_WEEKS_AHEAD = 8;
 
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ woche?: string }> }) {
-  const { woche } = await searchParams;
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ woche?: string; dabei?: string }> }) {
+  const { woche, dabei } = await searchParams;
   const parsed = Number.parseInt(woche ?? "0", 10);
   const offset = Number.isFinite(parsed) ? Math.min(Math.max(parsed, -MAX_WEEKS_BACK), MAX_WEEKS_AHEAD) : 0;
 
@@ -80,6 +80,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <ResumeTraining className="mt-8" />
 
+      {dabei === "1" && (
+        <p role="status" className="mt-8 max-w-2xl">
+          Gespeichert. Das Training zählt als Trainingstag.
+        </p>
+      )}
+
       {openAttendance.length > 0 && (
         <section className="mt-8 max-w-2xl" aria-labelledby="dabei-frage">
           <h2 id="dabei-frage" className="text-xl font-semibold">
@@ -97,7 +103,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                       {[a.sportName, formatMeetupWhen(a.startsAt)].filter(Boolean).join(" · ")}
                     </span>
                   </Link>
-                  <AttendanceQuestion meetupId={a.meetupId} title={a.title} />
+                  <AttendanceQuestion meetupId={a.meetupId} title={a.title} from="heute" />
                 </div>
               </li>
             ))}

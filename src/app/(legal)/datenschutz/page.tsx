@@ -180,9 +180,12 @@ export default function PrivacyPage() {
       <p>
         Nach einem Training fragen wir alle, die zugesagt haben, ob sie dabei
         waren. Sagst du ja, entsteht daraus eine Aktivität mit Sportart und
-        Dauer des Trainings in deinem Verlauf. Wer das Training geplant hat,
-        sieht, wer bestätigt hat und wer nicht dabei war; andere sehen deine
-        Antwort nicht.
+        Dauer des Trainings in deinem Verlauf. Wie jede Aktivität sehen sie deine
+        Gruppen und wer dir folgt, mit dem Titel des Trainings; hast du eine KI
+        verbunden, sieht sie die Aktivität auch. Wer das Training geplant hat,
+        sieht, wer bestätigt hat und wer nicht dabei war. Deine Antwort selbst
+        sieht sonst niemand. Die Nachfrage kommt als Mitteilung, wenn du
+        Erinnerungen nicht ausgeschaltet hast.
       </p>
       <p>
         Ist ein Training in einer öffentlichen Community geteilt, gibt es einen

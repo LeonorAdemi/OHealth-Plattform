@@ -596,11 +596,26 @@ export function PublicMeetupAuthLinks({ meetupId, next }: { meetupId: string; ne
  * „Warst du dabei?“ mit „Ja, war dabei“ und „Nein“. Beide als Umriss, weil auf „Heute“ der eine
  * gefüllte Button „Aktivität eintragen“ ist. Nach der Antwort zeigt die Seite den neuen Stand.
  */
-export function AttendanceQuestion({ meetupId, title }: { meetupId: string; title: string }) {
+/**
+ * „Warst du dabei?“ mit Ja und Nein. `declined`: schon mit Nein beantwortet, dann bleibt nur Ja.
+ * `from="heute"`: nach „Ja“ bleibt die Person auf „Heute“, sonst geht es zur Seite des Trainings.
+ */
+export function AttendanceQuestion({
+  meetupId,
+  title,
+  declined = false,
+  from = "event",
+}: {
+  meetupId: string;
+  title: string;
+  declined?: boolean;
+  from?: "heute" | "event";
+}) {
   const [state, action, pending] = useActionState(confirmAttendance, initial);
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="meetupId" value={meetupId} />
+      <input type="hidden" name="von" value={from} />
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
@@ -609,21 +624,23 @@ export function AttendanceQuestion({ meetupId, title }: { meetupId: string; titl
           variant="outline"
           size="sm"
           disabled={pending}
-          aria-label={`Ja, ich war bei ${title} dabei`}
+          aria-label={`Ja, war dabei: ${title}`}
         >
           Ja, war dabei
         </Button>
-        <Button
-          type="submit"
-          name="antwort"
-          value="nein"
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          aria-label={`Nein, ich war bei ${title} nicht dabei`}
-        >
-          Nein
-        </Button>
+        {!declined && (
+          <Button
+            type="submit"
+            name="antwort"
+            value="nein"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            aria-label={`Nein: ${title}`}
+          >
+            Nein
+          </Button>
+        )}
       </div>
       <ErrorText error={state.error} />
       {state.message && (

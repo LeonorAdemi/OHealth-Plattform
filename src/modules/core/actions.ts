@@ -525,8 +525,9 @@ export async function confirmAttendance(_prev: FormState, formData: FormData): P
   }
 
   revalidatePath("/", "layout");
-  // Nach „Ja“ zur Seite des Trainings: dort steht, dass es zählt, mit dem Weg zur Aktivität.
-  if (answer.data === "ja") redirect(`/plan/${id.data}`);
+  // Nach „Ja“ auf „Heute“ bleiben (mit Hinweis), sonst zur Seite des Trainings: dort steht, dass es
+  // zählt, mit dem Weg zur Aktivität.
+  if (answer.data === "ja") redirect(formData.get("von") === "heute" ? "/?dabei=1" : `/plan/${id.data}`);
   return { message: "Gespeichert." };
 }
 

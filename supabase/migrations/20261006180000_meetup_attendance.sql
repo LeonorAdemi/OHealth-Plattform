@@ -10,8 +10,10 @@
 --   sagt, verliert diese Aktivität wieder; eigene Änderungen an ihr bleiben bis dahin erhalten.
 -- - Eine Aktivität kann nur mit einem Event verknüpft werden, bei dem die Person zugesagt hat und
 --   das begonnen hat (Trigger, gilt für jeden Weg in die Tabelle).
--- - Wer plant, sieht nach dem Event, wer dabei war (meetup_attendance_names). Andere sehen nur
---   ihre eigene Antwort.
+-- - Wer plant, sieht nach dem Event, wer dabei war (meetup_attendance_names). Die Antwort selbst
+--   sieht sonst niemand; die entstandene Aktivität ist aber wie jede andere für Gruppen und
+--   Folgende sichtbar, mit dem Titel des Events.
+-- - Geschrieben wird meetup_attendance nur über confirm_attendance (keine Schreibregeln).
 -- - Ein Job alle 15 Minuten fragt per Mitteilung 'attendance' nach, sobald ein Event vorbei ist,
 --   einmal je Person und Event (Einstellung wie Erinnerungen).
 -- - Eine KI darf nichts davon.
@@ -39,9 +41,16 @@ begin
 end;
 $$;
 
+-- Beim Ändern nur, wenn sich die Verknüpfung tatsächlich ändert (eine spätere Absage soll eine
+-- bestehende Aktivität nicht sperren).
 create trigger check_workout_meetup
-  before insert or update of meetup_id, user_id on public.workouts
+  before insert on public.workouts
   for each row execute function private.check_workout_meetup();
+create trigger check_workout_meetup_update
+  before update of meetup_id, user_id on public.workouts
+  for each row
+  when (new.meetup_id is distinct from old.meetup_id or new.user_id is distinct from old.user_id)
+  execute function private.check_workout_meetup();
 
 revoke execute on function private.check_workout_meetup() from public, anon, authenticated;
 
@@ -65,12 +74,8 @@ alter table public.meetup_attendance enable row level security;
 
 create policy meetup_attendance_select on public.meetup_attendance for select to authenticated
   using (user_id = (select auth.uid()) or private.is_meetup_owner(meetup_id));
--- Schreiben nur über confirm_attendance (security invoker), deshalb dieselben Bedingungen hier
-create policy meetup_attendance_insert on public.meetup_attendance for insert to authenticated
-  with check (user_id = (select auth.uid()) and private.is_meetup_participant(meetup_id));
-create policy meetup_attendance_update on public.meetup_attendance for update to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()) and private.is_meetup_participant(meetup_id));
+-- Keine Regeln für Insert, Update und Delete: Geschrieben wird nur über confirm_attendance, die
+-- über private.record_attendance alle Bedingungen prüft. Direkte Schreibversuche scheitern an RLS.
 
 create policy agent_meetup_attendance_none on public.meetup_attendance
   as restrictive for all to authenticated
@@ -85,6 +90,34 @@ $$;
 
 revoke execute on function private.meetup_ends_at(public.meetups) from public, anon;
 grant execute on function private.meetup_ends_at(public.meetups) to authenticated;
+
+-- Schreibt die Antwort. Mit erhöhten Rechten, weil es keine Schreibregeln gibt; deshalb prüft sie
+-- selbst: angemeldet, keine KI, Zusage, Event vorbei und höchstens 14 Tage her, und eine
+-- verknüpfte Aktivität gehört der Person und diesem Event.
+create function private.record_attendance(p_meetup_id uuid, p_attended boolean, p_workout_id uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := (select auth.uid());
+  m  public.meetups%rowtype;
+begin
+  select * into m from public.meetups where id = p_meetup_id;
+  if me is null or private.is_agent() or m.id is null or p_attended is null
+     or not exists (select 1 from public.meetup_participants p where p.meetup_id = m.id and p.user_id = me)
+     or private.meetup_ends_at(m) > now() or private.meetup_ends_at(m) < now() - interval '14 days'
+     or (p_workout_id is not null and not exists (
+           select 1 from public.workouts w where w.id = p_workout_id and w.user_id = me and w.meetup_id = m.id))
+  then
+    raise exception 'Keine Berechtigung' using errcode = '42501';
+  end if;
+  insert into public.meetup_attendance (meetup_id, user_id, attended, workout_id)
+  values (m.id, me, p_attended, p_workout_id)
+  on conflict (meetup_id, user_id) do update
+    set attended = excluded.attended, workout_id = excluded.workout_id, answered_at = now();
+end;
+$$;
+
+revoke execute on function private.record_attendance(uuid, boolean, uuid) from public, anon;
+grant execute on function private.record_attendance(uuid, boolean, uuid) to authenticated;
 
 create function public.confirm_attendance(p_meetup_id uuid, p_attended boolean)
 returns uuid language plpgsql security invoker set search_path = '' as $$
@@ -111,18 +144,20 @@ begin
 
   select w.id into wid from public.workouts w where w.user_id = me and w.meetup_id = m.id;
   if p_attended and wid is null then
+    -- Zwei Antworten im selben Moment: die zweite übernimmt die Aktivität der ersten
     insert into public.workouts (user_id, title, sport_id, performed_at, duration_minutes, source, meetup_id)
     values (me, m.title, coalesce(m.sport_id, 'sonstiges'), m.starts_at, m.duration_minutes, 'event', m.id)
+    on conflict (user_id, meetup_id) where meetup_id is not null do nothing
     returning id into wid;
+    if wid is null then
+      select w.id into wid from public.workouts w where w.user_id = me and w.meetup_id = m.id;
+    end if;
   elsif not p_attended and wid is not null then
     delete from public.workouts w where w.id = wid and w.source = 'event';
     wid := null;
   end if;
 
-  insert into public.meetup_attendance (meetup_id, user_id, attended, workout_id)
-  values (m.id, me, p_attended, wid)
-  on conflict (meetup_id, user_id) do update
-    set attended = excluded.attended, workout_id = excluded.workout_id, answered_at = now();
+  perform private.record_attendance(m.id, p_attended, wid);
   return wid;
 end;
 $$;
@@ -136,6 +171,7 @@ language sql stable security invoker set search_path = '' as $$
   join public.meetups m on m.id = p.meetup_id
   left join public.sports sp on sp.id = m.sport_id
   where p.user_id = (select auth.uid())
+    and not private.is_agent()
     and private.meetup_ends_at(m) <= now()
     and private.meetup_ends_at(m) >= now() - interval '14 days'
     and not exists (
@@ -181,9 +217,15 @@ begin
   select mp.user_id, 'attendance', m.id, m.created_by, private.display_name_of(m.created_by), left(m.title, 120)
   from public.meetups m
   join public.meetup_participants mp on mp.meetup_id = m.id
-  where private.meetup_ends_at(m) <= now()
+  where m.starts_at <= now() and m.starts_at > now() - interval '30 hours'
+    and private.meetup_ends_at(m) <= now()
     and private.meetup_ends_at(m) > now() - interval '6 hours'
     and private.wants_notification(mp.user_id, 'reminder')
+    -- Nur wer das Event noch sieht (plant oder ist Mitglied einer Community, in der es geteilt ist)
+    and (m.created_by = mp.user_id or exists (
+      select 1 from public.meetup_shares s
+      join public.group_members gm on gm.group_id = s.group_id
+      where s.meetup_id = m.id and gm.user_id = mp.user_id))
     and not exists (
       select 1 from public.meetup_attendance a where a.meetup_id = m.id and a.user_id = mp.user_id)
     and not exists (

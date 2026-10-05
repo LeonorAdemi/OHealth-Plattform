@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(33);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -22,7 +22,8 @@ insert into public.meetups (id, created_by, title, starts_at, sport_id, duration
   ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'Isarlauf', now() + interval '1 day', 'laufen', 60),
   ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a', 'Läuft noch', now() + interval '1 day', 'laufen', 60),
   ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000000a', 'Lange her', now() + interval '1 day', 'laufen', 60),
-  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000a', 'Ohne Dauer', now() + interval '1 day', null, null);
+  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000a', 'Ohne Dauer', now() + interval '1 day', null, null),
+  ('60000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000000a', 'Morgen', now() + interval '1 day', 'laufen', 60);
 insert into public.groups (id, name, type, invite_code, created_by) values
   ('10000000-0000-0000-0000-000000000001', 'Crew', 'friends', 'crew-code', '00000000-0000-0000-0000-00000000000a');
 insert into public.group_members (group_id, user_id) values
@@ -35,7 +36,12 @@ insert into public.meetup_participants (meetup_id, user_id) values
   ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c'),
   ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b'),
   ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000000b'),
-  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000b');
+  ('60000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00000000000b'),
+  ('60000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000000b');
+-- Cleo will keine Erinnerungen, also auch keine Nachfrage. Ben hat eine eigene Aktivität ohne Event.
+insert into public.notification_prefs (user_id, reminder) values ('00000000-0000-0000-0000-00000000000c', false);
+insert into public.workouts (id, user_id, sport_id) values
+  ('20000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b', 'laufen');
 update public.meetups set starts_at = now() - interval '2 hours' where id = '60000000-0000-0000-0000-000000000001';
 update public.meetups set starts_at = now() - interval '30 minutes' where id = '60000000-0000-0000-0000-000000000002';
 update public.meetups set starts_at = now() - interval '20 days' where id = '60000000-0000-0000-0000-000000000003';
@@ -48,6 +54,9 @@ select is(
   (select count(*)::int from public.notifications
    where meetup_id = '60000000-0000-0000-0000-000000000002' and kind = 'attendance'), 0,
   'Für ein laufendes Training kommt noch keine Frage');
+select is_empty(
+  $$ select 1 from public.notifications where user_id = '00000000-0000-0000-0000-00000000000c' and kind = 'attendance' $$,
+  'Wer Erinnerungen ausgeschaltet hat, bekommt keine Nachfrage');
 
 -- ---------- Ben ----------
 set local role authenticated;
@@ -69,7 +78,7 @@ select isnt_empty(
   'Die Teilnahme zählt als Trainingstag');
 select lives_ok($$ select public.confirm_attendance('60000000-0000-0000-0000-000000000001', true) $$,
   'Erneutes Bestätigen schadet nicht');
-select is((select count(*)::int from public.workouts where user_id = '00000000-0000-0000-0000-00000000000b'), 1,
+select is((select count(*)::int from public.workouts where user_id = '00000000-0000-0000-0000-00000000000b' and source = 'event'), 1,
   'Es bleibt bei einer Aktivität');
 select throws_ok(
   $$ insert into public.workouts (user_id, sport_id, meetup_id, source)
@@ -93,6 +102,36 @@ select is_empty($$ select 1 from public.meetup_attendance where user_id <> '0000
 select is_empty($$ select 1 from public.meetup_attendance_names('60000000-0000-0000-0000-000000000001') $$,
   'Ben: sieht nicht, wer sonst dabei war');
 
+-- Direkt schreiben geht nicht, nur über confirm_attendance
+select throws_ok(
+  $$ insert into public.meetup_attendance (meetup_id, user_id, attended)
+     values ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b', true) $$,
+  '42501', null, 'Ben: trägt keine Antwort direkt ein (etwa für ein laufendes Training)');
+update public.meetup_attendance set attended = true where meetup_id = '60000000-0000-0000-0000-000000000004';
+select is((select attended from public.meetup_attendance where meetup_id = '60000000-0000-0000-0000-000000000004'), false,
+  'Ben: ändert seine Antwort nicht direkt');
+select throws_ok(
+  $$ select private.record_attendance('60000000-0000-0000-0000-000000000004', true, '20000000-0000-0000-0000-00000000000b') $$,
+  '42501', null, 'Ben: verknüpft keine fremde Aktivität mit seiner Antwort');
+
+-- Verknüpfung über eine Änderung
+select throws_ok(
+  $$ update public.workouts set meetup_id = '60000000-0000-0000-0000-000000000005'
+     where id = '20000000-0000-0000-0000-00000000000b' $$,
+  '42501', null, 'Ben: verknüpft keine Aktivität mit einem Training, das noch nicht begonnen hat');
+select lives_ok(
+  $$ update public.workouts set duration_minutes = 45 where meetup_id = '60000000-0000-0000-0000-000000000001' $$,
+  'Ben: ändert die Aktivität aus dem Training wie jede andere');
+
+-- Aktivität selbst gelöscht: die Antwort bleibt, ein neues „Ja“ legt sie wieder an
+delete from public.workouts where meetup_id = '60000000-0000-0000-0000-000000000001';
+select results_eq(
+  $$ select attended, workout_id from public.meetup_attendance where meetup_id = '60000000-0000-0000-0000-000000000001' $$,
+  $$ values (true, null::uuid) $$,
+  'Nach dem Löschen der Aktivität bleibt das „Ja“ ohne Aktivität');
+select isnt(public.confirm_attendance('60000000-0000-0000-0000-000000000001', true), null,
+  'Ben: ein neues „Ja“ legt die Aktivität wieder an');
+
 -- ---------- Fremde ----------
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000c", "role": "authenticated"}';
 select throws_ok(
@@ -115,6 +154,21 @@ set local request.jwt.claims to
   '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated", "client_id": "claude"}';
 select throws_ok($$ select public.confirm_attendance('60000000-0000-0000-0000-000000000001', true) $$,
   '42501', null, 'KI: bestätigt keine Teilnahme');
+select is_empty($$ select 1 from public.meetup_attendance $$, 'KI: liest keine Antworten');
+select is_empty($$ select 1 from public.my_open_attendance() $$, 'KI: sieht keine offenen Fragen');
+set local request.jwt.claims to
+  '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated", "client_id": "claude"}';
+select is_empty($$ select 1 from public.meetup_attendance_names('60000000-0000-0000-0000-000000000001') $$,
+  'KI: sieht nicht, wer dabei war, auch nicht für die planende Person');
+
+-- ---------- Event gelöscht ----------
+reset role;
+delete from public.meetups where id = '60000000-0000-0000-0000-000000000001';
+select results_eq(
+  $$ select count(*)::int from public.workouts
+     where user_id = '00000000-0000-0000-0000-00000000000b' and source = 'event' and meetup_id is null $$,
+  $$ values (1) $$,
+  'Wird das Training gelöscht, bleibt die Aktivität ohne Verknüpfung');
 
 select * from finish();
 rollback;
