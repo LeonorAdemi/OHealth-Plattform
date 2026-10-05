@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { describeProfile } from "@/modules/core/logic";
-import { getProfile } from "@/modules/core/queries";
+import { getMyFriends, getProfile } from "@/modules/core/queries";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { getRecentWorkouts } from "@/modules/workouts/queries";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Profil" };
 const RECENT = 5;
 
 export default async function ProfilePage() {
-  const [profile, recent] = await Promise.all([getProfile(), getRecentWorkouts(RECENT + 1)]);
+  const [profile, recent, friends] = await Promise.all([getProfile(), getRecentWorkouts(RECENT + 1), getMyFriends()]);
   const now = new Date();
   const details = describeProfile(profile);
 
@@ -46,6 +46,21 @@ export default async function ProfilePage() {
           </Link>
         </Button>
       </div>
+
+      <p className="mt-8 max-w-2xl border-y">
+        <Link
+          href="/freunde"
+          className="hover:bg-accent -mx-2 flex min-h-14 items-center gap-3 rounded-lg px-2 transition-colors duration-150 ease-out"
+        >
+          <span className="flex-1 font-medium">Freunde</span>
+          {friends.incoming.length > 0 && (
+            <span className="text-sm font-medium">
+              {friends.incoming.length} {friends.incoming.length === 1 ? "Anfrage" : "Anfragen"}
+            </span>
+          )}
+          <span className="text-muted-foreground num text-sm">{friends.friends.length}</span>
+        </Link>
+      </p>
 
       <section className="mt-12 max-w-2xl" aria-labelledby="verlauf">
         <h2 id="verlauf" className="text-xl font-semibold">

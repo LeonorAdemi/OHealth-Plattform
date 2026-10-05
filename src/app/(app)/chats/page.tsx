@@ -21,8 +21,8 @@ export default async function ChatsPage() {
       {chats.length === 0 ? (
         <div className="mt-8 max-w-xl">
           <p>
-            Noch keine Chats. Jede Community hat einen Chat, und zu jedem Training, bei dem du dabei bist, gibt es
-            einen.
+            Noch keine Chats. Jede Community hat einen Chat, zu jedem Training, bei dem du dabei bist, gibt es einen,
+            und mit Freunden kannst du privat schreiben.
           </p>
           <Button asChild className="mt-6 w-full md:w-auto">
             <Link href="/community">Communities ansehen</Link>
@@ -32,7 +32,9 @@ export default async function ChatsPage() {
         <ul className="mt-4 max-w-2xl" aria-label="Deine Chats">
           {chats.map((chat) => {
             const preview = chat.last
-              ? `${chat.last.isMe ? "Du" : chat.last.name}: ${chat.last.body}`
+              ? chat.kind === "direct" && !chat.last.isMe
+                ? chat.last.body
+                : `${chat.last.isMe ? "Du" : chat.last.name}: ${chat.last.body}`
               : chat.kind === "meetup"
                 ? "Noch keine Nachrichten. Sprecht euch ab, wo ihr euch trefft."
                 : "Noch keine Nachrichten.";
@@ -46,13 +48,15 @@ export default async function ChatsPage() {
                   {chat.kind === "meetup" && chat.startsAt ? (
                     <MeetupDate startsAt={chat.startsAt} />
                   ) : (
-                    <Avatar path={null} name={chat.title} />
+                    <Avatar path={chat.kind === "direct" ? chat.otherAvatarUrl : null} name={chat.title} />
                   )}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline gap-2">
                       <span className="min-w-0 flex-1 truncate font-medium">
                         {chat.title}
-                        <span className="sr-only">{chat.kind === "meetup" ? ", Training" : ", Community"}</span>
+                        <span className="sr-only">
+                          {chat.kind === "meetup" ? ", Training" : chat.kind === "community" ? ", Community" : ", privat"}
+                        </span>
                       </span>
                       {chat.last && (
                         <span

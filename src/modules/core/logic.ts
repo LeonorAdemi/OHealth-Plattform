@@ -266,19 +266,34 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
 
 // ---------- Mitteilungen ----------
 
-export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder" | "community_message";
+export type NotificationKind =
+  | "new_training"
+  | "joined"
+  | "message"
+  | "cancelled"
+  | "reminder"
+  | "community_message"
+  | "friend_request"
+  | "friend_accepted"
+  | "direct_message";
+
+const NOTIFICATION_KINDS: readonly NotificationKind[] = [
+  "new_training",
+  "joined",
+  "message",
+  "cancelled",
+  "reminder",
+  "community_message",
+  "friend_request",
+  "friend_accepted",
+  "direct_message",
+];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
-export const CHAT_NOTIFICATION_KINDS = ["message", "community_message"] as const;
+export const CHAT_NOTIFICATION_KINDS = ["message", "community_message", "direct_message"] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
-  return value === "joined" ||
-    value === "message" ||
-    value === "cancelled" ||
-    value === "reminder" ||
-    value === "community_message"
-    ? value
-    : "new_training";
+  return NOTIFICATION_KINDS.find((k) => k === value) ?? "new_training";
 }
 
 /** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
@@ -300,6 +315,12 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return n.count > 1
         ? `${n.count} neue Nachrichten in „${n.title}“, zuletzt von ${n.actorName}`
         : `${n.actorName} hat in „${n.title}“ geschrieben`;
+    case "friend_request":
+      return `${n.actorName} möchte mit dir befreundet sein`;
+    case "friend_accepted":
+      return `${n.actorName} hat deine Freundschaftsanfrage angenommen`;
+    case "direct_message":
+      return n.count > 1 ? `${n.count} neue Nachrichten von ${n.actorName}` : `${n.actorName} hat dir geschrieben`;
   }
 }
 
@@ -314,20 +335,28 @@ export function pushContent(p: {
   count: number;
   meetupId: string | null;
   chatId?: string | null;
+  actorId?: string | null;
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
+  const isChat = p.kind === "message" || p.kind === "community_message" || p.kind === "direct_message";
   const url =
-    (p.kind === "message" || p.kind === "community_message") && p.chatId
+    isChat && p.chatId
       ? `/chats/${p.chatId}`
-      : p.meetupId
-        ? p.kind === "message"
-          ? `/plan/${p.meetupId}/chat`
-          : `/plan/${p.meetupId}`
-        : "/mitteilungen";
-  if ((p.kind === "message" || p.kind === "community_message") && p.latest) {
+      : p.kind === "friend_request"
+        ? "/freunde"
+        : p.kind === "friend_accepted" && p.actorId
+          ? `/person/${p.actorId}`
+          : p.meetupId
+            ? p.kind === "message"
+              ? `/plan/${p.meetupId}/chat`
+              : `/plan/${p.meetupId}`
+            : "/mitteilungen";
+  if (isChat && p.latest) {
+    // Im Privatchat steht der Name schon im Titel, wie in Messengern
+    const text = p.kind === "direct_message" ? p.latest : `${p.actorName}: ${p.latest}`;
     return {
       title: p.title,
-      body: p.count > 1 ? `${p.actorName}: ${p.latest} (${p.count} neue)` : `${p.actorName}: ${p.latest}`,
+      body: p.count > 1 ? `${text} (${p.count} neue)` : text,
       url,
       tag: `chat-${p.chatId ?? p.meetupId}`,
     };

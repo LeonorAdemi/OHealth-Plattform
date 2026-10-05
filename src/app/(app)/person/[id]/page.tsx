@@ -3,17 +3,18 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { Avatar } from "@/components/ui/avatar";
+import { FriendActions } from "@/modules/core/components/friend-actions";
 import { describeProfile } from "@/modules/core/logic";
-import { getPersonProfile } from "@/modules/core/queries";
+import { getFriendState, getPersonProfile } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Profil" };
 
-/** Profil einer anderen Person. Sichtbar nur mit gemeinsamer Gruppe oder Community. */
+/** Profil einer anderen Person. Sichtbar mit gemeinsamer Gruppe oder Community oder als Freund. */
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const person = await getPersonProfile(id);
+  const [person, friendState] = await Promise.all([getPersonProfile(id), getFriendState(id)]);
   if (!person) notFound();
   if (person.isMe) redirect("/profil");
 
@@ -29,6 +30,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
       {person.bio && <p className="mt-6 max-w-xl whitespace-pre-line">{person.bio}</p>}
+
+      <section className="mt-8 max-w-xl" aria-label="Freundschaft">
+        <FriendActions personId={person.id} name={person.display_name} state={friendState} />
+      </section>
     </>
   );
 }

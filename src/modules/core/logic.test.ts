@@ -227,6 +227,19 @@ describe("Push", () => {
     });
   });
 
+  it("Privatchat: Name im Titel, Nachricht ohne Namen", () => {
+    const direct = { ...base, kind: "direct_message" as const, title: "Ben", latest: "Lust?", chatId: "c3", meetupId: null };
+    expect(pushContent(direct)).toEqual({ title: "Ben", body: "Lust?", url: "/chats/c3", tag: "chat-c3" });
+  });
+
+  it("Freundschaft: Anfrage führt zu den Freunden, Annahme zum Profil", () => {
+    expect(pushContent({ ...base, kind: "friend_request", meetupId: null, actorId: "u1" })).toMatchObject({
+      body: "Ben möchte mit dir befreundet sein",
+      url: "/freunde",
+    });
+    expect(pushContent({ ...base, kind: "friend_accepted", meetupId: null, actorId: "u1" }).url).toBe("/person/u1");
+  });
+
   it("nimmt sonst den Satz der Mitteilung", () => {
     expect(pushContent({ ...base, kind: "joined" })).toMatchObject({ body: "Ben ist bei „Lauf“ dabei", url: "/plan/m1" });
     expect(pushContent({ ...base, kind: "cancelled", meetupId: null }).url).toBe("/mitteilungen");

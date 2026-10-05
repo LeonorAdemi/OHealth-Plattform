@@ -18,6 +18,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           body: string
@@ -97,6 +130,8 @@ export type Database = {
           id: string
           kind: string
           meetup_id: string | null
+          user_high: string | null
+          user_low: string | null
         }
         Insert: {
           created_at?: string
@@ -104,6 +139,8 @@ export type Database = {
           id?: string
           kind: string
           meetup_id?: string | null
+          user_high?: string | null
+          user_low?: string | null
         }
         Update: {
           created_at?: string
@@ -111,6 +148,8 @@ export type Database = {
           id?: string
           kind?: string
           meetup_id?: string | null
+          user_high?: string | null
+          user_low?: string | null
         }
         Relationships: [
           {
@@ -125,6 +164,20 @@ export type Database = {
             columns: ["meetup_id"]
             isOneToOne: true
             referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_user_high_fkey"
+            columns: ["user_high"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_user_low_fkey"
+            columns: ["user_low"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -167,6 +220,48 @@ export type Database = {
           {
             foreignKeyName: "exercises_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          accepted_at: string | null
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -426,6 +521,8 @@ export type Database = {
         Row: {
           cancelled: boolean
           community_message: boolean
+          direct_message: boolean
+          friends: boolean
           joined: boolean
           message: boolean
           new_training_private: boolean
@@ -437,6 +534,8 @@ export type Database = {
         Insert: {
           cancelled?: boolean
           community_message?: boolean
+          direct_message?: boolean
+          friends?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean
@@ -448,6 +547,8 @@ export type Database = {
         Update: {
           cancelled?: boolean
           community_message?: boolean
+          direct_message?: boolean
+          friends?: boolean
           joined?: boolean
           message?: boolean
           new_training_private?: boolean
@@ -470,6 +571,7 @@ export type Database = {
         Row: {
           actor_id: string | null
           actor_name: string
+          chat_id: string | null
           count: number
           created_at: string
           group_id: string | null
@@ -483,6 +585,7 @@ export type Database = {
         Insert: {
           actor_id?: string | null
           actor_name: string
+          chat_id?: string | null
           count?: number
           created_at?: string
           group_id?: string | null
@@ -496,6 +599,7 @@ export type Database = {
         Update: {
           actor_id?: string | null
           actor_name?: string
+          chat_id?: string | null
           count?: number
           created_at?: string
           group_id?: string | null
@@ -512,6 +616,13 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
             referencedColumns: ["id"]
           },
           {
@@ -1021,6 +1132,7 @@ export type Database = {
       }
     }
     Functions: {
+      block_person: { Args: { target: string }; Returns: undefined }
       chat_messages_page: {
         Args: { cid: string; max_rows?: number }
         Returns: {
@@ -1179,6 +1291,8 @@ export type Database = {
           last_display_name: string
           last_user_id: string
           meetup_id: string
+          other_avatar_url: string
+          other_user_id: string
           starts_at: string
           title: string
           unread: number
@@ -1199,11 +1313,28 @@ export type Database = {
           type: string
         }[]
       }
+      my_friends: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          incoming: boolean
+          since: string
+          status: string
+          user_id: string
+        }[]
+      }
+      open_direct_chat: { Args: { other: string }; Returns: string }
       push_forget: {
         Args: { endpoint: string; secret: string }
         Returns: undefined
       }
       push_payload: { Args: { nid: string; secret: string }; Returns: Json }
+      remove_friend: { Args: { other: string }; Returns: undefined }
+      respond_friend_request: {
+        Args: { accept: boolean; requester: string }
+        Returns: undefined
+      }
       save_push_subscription: {
         Args: { auth: string; endpoint: string; p256dh: string }
         Returns: undefined
@@ -1219,6 +1350,8 @@ export type Database = {
         }
         Returns: string
       }
+      send_friend_request: { Args: { target: string }; Returns: string }
+      unblock_person: { Args: { target: string }; Returns: undefined }
       unread_chat_count: { Args: never; Returns: number }
       update_workout: {
         Args: { p_id: string; p_sets: Json; p_title: string }

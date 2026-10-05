@@ -74,11 +74,15 @@ export default function PrivacyPage() {
           wann und in welcher Rolle.
         </li>
         <li>
+          <strong>Freunde:</strong> wen du angefragt hast, von wem du Anfragen
+          hast, mit wem du befreundet bist und wen du blockiert hast.
+        </li>
+        <li>
           <strong>Geplante Trainings und Chat:</strong> Trainings, die du
           planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
           Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
-          du zugesagt hast, deine Nachrichten im Chat eines Trainings oder
-          einer Community und bis
+          du zugesagt hast, deine Nachrichten im Chat eines Trainings, einer
+          Community oder mit Freunden und bis
           wann du einen Chat gelesen hast, damit wir ungelesene Nachrichten
           zählen können.
         </li>
@@ -164,6 +168,15 @@ export default function PrivacyPage() {
         haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
         kannst du jederzeit löschen. Entfernt die planende Person das
         Training, wird der Chat mit gelöscht.
+      </p>
+      <p>
+        Freundschaftsanfragen kannst du nur an Personen schicken, mit denen du in
+        einer Community bist. Wir speichern, wer wen angefragt hat und ob die
+        Anfrage angenommen ist. Befreundete sehen einander das Profil, auch ohne
+        gemeinsame Community, und können privat schreiben. Diesen Chat lesen nur
+        die beiden. Endet die Freundschaft, ist der Chat für beide geschlossen.
+        Blockierst du jemanden, speichern wir das; die Person erfährt davon
+        nichts, kann dich aber nicht mehr anfragen oder dir privat schreiben.
       </p>
       <p>
         Jede Community außer Coaching-Communities hat einen Chat. Ihn lesen und
@@ -283,7 +296,8 @@ export default function PrivacyPage() {
         kannst du jederzeit löschen. In den Einstellungen kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
         Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
-        Chat-Nachrichten, Mitteilungen, Push-Abos und dein Profilbild sofort entfernt. Communities, die
+        Chat-Nachrichten, Freundschaften, Blockierungen, Mitteilungen, Push-Abos und dein Profilbild sofort
+        entfernt. Privatchats mit dir werden dabei für beide Seiten gelöscht. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

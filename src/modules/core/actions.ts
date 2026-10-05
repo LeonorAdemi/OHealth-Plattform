@@ -478,6 +478,7 @@ export async function markChatRead(chatId: string): Promise<void> {
     .is("read_at", null);
   if (chat.meetup_id) await unread.eq("kind", "message").eq("meetup_id", chat.meetup_id);
   else if (chat.group_id) await unread.eq("kind", "community_message").eq("group_id", chat.group_id);
+  else await unread.eq("kind", "direct_message").eq("chat_id", id.data);
 }
 
 /** Zahl der Chats mit ungelesenen Nachrichten, für die Zahl am Tab. */
@@ -542,6 +543,8 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
     cancelled: on("cancelled"),
     reminder: on("reminder"),
     community_message: on("communityMessage"),
+    friends: on("friends"),
+    direct_message: on("directMessage"),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
@@ -719,6 +722,85 @@ export async function removeAvatar(): Promise<FormState> {
 
   revalidatePath("/", "layout");
   return { message: "Profilbild entfernt" };
+}
+
+// ---------- Freunde ----------
+
+const personId = z.uuid();
+
+function revalidateFriends(id: string) {
+  revalidatePath(`/person/${id}`);
+  revalidatePath("/freunde");
+  revalidatePath("/profil");
+}
+
+/** Schickt eine Freundschaftsanfrage. Hat die Person schon angefragt, seid ihr damit befreundet. */
+export async function sendFriendRequest(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("send_friend_request", { target: id.data });
+  if (error) {
+    if (error.code === "54000") return { error: "Du hast viele offene Anfragen. Warte, bis einige beantwortet sind." };
+    return { error: "Die Anfrage konnte nicht gesendet werden. Anfragen gehen nur an Personen aus deinen Gruppen." };
+  }
+  revalidateFriends(id.data);
+  return { message: data === "accepted" ? "Ihr seid jetzt befreundet" : "Anfrage gesendet" };
+}
+
+/** Nimmt eine Anfrage an oder lehnt sie ab. */
+export async function respondFriendRequest(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Anfrage gibt es nicht mehr." };
+  const accept = formData.get("accept") === "yes";
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_friend_request", { requester: id.data, accept });
+  if (error) return { error: "Diese Anfrage gibt es nicht mehr." };
+  revalidateFriends(id.data);
+  revalidatePath("/", "layout");
+  return { message: accept ? "Ihr seid jetzt befreundet" : "Anfrage abgelehnt" };
+}
+
+/** Zieht eine eigene Anfrage zurück oder beendet eine Freundschaft. */
+export async function removeFriend(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_friend", { other: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFriends(id.data);
+  return {};
+}
+
+/** Blockiert eine Person: keine Anfragen und keine Privatchats mehr, eine Freundschaft endet. */
+export async function blockPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("block_person", { target: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFriends(id.data);
+  return { message: "Blockiert" };
+}
+
+export async function unblockPerson(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unblock_person", { target: id.data });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  revalidateFriends(id.data);
+  return {};
+}
+
+/** Öffnet den Privatchat mit einer befreundeten Person. */
+export async function openDirectChat(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = personId.safeParse(formData.get("personId"));
+  if (!id.success) return { error: "Diese Person gibt es nicht." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("open_direct_chat", { other: id.data });
+  if (error || !data) return { error: "Privat schreiben geht nur mit Freunden." };
+  redirect(`/chats/${data}`);
 }
 
 // ---------- Einladung ----------

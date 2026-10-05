@@ -55,6 +55,11 @@ insert into public.meetup_participants (meetup_id, user_id) values
 insert into public.meetup_messages (meetup_id, user_id, body) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', 'Bin dabei');
 insert into public.notification_prefs (user_id, message) values ('00000000-0000-0000-0000-00000000000a', false);
+-- Anna ist mit Ben befreundet und hat Emil blockiert.
+insert into public.friendships (requester_id, addressee_id, status) values
+  ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b', 'accepted');
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000e');
 -- Die Nachricht ist über die Brücke auch im neuen Chat; Anna hat ihn gelesen.
 select ok(
   (select count(*) from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a') = 1
@@ -87,10 +92,13 @@ select is(
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.friendships
+     where '00000000-0000-0000-0000-00000000000a' in (requester_id, addressee_id))
+  + (select count(*)::int from public.blocks where blocker_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.notifications where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.notification_prefs where user_id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings, Chat-Nachrichten mit Gelesen-Stand und Mitteilungen sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings, Chat-Nachrichten mit Gelesen-Stand, Freundschaften, Blockierungen und Mitteilungen sind vollständig weg');
 
 select results_eq(
   $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,
