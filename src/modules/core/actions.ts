@@ -9,7 +9,7 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { berlinLocalToDate, groupTypeFor } from "./logic";
+import { berlinLocalToDate, CHAT_NOTIFICATION_KINDS, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -412,17 +412,21 @@ export async function deleteMeetup(_prev: FormState, formData: FormData): Promis
 // ---------- Chat ----------
 
 /**
- * Schreibt eine Nachricht in den Chat eines Trainings. Nur wer zugesagt hat (RLS).
+ * Schreibt eine Nachricht in einen Chat. Nur wer Zugang hat (RLS, private.can_access_chat).
  * Die ID kommt vom Gerät: Wird nach einem Verbindungsabbruch erneut gesendet, entsteht nichts doppelt.
  */
-export async function sendMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function sendChatMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
     .object({
       id: z.uuid(),
-      meetupId: z.uuid(),
+      chatId: z.uuid(),
       body: z.string().trim().min(1, "Schreib eine Nachricht.").max(1000, "Höchstens 1000 Zeichen."),
     })
-    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId"), body: formData.get("body") ?? "" });
+    .safeParse({
+      id: formData.get("id"),
+      chatId: formData.get("chatId"),
+      body: formData.get("body") ?? "",
+    });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
@@ -431,31 +435,56 @@ export async function sendMeetupMessage(_prev: FormState, formData: FormData): P
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
   const { error } = await supabase
-    .from("meetup_messages")
-    .insert({ id: parsed.data.id, meetup_id: parsed.data.meetupId, user_id: userId, body: parsed.data.body });
+    .from("chat_messages")
+    .insert({ id: parsed.data.id, chat_id: parsed.data.chatId, user_id: userId, body: parsed.data.body });
   if (error && error.code !== "23505") {
     if (error.message.includes("Zu viele")) return { error: "Zu viele Nachrichten. Warte einen Moment." };
     if (error.code === "42501") return { error: "Schreiben können nur alle, die dabei sind." };
     return { error: "Die Nachricht wurde nicht gesendet. Versuch es erneut." };
   }
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
+  revalidatePath("/chats", "layout");
   return { message: "sent" };
 }
 
 /** Löscht eine eigene Nachricht. */
-export async function deleteMeetupMessage(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function deleteChatMessage(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
-    .object({ id: z.uuid(), meetupId: z.uuid() })
-    .safeParse({ id: formData.get("id"), meetupId: formData.get("meetupId") });
+    .object({ id: z.uuid(), chatId: z.uuid() })
+    .safeParse({ id: formData.get("id"), chatId: formData.get("chatId") });
   if (!parsed.success) return { error: "Diese Nachricht gibt es nicht mehr." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("meetup_messages").delete().eq("id", parsed.data.id);
+  const { error } = await supabase.from("chat_messages").delete().eq("id", parsed.data.id);
   if (error) return { error: "Die Nachricht konnte nicht gelöscht werden." };
 
-  revalidatePath(`/plan/${parsed.data.meetupId}`, "layout");
+  revalidatePath("/chats", "layout");
   return {};
+}
+
+/** Merkt sich, dass man einen Chat bis jetzt gelesen hat. Wiederholbar. */
+export async function markChatRead(chatId: string): Promise<void> {
+  const id = z.uuid().safeParse(chatId);
+  if (!id.success) return;
+  const supabase = await createClient();
+  await supabase.rpc("mark_chat_read", { cid: id.data });
+
+  // Die Push-Mitteilungen zu diesem Chat gelten damit ebenfalls als gelesen.
+  const { data: chat } = await supabase.from("chats").select("meetup_id, group_id").eq("id", id.data).maybeSingle();
+  if (!chat) return;
+  const unread = supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .is("read_at", null);
+  if (chat.meetup_id) await unread.eq("kind", "message").eq("meetup_id", chat.meetup_id);
+  else if (chat.group_id) await unread.eq("kind", "community_message").eq("group_id", chat.group_id);
+}
+
+/** Zahl der Chats mit ungelesenen Nachrichten, für die Zahl am Tab. */
+export async function fetchUnreadChatCount(): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("unread_chat_count");
+  return error ? 0 : (data ?? 0);
 }
 
 // ---------- Mitteilungen ----------
@@ -466,6 +495,7 @@ export async function fetchUnreadCount(): Promise<number> {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .is("read_at", null);
   return error ? 0 : (count ?? 0);
 }
@@ -474,7 +504,11 @@ export async function fetchUnreadCount(): Promise<number> {
 export async function markAllNotificationsRead(): Promise<void> {
   const supabase = await createClient();
   // Ohne Neuladen: Die offene Seite zeigt "Neu" noch für diesen Besuch, die Glocke setzt sich selbst zurück.
-  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
+    .is("read_at", null);
 }
 
 /** Markiert die Mitteilungen zu einem Training als gelesen, sobald man es ansieht. */
@@ -507,11 +541,12 @@ export async function updateNotificationPrefs(_prev: FormState, formData: FormDa
     message: on("message"),
     cancelled: on("cancelled"),
     reminder: on("reminder"),
+    community_message: on("communityMessage"),
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: "Die Einstellungen konnten nicht gespeichert werden. Versuch es erneut." };
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   return { message: "Gespeichert" };
 }
 
@@ -579,28 +614,111 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
 
 // ---------- Profil ----------
 
-export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
-  const name = z
+const profileDetails = z.object({
+  displayName: z.string().trim().min(1, "Gib einen Namen ein.").max(40, "Der Name darf höchstens 40 Zeichen haben."),
+  bio: z
     .string()
     .trim()
-    .min(1, "Gib einen Namen ein.")
-    .max(40, "Der Name darf höchstens 40 Zeichen haben.")
-    .safeParse(formData.get("displayName"));
-  if (!name.success) return { error: firstIssue(name.error) };
+    .max(MAX_BIO, `Der Kurztext darf höchstens ${MAX_BIO} Zeichen haben.`)
+    .transform((v) => v || null),
+  city: z
+    .string()
+    .trim()
+    .max(60, "Die Stadt darf höchstens 60 Zeichen haben.")
+    .transform((v) => v || null),
+  sports: z.array(z.string().max(40, "Eine Sportart darf höchstens 40 Zeichen haben.")).max(20),
+});
+
+/** Speichert Name, Kurztext, Stadt und Sportarten und führt zurück zum Profil. */
+export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = profileDetails.safeParse({
+    displayName: formData.get("displayName") ?? "",
+    bio: formData.get("bio") ?? "",
+    city: formData.get("city") ?? "",
+    sports: formData.getAll("sports").filter((v) => typeof v === "string"),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
+  const { displayName, bio, city, sports } = parsed.data;
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: name.data })
+    .update({ display_name: displayName, bio, city, sports: normalizeSports(sports) })
     .eq("id", userId);
-  if (error) return { error: "Der Name konnte nicht gespeichert werden. Versuch es erneut." };
+  if (error) return { error: "Das Profil konnte nicht gespeichert werden. Versuch es erneut." };
 
   revalidatePath("/", "layout");
-  return { message: "Gespeichert" };
+  redirect("/profil");
+}
+
+const AVATAR_MAX_BYTES = 512 * 1024;
+
+/** Erkennt WebP und JPEG an den ersten Bytes, unabhängig davon, was der Browser angibt. */
+function avatarExtension(bytes: Uint8Array): "webp" | "jpg" | null {
+  const ascii = (from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));
+  if (bytes.length > 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "webp";
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
+  return null;
+}
+
+/**
+ * Lädt ein neues Profilbild hoch. Das Gerät hat es schon auf 512 × 512 Pixel verkleinert. Jedes Bild
+ * bekommt einen neuen, zufälligen Namen; das alte wird danach gelöscht.
+ */
+export async function uploadAvatar(formData: FormData): Promise<FormState> {
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) return { error: "Wähle ein Bild aus." };
+  if (file.size > AVATAR_MAX_BYTES) return { error: "Das Bild ist zu groß. Wähle ein anderes." };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const ext = avatarExtension(bytes);
+  if (!ext) return { error: "Dieses Bildformat wird nicht unterstützt. Wähle ein Foto im Format JPEG, PNG oder WebP." };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data: current } = await supabase.from("profiles").select("avatar_url").eq("id", userId).single();
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const failed = { error: "Das Bild konnte nicht gespeichert werden. Prüf deine Verbindung und versuch es erneut." };
+
+  const upload = await supabase.storage.from("avatars").upload(path, bytes, {
+    contentType: ext === "webp" ? "image/webp" : "image/jpeg",
+    cacheControl: "31536000",
+    upsert: false,
+  });
+  if (upload.error) return failed;
+
+  const { error } = await supabase.from("profiles").update({ avatar_url: path }).eq("id", userId);
+  if (error) {
+    await supabase.storage.from("avatars").remove([path]);
+    return failed;
+  }
+  if (current?.avatar_url) await supabase.storage.from("avatars").remove([current.avatar_url]);
+
+  revalidatePath("/", "layout");
+  return { message: "Profilbild gespeichert" };
+}
+
+/** Entfernt das Profilbild. Danach erscheinen wieder die Initialen. */
+export async function removeAvatar(): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data: current } = await supabase.from("profiles").select("avatar_url").eq("id", userId).single();
+  const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
+  if (error) return { error: "Das Bild konnte nicht entfernt werden. Versuch es erneut." };
+  if (current?.avatar_url) await supabase.storage.from("avatars").remove([current.avatar_url]);
+
+  revalidatePath("/", "layout");
+  return { message: "Profilbild entfernt" };
 }
 
 // ---------- Einladung ----------
@@ -634,6 +752,19 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   }
 
   const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  // Profilbilder zuerst: Dateien im Storage hängen nicht am Profil und verschwinden sonst nicht.
+  const { data: files, error: listError } = await supabase.storage.from("avatars").list(userId, { limit: 100 });
+  const removed = files?.length
+    ? await supabase.storage.from("avatars").remove(files.map((f) => `${userId}/${f.name}`))
+    : { error: null };
+  if (listError || removed.error) {
+    return { error: "Das Konto konnte nicht gelöscht werden. Prüf deine Verbindung und versuch es erneut." };
+  }
+
   const { error } = await supabase.rpc("delete_own_account");
   if (error) {
     return { error: "Das Konto konnte nicht gelöscht werden. Prüf deine Verbindung und versuch es erneut." };
@@ -670,7 +801,7 @@ export async function decideAgentAccess(_prev: FormState, formData: FormData): P
     return { error: "Diese Anfrage ist abgelaufen. Starte die Verbindung in deiner KI-App neu." };
   }
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   redirect(data.redirect_url);
 }
 
@@ -683,6 +814,6 @@ export async function revokeAgentAccess(_prev: FormState, formData: FormData): P
   const { error } = await supabase.auth.oauth.revokeGrant({ clientId: clientId.data });
   if (error) return { error: "Der Zugriff konnte nicht entzogen werden. Versuch es erneut." };
 
-  revalidatePath("/profil");
+  revalidatePath("/profil/einstellungen");
   return { message: "Zugriff entzogen" };
 }

@@ -19,7 +19,15 @@ export default async function HistoryPage() {
 
   return (
     <>
-      <h1 className="text-titel font-semibold">Verlauf</h1>
+      <p className="text-sm">
+        <Link
+          href="/profil"
+          className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4"
+        >
+          Profil
+        </Link>
+      </p>
+      <h1 className="text-titel mt-2 font-semibold">Verlauf</h1>
 
       {workouts.length === 0 ? (
         <div className="mt-8">

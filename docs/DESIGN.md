@@ -114,23 +114,25 @@ Raster: 4 px. Erlaubte Abstände: 4, 8, 12, 16, 24, 32, 48, 64.
 ```
 Handy (bis 767 px)            Desktop (ab 1024 px)
 ┌────────────────────┐        ┌──────────┬───────────────────────────┐
-│ Titel              │        │ OHealth  │ Titel                     │
-│                    │        │          │                           │
-│ 3                  │        │ Heute    │ 3                         │
-│ Workouts diese Wo. │        │ Gruppe   │ Workouts diese Woche      │
-│ ■ ■ □ ■ □ □ □      │        │ Verlauf  │ ■ ■ □ ■ □ □ □             │
+│             🔔  (A)│        │ OHealth  │                     🔔  (A)│
+│ Titel              │        │          │ Titel                     │
+│                    │        │ Heute    │                           │
+│ 3                  │        │ Vorlagen │ 3                         │
+│ Workouts diese Wo. │        │ Communit.│ Workouts diese Woche      │
+│ ■ ■ □ ■ □ □ □      │        │ Chats    │ ■ ■ □ ■ □ □ □             │
 │                    │        │          │                           │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │                    │        │          │                           │
-│ [ Workout starten ]│        │ Profil   │                           │
+│ [ Workout starten ]│        │          │                           │
 ├────────────────────┤        └──────────┴───────────────────────────┘
-│ Heute Gruppe Verl. │         240 px      Inhalt max. 960 px
+│Heute Vorl Comm Chat│         240 px      Inhalt max. 960 px
 └────────────────────┘
 ```
 
 - Handy: Seitenrand 20 px, Tab-Leiste unten mit höchstens vier Einträgen, Hauptaktion als Button in voller Breite über der Tab-Leiste.
 - Desktop: Seitenleiste links 240 px, weiß, durch eine Linie getrennt. Inhalt höchstens 960 px breit, Textspalten höchstens 640 px. Zusätzliche Breite wird für eine zweite Spalte genutzt, nicht für größere Elemente.
+- Oben rechts stehen auf jeder Ansicht, am Handy und am Desktop, die Glocke und das eigene Profilbild (A). Das Profilbild führt zum Profil; dort liegen der Verlauf und die Einstellungen. Ein eigener Tab für den Verlauf entfällt. Der vierte Tab ist „Chats“; er zeigt in einem Kreis in Eisen, in wie vielen Chats neue Nachrichten sind. Die Glocke zählt nur Zusagen, neue Trainings, Absagen und Erinnerungen, keine Chat-Nachrichten.
 - Listenzeilen sind mindestens 56 px hoch, mit Linie darunter, ohne Rahmen und ohne Hintergrund.
 
 ## 9. Komponenten
@@ -138,6 +140,9 @@ Handy (bis 767 px)            Desktop (ab 1024 px)
 Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über die Tokens gestaltet, nicht einzeln umgefärbt.
 
 - **Ecken:** 8 px für Buttons, Eingaben und Overlays. Zeilen, Tabellen und Trennlinien haben keine Rundung. Vollrund nur Avatare.
+- **Profilbild:** Rund, 32 px oben rechts, 96 px auf dem Profil. Ohne Bild stehen die Initialen in Stein auf Nebel. Eingebunden nur über `Avatar` aus `src/components/ui/avatar.tsx`. Es steht dort, wo es um die Person geht (Kopfzeile, Profil, später Chat), nicht als Schmuck in Ranglisten.
+- **Profil:** Oben Profilbild, Name als Titel, darunter Stadt und Sportarten in Stein, dann der Kurztext. Danach „Profil bearbeiten" (Umriss) und „Einstellungen" (Text), darunter der Verlauf. Das Profil anderer Personen zeigt nur Bild, Name, Angaben und Kurztext.
+- **Auswahl-Chips** (zum Beispiel Sportarten): Umriss mit 8 px Rundung. Gewählt: Rahmen und Schrift in Eisen mit Häkchen, nicht gefüllt. Nicht gewählt: Rahmen in Linie, Schrift in Stein.
 - **Schatten:** keine. Einzige Ausnahme sind Overlays (Dialog, Drawer, Menü) mit einem einzigen weichen Schatten.
 - **Buttons:** Pro Ansicht genau ein gefüllter Button (Eisen auf Weiß). Alle weiteren sind Umriss oder reiner Text. Höhe 48 px am Handy, 40 px am Desktop. Beschriftung ist ein Verb und sagt genau, was passiert: „Workout speichern".
 - **Eingaben:** Beschriftung steht immer über dem Feld. Zahlenfelder für Gewicht und Wiederholungen sind groß (Zahl-Stil), rechtsbündig und öffnen die Zifferntastatur.
@@ -147,9 +152,23 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie.
 - **Leere Zustände:** Ein Satz, der sagt, was hier erscheinen wird, und ein Button. Keine Illustrationen.
 
+### Chat-Liste
+
+Unter „Chats“ stehen alle Chats als Zeilen, die neueste Nachricht zuerst:
+
+- Links beim Training derselbe Datumsblock wie auf der Pinnwand, bei einer Community die Initialen im runden Feld wie beim Profilbild.
+- Titel in Text, darunter die letzte Nachricht in Klein mit Namen davor („Du: …“), eine Zeile, gekürzt.
+- Rechts oben der Zeitpunkt (heute die Uhrzeit, gestern „Gestern“, sonst das Datum), darunter die Zahl ungelesener Nachrichten in einem Kreis in Eisen. Mit ungelesenen Nachrichten stehen Zeitpunkt und Vorschau in Eisen statt Stein. Kein Moos.
+
+### Chat-Zeilen
+
+- Auf der Community-Seite steht über den Reitern eine Zeile „Chat der Community“ mit Sprechblasen-Icon, letzter Nachricht und Zahl ungelesener Nachrichten. Dieselbe Zeile führt auf der Seite eines Trainings zu seinem Chat.
+- In Listen von Trainings (Pinnwand, „Gemeinsam trainieren“) steht unter Titel und Angaben eine kurze Chat-Zeile in Klein: Icon (16 px), letzte Nachricht, Zahl ungelesener Nachrichten. Wer nicht zugesagt hat, liest dort „Chat nach Zusage“.
+- In einem Community-Chat kann die Verwaltung auch fremde Nachrichten antippen und löschen. Das „Nachricht löschen“ steht dann unter der Blase auf der Seite der Blase.
+
 ### Chat
 
-Der Chat eines Trainings folgt bewusst dem Muster bekannter Messenger, weil es dort jeder sofort bedienen kann. Das ist die einzige Stelle mit Flächen statt Linien:
+Der Chat eines Trainings oder einer Community folgt bewusst dem Muster bekannter Messenger, weil es dort jeder sofort bedienen kann. Das ist die einzige Stelle mit Flächen statt Linien:
 
 - Eigene Nachrichten rechts in Eisen mit weißer Schrift, andere links in Nebel. Kein Moos.
 - Sprechblasen mit 16 px Rundung, die letzte einer Folge an der Seite des Absenders mit 6 px.

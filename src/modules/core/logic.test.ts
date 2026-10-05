@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chatDayLabel,
+  chatListTime,
   chatTime,
   layoutChat,
   pushContent,
@@ -19,6 +20,9 @@ import {
   topWithMe,
   communityKind,
   describeCommunity,
+  describeProfile,
+  normalizeSports,
+  uniqueSports,
   enabledProviders,
   groupTypeFor,
   joinAfterAuthPath,
@@ -214,6 +218,13 @@ describe("Push", () => {
       tag: "chat-m1",
     });
     expect(pushContent({ ...base, kind: "message", latest: "Um 9", count: 3 }).body).toBe("Ben: Um 9 (3 neue)");
+    expect(pushContent({ ...base, kind: "message", latest: "Um 9", chatId: "c1" }).url).toBe("/chats/c1");
+    expect(pushContent({ ...base, kind: "community_message", title: "Lauftreff", latest: "Wer kommt?", chatId: "c2", meetupId: null })).toEqual({
+      title: "Lauftreff",
+      body: "Ben: Wer kommt?",
+      url: "/chats/c2",
+      tag: "chat-c2",
+    });
   });
 
   it("nimmt sonst den Satz der Mitteilung", () => {
@@ -224,6 +235,12 @@ describe("Push", () => {
 
 describe("Chat", () => {
   const now = new Date("2026-10-04T12:00:00Z");
+
+  it("Chat-Liste: heute Uhrzeit, gestern Gestern, sonst Datum", () => {
+    expect(chatListTime("2026-10-04T08:05:00Z", now)).toBe("10:05");
+    expect(chatListTime("2026-10-03T20:00:00Z", now)).toBe("Gestern");
+    expect(chatListTime("2026-09-28T08:00:00Z", now)).toBe("28.9.");
+  });
 
   it("benennt Tage wie ein Messenger", () => {
     expect(chatDayLabel("2026-10-04T08:00:00Z", now)).toBe("Heute");
@@ -247,5 +264,28 @@ describe("Chat", () => {
     expect(rows.map((r) => r.dayLabel)).toEqual(["Gestern", "Heute", null, null, null]);
     expect(rows.map((r) => r.firstInGroup)).toEqual([true, true, false, true, true]);
     expect(rows.map((r) => r.lastInGroup)).toEqual([true, false, true, true, true]);
+  });
+});
+
+describe("Profil", () => {
+  it("Sportarten: getrimmt, ohne Doppelte und Leere, höchstens fünf", () => {
+    expect(normalizeSports([" Laufen ", "laufen", "", "Yoga", "Klettern", "Rudern", "Tennis", "Golf"])).toEqual([
+      "Laufen",
+      "Yoga",
+      "Klettern",
+      "Rudern",
+      "Tennis",
+    ]);
+  });
+  it("Vorschläge: ohne Doppelte, aber ohne Obergrenze", () => {
+    expect(uniqueSports(["A", "B", "C", "D", "E", "F", "a"])).toEqual(["A", "B", "C", "D", "E", "F"]);
+  });
+  it("Sportarten: Leerraum in der Mitte wird zusammengefasst", () => {
+    expect(normalizeSports(["Stand  Up   Paddling"])).toEqual(["Stand Up Paddling"]);
+  });
+  it("Zeile unter dem Namen aus Stadt und Sportarten", () => {
+    expect(describeProfile({ city: "München", sports: ["Laufen", "Yoga"] })).toBe("München · Laufen, Yoga");
+    expect(describeProfile({ city: null, sports: ["Laufen"] })).toBe("Laufen");
+    expect(describeProfile({ city: null, sports: [] })).toBe("");
   });
 });

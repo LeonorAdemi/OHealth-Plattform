@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 import { topWithMe } from "@/modules/core/logic";
 
@@ -22,7 +24,13 @@ export function Leaderboard({ rows, limit }: { rows: readonly LeaderboardRow[]; 
         >
           <span className="text-muted-foreground num w-6 text-sm">{rank}</span>
           <span className={cn("min-w-0 flex-1 truncate", row.isMe && "text-brand")}>
-            {row.isMe ? "Du" : row.name}
+            {row.isMe ? (
+              "Du"
+            ) : (
+              <Link href={`/person/${row.userId}`} className="hover:underline hover:underline-offset-4">
+                {row.name}
+              </Link>
+            )}
           </span>
           <WeekGrid days={row.days} own={row.isMe} />
           <span className={cn("num-display w-8 text-right text-2xl", row.isMe && "text-brand")}>

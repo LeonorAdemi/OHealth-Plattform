@@ -7,10 +7,17 @@ import { startTransition, useEffect, useLayoutEffect, useOptimistic, useRef, use
 import type { FormState } from "@/lib/result";
 import { cn } from "@/lib/utils";
 
-import { deleteMeetupMessage, sendMeetupMessage } from "../actions";
+import { deleteChatMessage, sendChatMessage } from "../actions";
 import { chatTime, layoutChat } from "../logic";
 
-export type ChatMessage = { id: string; userId: string; name: string; body: string; createdAt: string; isMe: boolean };
+export type ChatMessage = {
+  id: string;
+  userId: string;
+  name: string;
+  body: string;
+  createdAt: string;
+  isMe: boolean;
+};
 type Shown = ChatMessage & { pending?: boolean };
 
 const REFRESH_MS = 4_000;
@@ -21,16 +28,22 @@ const initial: FormState = {};
  * Folgen derselben Person zusammengefasst. Gesendete Nachrichten erscheinen sofort (mit Uhr, bis
  * der Server sie bestätigt). Neue Nachrichten holt die Seite alle vier Sekunden, solange sie sichtbar ist.
  */
-export function MeetupChat({
-  meetupId,
+export function ChatThread({
+  chatId,
   myUserId,
   messages,
   now,
+  emptyHint,
+  canModerate = false,
 }: {
-  meetupId: string;
+  chatId: string;
   myUserId: string;
   messages: readonly ChatMessage[];
   now: string;
+  /** Satz für den leeren Chat */
+  emptyHint: string;
+  /** Verwaltung einer Community: darf auch fremde Nachrichten löschen */
+  canModerate?: boolean;
 }) {
   const router = useRouter();
   const [optimistic, addOptimistic] = useOptimistic<Shown[], Shown>([...messages], (state, m) =>
@@ -79,14 +92,14 @@ export function MeetupChat({
     const id = crypto.randomUUID();
     const formData = new FormData();
     formData.set("id", id);
-    formData.set("meetupId", meetupId);
+    formData.set("chatId", chatId);
     formData.set("body", body);
     setText("");
     setError(null);
     nearBottom.current = true;
     startTransition(async () => {
       addOptimistic({ id, userId: myUserId, name: "", body, createdAt: new Date().toISOString(), isMe: true, pending: true });
-      const result = await sendMeetupMessage(initial, formData);
+      const result = await sendChatMessage(initial, formData);
       if (result.error) {
         setError(result.error);
         setText(body);
@@ -111,57 +124,65 @@ export function MeetupChat({
     <div className="flex flex-1 flex-col">
       <div className="flex-1 pb-4" aria-live="polite">
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-12 text-center text-sm">
-            Noch keine Nachrichten. Schreib den anderen, zum Beispiel wo ihr euch genau trefft.
-          </p>
+          <p className="text-muted-foreground py-12 text-center text-sm">{emptyHint}</p>
         ) : (
           <ol aria-label="Nachrichten" className="space-y-0.5">
-            {rows.map(({ message: m, dayLabel, firstInGroup, lastInGroup }) => (
-              <li key={m.id} className={cn(firstInGroup && "pt-2")}>
-                {dayLabel && (
-                  <p className="flex justify-center py-3">
-                    <span className="text-muted-foreground bg-muted rounded-full px-3 py-1 text-xs font-medium">
-                      {dayLabel}
-                    </span>
-                  </p>
-                )}
-                <div className={cn("flex", m.isMe ? "justify-end" : "justify-start")}>
-                  <div className="max-w-[80%] md:max-w-[65%]">
-                    <button
-                      type="button"
-                      disabled={!m.isMe || m.pending}
-                      onClick={() => setSelected(selected === m.id ? null : m.id)}
-                      aria-expanded={m.isMe ? selected === m.id : undefined}
-                      className={cn(
-                        "block w-full rounded-2xl px-3 py-2 text-left disabled:cursor-default",
-                        m.isMe ? "bg-foreground text-primary-foreground" : "bg-muted text-foreground",
-                        lastInGroup && (m.isMe ? "rounded-br-md" : "rounded-bl-md"),
-                      )}
-                    >
-                      {!m.isMe && firstInGroup && <span className="mb-0.5 block text-xs font-semibold">{m.name}</span>}
-                      <span className="break-words whitespace-pre-line">{m.body}</span>
-                      <span
+            {rows.map(({ message: m, dayLabel, firstInGroup, lastInGroup }) => {
+              const deletable = m.isMe || canModerate;
+              return (
+                <li key={m.id} className={cn(firstInGroup && "pt-2")}>
+                  {dayLabel && (
+                    <p className="flex justify-center py-3">
+                      <span className="text-muted-foreground bg-muted rounded-full px-3 py-1 text-xs font-medium">
+                        {dayLabel}
+                      </span>
+                    </p>
+                  )}
+                  <div className={cn("flex", m.isMe ? "justify-end" : "justify-start")}>
+                    <div className="max-w-[80%] md:max-w-[65%]">
+                      <button
+                        type="button"
+                        disabled={!deletable || m.pending}
+                        onClick={() => setSelected(selected === m.id ? null : m.id)}
+                        aria-expanded={deletable ? selected === m.id : undefined}
                         className={cn(
-                          "num float-right mt-1.5 ml-3 inline-flex items-center gap-1 text-[11px] leading-none",
-                          m.isMe ? "text-primary-foreground/70" : "text-muted-foreground",
+                          "block w-full rounded-2xl px-3 py-2 text-left disabled:cursor-default",
+                          m.isMe ? "bg-foreground text-primary-foreground" : "bg-muted text-foreground",
+                          lastInGroup && (m.isMe ? "rounded-br-md" : "rounded-bl-md"),
                         )}
                       >
-                        {chatTime(m.createdAt)}
-                        {m.isMe &&
-                          (m.pending ? (
-                            <Clock size={12} strokeWidth={1.5} aria-label="wird gesendet" />
-                          ) : (
-                            <Check size={12} strokeWidth={1.5} aria-label="gesendet" />
-                          ))}
-                      </span>
-                    </button>
-                    {m.isMe && selected === m.id && !m.pending && (
-                      <DeleteMessage id={m.id} meetupId={meetupId} onDone={() => setSelected(null)} />
-                    )}
+                        {!m.isMe && firstInGroup && (
+                          <span className="mb-0.5 block text-xs font-semibold">{m.name}</span>
+                        )}
+                        <span className="break-words whitespace-pre-line">{m.body}</span>
+                        <span
+                          className={cn(
+                            "num float-right mt-1.5 ml-3 inline-flex items-center gap-1 text-[11px] leading-none",
+                            m.isMe ? "text-primary-foreground/70" : "text-muted-foreground",
+                          )}
+                        >
+                          {chatTime(m.createdAt)}
+                          {m.isMe &&
+                            (m.pending ? (
+                              <Clock size={12} strokeWidth={1.5} aria-label="wird gesendet" />
+                            ) : (
+                              <Check size={12} strokeWidth={1.5} aria-label="gesendet" />
+                            ))}
+                        </span>
+                      </button>
+                      {deletable && selected === m.id && !m.pending && (
+                        <DeleteMessage
+                          id={m.id}
+                          chatId={chatId}
+                          align={m.isMe ? "end" : "start"}
+                          onDone={() => setSelected(null)}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ol>
         )}
         <div ref={listEnd} />
@@ -211,10 +232,20 @@ export function MeetupChat({
   );
 }
 
-function DeleteMessage({ id, meetupId, onDone }: { id: string; meetupId: string; onDone: () => void }) {
+function DeleteMessage({
+  id,
+  chatId,
+  align,
+  onDone,
+}: {
+  id: string;
+  chatId: string;
+  align: "start" | "end";
+  onDone: () => void;
+}) {
   const [pending, setPending] = useState(false);
   return (
-    <p className="flex justify-end">
+    <p className={cn("flex", align === "end" ? "justify-end" : "justify-start")}>
       <button
         type="button"
         disabled={pending}
@@ -222,9 +253,9 @@ function DeleteMessage({ id, meetupId, onDone }: { id: string; meetupId: string;
           setPending(true);
           const formData = new FormData();
           formData.set("id", id);
-          formData.set("meetupId", meetupId);
+          formData.set("chatId", chatId);
           startTransition(async () => {
-            await deleteMeetupMessage(initial, formData);
+            await deleteChatMessage(initial, formData);
             onDone();
           });
         }}

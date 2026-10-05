@@ -92,8 +92,8 @@ select is_empty($$ select 1 from public.workouts where user_id = '00000000-0000-
   'Mitglieder einer Community sehen keine Workouts der anderen');
 select is_empty($$ select 1 from public.v_training_days where user_id = '00000000-0000-0000-0000-00000000000a' $$,
   'Mitglieder einer Community sehen über die Views keine Trainingstage der anderen');
-select is_empty($$ select 1 from public.profiles where id = '00000000-0000-0000-0000-00000000000a' $$,
-  'Mitglieder einer Community sehen keine Profile der anderen');
+select isnt_empty($$ select 1 from public.profiles where id = '00000000-0000-0000-0000-00000000000a' $$,
+  'Mitglieder einer Community sehen das Profil der anderen (seit Migration profile_details)');
 select results_eq(
   $$ select user_id from public.group_members where group_id = '10000000-0000-0000-0000-000000000001' $$,
   $$ values ('00000000-0000-0000-0000-00000000000b'::uuid) $$,

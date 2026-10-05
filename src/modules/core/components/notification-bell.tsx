@@ -5,8 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
-
 import { fetchUnreadCount } from "../actions";
 import { badgeCount } from "../logic";
 import { NOTIFICATIONS_READ } from "./notification-actions";
@@ -17,7 +15,7 @@ const REFRESH_MS = 30_000;
  * Glocke mit Zahl der ungelesenen Mitteilungen. Fragt alle 30 Sekunden nach, solange die
  * Seite sichtbar ist, und beim Zurückkehren in die App.
  */
-export function NotificationBell({ initialCount, variant }: { initialCount: number; variant: "icon" | "side" }) {
+export function NotificationBell({ initialCount }: { initialCount: number }) {
   const [count, setCount] = useState(initialCount);
   const pathname = usePathname();
   const active = pathname.startsWith("/mitteilungen");
@@ -54,35 +52,15 @@ export function NotificationBell({ initialCount, variant }: { initialCount: numb
     </span>
   );
 
-  if (variant === "icon") {
-    return (
-      <Link
-        href="/mitteilungen"
-        aria-label={label}
-        aria-current={active ? "page" : undefined}
-        className="hover:bg-accent relative inline-flex size-11 items-center justify-center rounded-lg"
-      >
-        <Bell size={20} strokeWidth={1.5} aria-hidden />
-        {badge}
-      </Link>
-    );
-  }
-
   return (
     <Link
       href="/mitteilungen"
       aria-label={label}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "hover:bg-accent flex min-h-10 items-center gap-3 rounded-lg px-3 transition-colors duration-150 ease-out",
-        active ? "text-foreground font-medium" : "text-muted-foreground",
-      )}
+      className="hover:bg-accent relative inline-flex size-11 items-center justify-center rounded-lg"
     >
-      <span className="relative inline-flex">
-        <Bell size={20} strokeWidth={1.5} aria-hidden />
-        {badge && <span className="absolute -top-2 -right-2.5 scale-90">{badge}</span>}
-      </span>
-      Mitteilungen
+      <Bell size={20} strokeWidth={1.5} aria-hidden />
+      {badge}
     </Link>
   );
 }

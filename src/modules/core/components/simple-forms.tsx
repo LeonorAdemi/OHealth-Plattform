@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/result";
 
-import { requestPasswordReset, updateDisplayName, updatePassword } from "../actions";
+import { requestPasswordReset, updatePassword } from "../actions";
 
 const initial: FormState = {};
 
@@ -64,30 +64,6 @@ export function NewPasswordForm() {
       <Feedback state={state} />
       <Button type="submit" className="w-full" disabled={pending}>
         Passwort speichern
-      </Button>
-    </form>
-  );
-}
-
-export function DisplayNameForm({ current }: { current: string }) {
-  const [state, action, pending] = useActionState(updateDisplayName, initial);
-
-  return (
-    <form action={action} className="max-w-sm space-y-3">
-      <div className="space-y-2">
-        <Label htmlFor="displayName">Name</Label>
-        <Input
-          id="displayName"
-          name="displayName"
-          defaultValue={current}
-          autoComplete="nickname"
-          maxLength={40}
-          required
-        />
-      </div>
-      <Feedback state={state} />
-      <Button type="submit" className="w-full md:w-auto" disabled={pending}>
-        Namen speichern
       </Button>
     </form>
   );

@@ -58,7 +58,7 @@ export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
 
 /** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
 export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
-  public: "Wenn du beitrittst, sehen die Mitglieder deinen Namen, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
+  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
   private: "Wenn du beitrittst, sehen die Mitglieder deine Workouts und du ihre.",
   coaching: "Wenn du beitrittst, sieht der Coach deine Workouts. Die anderen Mitglieder sehen sie nicht.",
 };
@@ -81,6 +81,35 @@ export const SPORT_SUGGESTIONS = [
 export function describeCommunity(c: { sport: string | null; city: string | null; memberCount: number }): string {
   const members = `${c.memberCount}\u00a0${c.memberCount === 1 ? "Mitglied" : "Mitglieder"}`;
   return [c.sport, c.city, members].filter(Boolean).join(" · ");
+}
+
+// ---------- Profil ----------
+
+export const MAX_SPORTS = 5;
+export const MAX_BIO = 160;
+
+/** Sportarten getrimmt, ohne leere und doppelte Einträge (Groß-/Kleinschreibung egal). */
+export function uniqueSports(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of values) {
+    const sport = raw.trim().replace(/\s+/g, " ").slice(0, 40);
+    const key = sport.toLocaleLowerCase("de-DE");
+    if (!sport || seen.has(key)) continue;
+    seen.add(key);
+    result.push(sport);
+  }
+  return result;
+}
+
+/** Sportarten zum Speichern: wie uniqueSports, höchstens fünf. Die Datenbank prüft dieselben Grenzen. */
+export function normalizeSports(values: readonly string[]): string[] {
+  return uniqueSports(values).slice(0, MAX_SPORTS);
+}
+
+/** Zeile unter dem Namen: "München · Laufen, Yoga". Leer, wenn nichts angegeben ist. */
+export function describeProfile(p: { city: string | null; sports: readonly string[] }): string {
+  return [p.city, p.sports.join(", ")].filter(Boolean).join(" · ");
 }
 
 /** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */
@@ -237,10 +266,17 @@ export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: nu
 
 // ---------- Mitteilungen ----------
 
-export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder";
+export type NotificationKind = "new_training" | "joined" | "message" | "cancelled" | "reminder" | "community_message";
+
+/** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
+export const CHAT_NOTIFICATION_KINDS = ["message", "community_message"] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
-  return value === "joined" || value === "message" || value === "cancelled" || value === "reminder"
+  return value === "joined" ||
+    value === "message" ||
+    value === "cancelled" ||
+    value === "reminder" ||
+    value === "community_message"
     ? value
     : "new_training";
 }
@@ -260,6 +296,10 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return `${n.actorName} hat „${n.title}“ abgesagt`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
+    case "community_message":
+      return n.count > 1
+        ? `${n.count} neue Nachrichten in „${n.title}“, zuletzt von ${n.actorName}`
+        : `${n.actorName} hat in „${n.title}“ geschrieben`;
   }
 }
 
@@ -273,15 +313,23 @@ export function pushContent(p: {
   title: string;
   count: number;
   meetupId: string | null;
+  chatId?: string | null;
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
-  const url = p.meetupId ? (p.kind === "message" ? `/plan/${p.meetupId}/chat` : `/plan/${p.meetupId}`) : "/mitteilungen";
-  if (p.kind === "message" && p.latest) {
+  const url =
+    (p.kind === "message" || p.kind === "community_message") && p.chatId
+      ? `/chats/${p.chatId}`
+      : p.meetupId
+        ? p.kind === "message"
+          ? `/plan/${p.meetupId}/chat`
+          : `/plan/${p.meetupId}`
+        : "/mitteilungen";
+  if ((p.kind === "message" || p.kind === "community_message") && p.latest) {
     return {
       title: p.title,
       body: p.count > 1 ? `${p.actorName}: ${p.latest} (${p.count} neue)` : `${p.actorName}: ${p.latest}`,
       url,
-      tag: `chat-${p.meetupId}`,
+      tag: `chat-${p.chatId ?? p.meetupId}`,
     };
   }
   return { title: "OHealth", body: describeNotification(p), url, tag: `${p.kind}-${p.meetupId ?? p.title}` };
@@ -326,6 +374,16 @@ export function chatDayLabel(at: string, now: Date): string {
 /** Uhrzeit einer Nachricht, z. B. "18:05". */
 export function chatTime(at: string): string {
   return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(
+    new Date(at),
+  );
+}
+
+/** Zeitpunkt der letzten Nachricht in der Chat-Liste: heute die Uhrzeit, gestern "Gestern", sonst das Datum. */
+export function chatListTime(at: string, now: Date): string {
+  const label = chatDayLabel(at, now);
+  if (label === "Heute") return chatTime(at);
+  if (label === "Gestern") return label;
+  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "numeric" }).format(
     new Date(at),
   );
 }

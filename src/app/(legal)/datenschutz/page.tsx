@@ -54,6 +54,12 @@ export default function PrivacyPage() {
           Klartext gespeichert, sondern nur als nicht umkehrbarer Hashwert.
         </li>
         <li>
+          <strong>Profil:</strong> freiwillig ein Profilbild, ein kurzer Text
+          über dich, deine Sportarten und die Stadt, in der du lebst. Das
+          Profilbild verkleinert die App schon auf deinem Gerät und lädt nur
+          diese verkleinerte Fassung hoch, nicht das Originalfoto.
+        </li>
+        <li>
           <strong>Training:</strong> deine Workouts mit Datum, Titel, Übungen
           und Sätzen (Wiederholungen, Gewicht, Dauer, Distanz). Bei einem
           Training aus einer Vorlage zusätzlich Start und Ende, die Pausen
@@ -71,7 +77,10 @@ export default function PrivacyPage() {
           <strong>Geplante Trainings und Chat:</strong> Trainings, die du
           planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
           Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
-          du zugesagt hast und deine Nachrichten im Chat eines Trainings.
+          du zugesagt hast, deine Nachrichten im Chat eines Trainings oder
+          einer Community und bis
+          wann du einen Chat gelesen hast, damit wir ungelesene Nachrichten
+          zählen können.
         </li>
         <li>
           <strong>Mitteilungen:</strong> Hinweise in der App, etwa dass jemand
@@ -88,21 +97,22 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Wir erheben keine Standortdaten, zeigen keine Werbung und geben keine
+        Die Stadt trägst du selbst ein, wenn du willst. Wir erheben keine
+        Standortdaten, zeigen keine Werbung und geben keine
         Daten zu Werbezwecken weiter.
       </p>
 
       <h2>Wofür wir die Daten verwenden</h2>
       <p>
         Wir verwenden deine Daten, um dir die App bereitzustellen: anmelden,
-        Workouts und Vorlagen speichern und anzeigen, Ranglisten in deinen
-        Communities berechnen.
+        Workouts und Vorlagen speichern und anzeigen, dein Profil den
+        anderen in deinen Communities zeigen, Ranglisten berechnen.
         Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1
         Buchstabe b DSGVO). Protokolldaten dienen dem sicheren und stabilen
         Betrieb (Art. 6 Abs. 1 Buchstabe f DSGVO).
       </p>
 
-      <h2>Wer deine Trainingsdaten sieht</h2>
+      <h2>Wer deine Daten sieht</h2>
       <ul>
         <li>Ohne Community siehst nur du deine Workouts.</li>
         <li>
@@ -119,6 +129,15 @@ export default function PrivacyPage() {
           anderen Mitglieder sehen sie nicht.
         </li>
       </ul>
+      <p>
+        Dein Profil (Profilbild, Anzeigename, Kurztext, Sportarten und Stadt)
+        sehen alle, mit denen du in einer privaten oder öffentlichen Community
+        bist, und in einer Coaching-Community der Coach. Workouts gibt das
+        Profil nicht frei, dafür gelten die Regeln oben. Das Profilbild liegt
+        unter einer zufälligen Adresse, die nur kennt, wer dein Profil sehen
+        darf; wer die Adresse hat, kann das Bild auch ohne Anmeldung abrufen.
+        Ein neues oder entferntes Bild wird sofort gelöscht.
+      </p>
       <p>
         Vor jedem Beitritt zeigt dir die App, wer deine Daten sehen wird. Du
         entscheidest selbst, welchen Communities du beitrittst, und kannst sie
@@ -147,19 +166,27 @@ export default function PrivacyPage() {
         Training, wird der Chat mit gelöscht.
       </p>
       <p>
+        Jede Community außer Coaching-Communities hat einen Chat. Ihn lesen und
+        schreiben alle Mitglieder, auch den Verlauf von vor deinem Beitritt.
+        Wer austritt, sieht ihn nicht mehr. Wer die Community verwaltet, kann
+        Nachrichten darin löschen.
+      </p>
+      <p>
         Mitteilungen siehst nur du. Sie entstehen, wenn jemand in deinen
-        Communities ein Training teilt, bei deinem Training zusagt, im Chat
-        schreibt oder ein Training absagt. Im Profil stellst du ein, welche du
+        Communities ein Training teilt, bei deinem Training zusagt oder ein
+        Training absagt. Neue Chat-Nachrichten zeigt der Bereich „Chats“; als
+        Push kommen sie nur, wenn du das eingeschaltet hast, für
+        Community-Chats ist das anfangs aus. In den Einstellungen deines Profils legst du fest, welche du
         bekommst; neue Trainings aus öffentlichen Communities sind anfangs
         aus. Etwa eine Stunde vor einem Training, bei dem du dabei bist,
         erinnern wir dich, wenn du das nicht ausschaltest.
       </p>
       <p>
-        Push aufs Handy schaltest du je Gerät im Profil ein und dort auch
+        Push aufs Handy schaltest du je Gerät in den Einstellungen ein und dort auch
         wieder aus. Zugestellt wird über den Push-Dienst deines Browsers oder
         Geräts (zum Beispiel Apple, Google oder Mozilla), der auch außerhalb
-        der EU sitzen kann. Der Inhalt (Titel des Trainings, Name und bei Chat
-        die letzte Nachricht) ist dabei verschlüsselt, sodass der Push-Dienst
+        der EU sitzen kann. Der Inhalt (Titel des Trainings oder Name der
+        Community, Name und bei Chat die letzte Nachricht) ist dabei verschlüsselt, sodass der Push-Dienst
         ihn nicht lesen kann.
       </p>
 
@@ -213,7 +240,7 @@ export default function PrivacyPage() {
           verarbeitet, unter Umständen außerhalb der EU.
         </li>
         <li>
-          Du kannst den Zugriff jederzeit im Profil unter „KI-Zugriff“
+          Du kannst den Zugriff jederzeit in den Einstellungen unter „KI-Zugriff“
           entziehen. Die App kann danach keine Daten mehr abrufen.
         </li>
       </ul>
@@ -253,10 +280,10 @@ export default function PrivacyPage() {
       <h2>Wie lange wir Daten speichern</h2>
       <p>
         Wir speichern deine Daten, solange dein Konto besteht. Einzelne Workouts
-        kannst du jederzeit löschen. Im Profil kannst du dein Konto löschen:
+        kannst du jederzeit löschen. In den Einstellungen kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
         Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
-        Chat-Nachrichten, Mitteilungen und Push-Abos sofort entfernt. Communities, die
+        Chat-Nachrichten, Mitteilungen, Push-Abos und dein Profilbild sofort entfernt. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.
       </p>

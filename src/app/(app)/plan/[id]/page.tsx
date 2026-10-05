@@ -1,4 +1,3 @@
-import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,10 +11,11 @@ import {
   RemoveFromCommunity,
   ShareSettings,
 } from "@/modules/core/components/meetup-forms";
+import { ChatRow } from "@/modules/core/components/chat-link";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
 import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull } from "@/modules/core/logic";
-import { getMeetup, getMyCommunities } from "@/modules/core/queries";
+import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
 
@@ -32,7 +32,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const [meetup, communities] = await Promise.all([getMeetup(id), getMyCommunities()]);
+  const [meetup, communities, chats] = await Promise.all([getMeetup(id), getMyCommunities(), getChatSummaries()]);
   if (!meetup) notFound();
 
   const isPast = new Date(meetup.startsAt) <= new Date();
@@ -40,11 +40,11 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const sharedIn = communities.filter((c) => meetup.sharedWith.includes(c.id));
   const managed = meetup.isMine ? [] : sharedIn.filter((c) => c.role === "admin" || c.role === "coach");
   const hasCompany = meetup.shareCount > 0 || meetup.count > 1;
-  const lastMessage = meetup.messages.at(-1);
+  const chat = chats.byMeetup[id];
 
   return (
     <>
-      <MarkMeetupRead meetupId={meetup.id} version={`${meetup.count}-${meetup.messages.at(-1)?.id ?? ""}`} />
+      <MarkMeetupRead meetupId={meetup.id} version={`${meetup.count}-${chat?.preview ?? ""}`} />
       <p className="text-sm">
         <Link href="/" className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4">
           Heute
@@ -126,25 +126,16 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <h2 id="chat" className="text-xl font-semibold">
             Chat
           </h2>
-          {meetup.isJoined ? (
-            <Link
-              href={`/plan/${meetup.id}/chat`}
-              className="hover:bg-accent -mx-2 mt-2 flex min-h-16 items-center gap-3 rounded-lg border-b px-2 py-3 transition-colors duration-150 ease-out"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">
-                  {meetup.messages.length === 0
-                    ? "Chat öffnen"
-                    : `${meetup.messages.length} ${meetup.messages.length === 1 ? "Nachricht" : "Nachrichten"}`}
-                </span>
-                <span className="text-muted-foreground block truncate text-sm">
-                  {lastMessage
-                    ? `${lastMessage.isMe ? "Du" : lastMessage.name}: ${lastMessage.body}`
-                    : "Nur für alle, die dabei sind. Sprecht euch ab, wo ihr euch trefft."}
-                </span>
-              </span>
-              <ChevronRight size={20} strokeWidth={1.5} className="text-muted-foreground shrink-0" aria-hidden />
-            </Link>
+          {meetup.isJoined && chat ? (
+            <div className="mt-2">
+              <ChatRow
+                chat={chat}
+                label="Zum Chat"
+                emptyText="Nur für alle, die dabei sind. Sprecht euch ab, wo ihr euch trefft."
+              />
+            </div>
+          ) : meetup.isJoined ? (
+            <p className="text-muted-foreground mt-2">Der Chat startet, sobald jemand zusagt.</p>
           ) : (
             <p className="text-muted-foreground mt-2">Sag zu, dann kannst du mit den anderen schreiben.</p>
           )}
@@ -159,7 +150,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <ul className="mt-2" aria-label="Dabei">
             {meetup.participants.map((p) => (
               <li key={p.userId} className={cn("flex min-h-14 items-center border-b", p.isMe && "text-brand")}>
-                {p.isMe ? "Du" : p.name}
+                {p.isMe ? (
+                  "Du"
+                ) : (
+                  <Link href={`/person/${p.userId}`} className="hover:underline hover:underline-offset-4">
+                    {p.name}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

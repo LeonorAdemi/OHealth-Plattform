@@ -1,145 +1,89 @@
+import { Settings } from "lucide-react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 
-import { MCP_PATH } from "@/lib/mcp-auth";
-import { signOut } from "@/modules/core/actions";
-import { ConnectedAgent, McpAddress } from "@/modules/core/components/agent-access";
-import { DeleteAccount } from "@/modules/core/components/delete-account";
-import { PushToggle } from "@/modules/core/components/push-toggle";
-import { PasskeySetup } from "@/modules/core/components/passkey-setup";
-import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
-import { DisplayNameForm } from "@/modules/core/components/simple-forms";
-import { passkeysEnabled } from "@/modules/core/logic";
-import { getAgentGrants, getNotificationPrefs, getProfile } from "@/modules/core/queries";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { describeProfile } from "@/modules/core/logic";
+import { getProfile } from "@/modules/core/queries";
+import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
+import { getRecentWorkouts } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Profil" };
 
-const grantedFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
-
-/** Öffentliche Adresse dieser App, aus der Anfrage ermittelt (lokal, Vorschau oder Produktion). */
-async function appOrigin() {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
+const RECENT = 5;
 
 export default async function ProfilePage() {
-  const [profile, grants, origin, prefs] = await Promise.all([
-    getProfile(),
-    getAgentGrants(),
-    appOrigin(),
-    getNotificationPrefs(),
-  ]);
+  const [profile, recent] = await Promise.all([getProfile(), getRecentWorkouts(RECENT + 1)]);
+  const now = new Date();
+  const details = describeProfile(profile);
 
   return (
     <>
-      <h1 className="text-titel font-semibold">Profil</h1>
-
-      <section className="mt-8" aria-label="Name">
-        <DisplayNameForm current={profile.display_name} />
-        <p className="text-muted-foreground mt-3 max-w-sm text-sm">
-          So erscheinst du in den Ranglisten deiner Gruppen.
+      <div className="flex items-start gap-4 md:gap-6">
+        <Avatar path={profile.avatar_url} name={profile.display_name} size="lg" />
+        <div className="min-w-0 flex-1 pt-2">
+          <h1 className="text-titel font-semibold break-words">{profile.display_name}</h1>
+          {details && <p className="text-muted-foreground mt-1">{details}</p>}
+        </div>
+      </div>
+      {profile.bio ? (
+        <p className="mt-6 max-w-xl whitespace-pre-line">{profile.bio}</p>
+      ) : (
+        <p className="text-muted-foreground mt-6 max-w-xl">
+          Erzähl den anderen in deinen Gruppen in einem Satz, wie du trainierst.
         </p>
-      </section>
-
-      <section className="mt-10 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">
-        <h2 id="mitteilungen-titel" className="text-xl font-semibold">
-          Mitteilungen
-        </h2>
-        <p className="text-muted-foreground mt-1 mb-2 text-sm">
-          Wofür die Glocke und dein Handy dir Bescheid geben.
-        </p>
-        <NotificationPrefsForm prefs={prefs} />
-        <h3 className="mt-8 font-medium">Aufs Handy</h3>
-        <p className="text-muted-foreground mt-1 mb-2 text-sm">
-          Schaltest du sie ein, kommen dieselben Mitteilungen auch als Push auf dieses Gerät, mit der letzten Nachricht im
-          Chat.
-        </p>
-        <PushToggle publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
-      </section>
-
-      {passkeysEnabled(process.env.NEXT_PUBLIC_PASSKEYS) && (
-        <section className="mt-10" aria-labelledby="passkey">
-          <h2 id="passkey" className="text-xl font-semibold">
-            Passkey
-          </h2>
-          <p className="mt-2 max-w-xl">
-            Mit einem Passkey meldest du dich auf diesem Gerät per Face ID, Fingerabdruck oder
-            Geräte-PIN an, ohne Passwort.
-          </p>
-          <div className="mt-4">
-            <PasskeySetup />
-          </div>
-        </section>
       )}
 
-      <section className="mt-10 max-w-xl" aria-labelledby="ki">
-        <h2 id="ki" className="text-xl font-semibold">
-          KI-Zugriff
+      <div className="mt-6 flex flex-col gap-3 md:flex-row">
+        <Button asChild variant="outline" className="w-full md:w-auto">
+          <Link href="/profil/bearbeiten">Profil bearbeiten</Link>
+        </Button>
+        <Button asChild variant="ghost" className="w-full md:w-auto">
+          <Link href="/profil/einstellungen">
+            <Settings strokeWidth={1.5} aria-hidden />
+            Einstellungen
+          </Link>
+        </Button>
+      </div>
+
+      <section className="mt-12 max-w-2xl" aria-labelledby="verlauf">
+        <h2 id="verlauf" className="text-xl font-semibold">
+          Verlauf
         </h2>
-        <p className="mt-2">
-          Verbinde Claude oder eine andere KI-App mit OHealth, um dir aus deinen Workouts
-          Trainingstipps geben zu lassen. Die App kann nur deine eigenen Daten lesen, nichts ändern
-          und nichts von deinen Gruppen sehen.
-        </p>
-        <p className="text-muted-foreground mt-4 text-sm">
-          Adresse für den Connector, in Claude unter Einstellungen, Connectors
-        </p>
-        <div className="mt-1">
-          <McpAddress url={`${origin}${MCP_PATH}`} />
-        </div>
-        {grants.length === 0 ? (
-          <p className="text-muted-foreground mt-6 text-sm">Noch keine KI-App verbunden.</p>
+        {recent.length === 0 ? (
+          <div className="mt-4">
+            <p>Noch keine Workouts. Starte dein erstes.</p>
+            <Button asChild className="mt-6 w-full md:w-auto">
+              <Link href="/training">Workout starten</Link>
+            </Button>
+          </div>
         ) : (
-          <ul className="mt-6" aria-label="Verbundene KI-Apps">
-            {grants.map((grant) => (
-              <ConnectedAgent
-                key={grant.clientId}
-                clientId={grant.clientId}
-                name={grant.name}
-                since={grantedFormat.format(new Date(grant.grantedAt))}
+          <>
+            <div className="mt-2">
+              <WorkoutFeed
+                label="Letzte Workouts"
+                now={now}
+                workouts={recent.slice(0, RECENT).map((workout) => ({
+                  id: workout.id,
+                  isMe: true,
+                  title: workout.title,
+                  performedAt: workout.performed_at,
+                  startedAt: workout.started_at,
+                  finishedAt: workout.finished_at,
+                  setCount: workout.workout_sets.length,
+                }))}
               />
-            ))}
-          </ul>
+            </div>
+            {recent.length > RECENT && (
+              <p className="mt-4">
+                <Link href="/verlauf" className="inline-flex min-h-11 items-center underline underline-offset-4">
+                  Alle Workouts ansehen
+                </Link>
+              </p>
+            )}
+          </>
         )}
-      </section>
-
-      <section className="mt-10" aria-labelledby="konto">
-        <h2 id="konto" className="text-xl font-semibold">
-          Konto
-        </h2>
-        <p className="mt-2">
-          <Link
-            href="/passwort-neu"
-            className="inline-flex min-h-11 items-center underline underline-offset-4"
-          >
-            Passwort ändern
-          </Link>
-        </p>
-        <form action={signOut}>
-          <button type="submit" className="min-h-11 underline underline-offset-4">
-            Abmelden
-          </button>
-        </form>
-        <p className="text-muted-foreground mt-2 flex gap-4 text-sm">
-          <Link href="/datenschutz" className="inline-flex min-h-11 items-center underline underline-offset-4">
-            Datenschutz
-          </Link>
-          <Link href="/impressum" className="inline-flex min-h-11 items-center underline underline-offset-4">
-            Impressum
-          </Link>
-        </p>
-      </section>
-
-      <section className="mt-10 max-w-xl" aria-labelledby="loeschen">
-        <h2 id="loeschen" className="text-xl font-semibold">
-          Konto löschen
-        </h2>
-        <div className="mt-2">
-          <DeleteAccount />
-        </div>
       </section>
     </>
   );
