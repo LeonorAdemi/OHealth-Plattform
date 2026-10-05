@@ -51,16 +51,16 @@ export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
 
 /** Was Mitglieder voneinander sehen, je nach Art. Steht beim Erstellen und in der Community. */
 export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
-  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Workouts.",
-  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Workouts.",
-  coaching: "Beitritt nur über den Link. Der Coach sieht die Workouts aller Mitglieder, sie sehen einander nicht.",
+  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Aktivitäten.",
+  coaching: "Beitritt nur über den Link. Der Coach sieht die Aktivitäten aller Mitglieder, sie sehen einander nicht.",
 };
 
 /** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
 export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
-  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Workouts.",
-  private: "Wenn du beitrittst, sehen die Mitglieder deine Workouts und du ihre.",
-  coaching: "Wenn du beitrittst, sieht der Coach deine Workouts. Die anderen Mitglieder sehen sie nicht.",
+  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private: "Wenn du beitrittst, sehen die Mitglieder deine Aktivitäten und du ihre.",
+  coaching: "Wenn du beitrittst, sieht der Coach deine Aktivitäten. Die anderen Mitglieder sehen sie nicht.",
 };
 
 /** Vorschläge für die Sportart. Frei eintippen geht trotzdem. */

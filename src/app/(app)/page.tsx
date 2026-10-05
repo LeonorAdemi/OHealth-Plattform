@@ -7,7 +7,7 @@ import { getMeetups } from "@/modules/core/queries";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
-import { isoWeek, weekGrid } from "@/modules/workouts/logic";
+import { describeActivity, isoWeek, weekGrid } from "@/modules/workouts/logic";
 import { getMyTrainingDays, getMyWorkoutsBetween, getRecentWorkouts } from "@/modules/workouts/queries";
 
 // Wie weit der Wochenplan zurück und voraus blättert
@@ -52,8 +52,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       key: `done-${w.id}`,
       href: `/workouts/${w.id}`,
       time: "",
-      title: w.title ?? "Workout",
-      meta: `${w.setCount} ${w.setCount === 1 ? "Satz" : "Sätze"}`,
+      title: w.title ?? w.sportName,
+      meta: describeActivity({ ...w, sportName: w.title ? w.sportName : "" }),
       done: true,
     });
   }
@@ -88,19 +88,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {recent.length > 0 && (
         <section className="mt-10 max-w-2xl" aria-labelledby="recent">
           <h2 id="recent" className="text-xl font-semibold">
-            Letzte Workouts
+            Letzte Aktivitäten
           </h2>
           <div className="mt-2">
             <WorkoutFeed
-              label="Letzte Workouts"
+              label="Letzte Aktivitäten"
               now={now}
               workouts={recent.map((workout) => ({
                 id: workout.id,
                 isMe: true,
                 title: workout.title,
+                sportName: workout.sportName,
                 performedAt: workout.performed_at,
                 startedAt: workout.started_at,
                 finishedAt: workout.finished_at,
+                durationMinutes: workout.duration_minutes,
+                distanceM: workout.distance_m,
                 setCount: workout.workout_sets.length,
               }))}
             />
@@ -110,7 +113,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <div className="mt-10 flex flex-col gap-3 md:flex-row">
         <Button asChild className="w-full md:w-auto">
-          <Link href="/training">Workout starten</Link>
+          <Link href="/aktivitaet/neu">Aktivität eintragen</Link>
+        </Button>
+        <Button asChild variant="outline" className="w-full md:w-auto">
+          <Link href="/training">Mit Vorlage trainieren</Link>
         </Button>
         <Button asChild variant="outline" className="w-full md:w-auto">
           <Link href="/plan/neu">Training planen</Link>

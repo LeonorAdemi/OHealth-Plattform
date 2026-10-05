@@ -220,6 +220,74 @@ export function summarizeSets(sets: readonly SetRow[]): string[] {
   });
 }
 
+// ---------- Aktivität ----------
+
+/** Wie anstrengend eine Aktivität war, Stufe 1 bis 5 wie in workouts.feeling. */
+export const FEELING_LABEL: Readonly<Record<number, string>> = {
+  1: "locker",
+  2: "leicht",
+  3: "mittel",
+  4: "hart",
+  5: "am Limit",
+};
+
+/** Dauer in Minuten in Worten: "52 min", "1 h 05 min". */
+export function formatActivityDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}\u00a0min`;
+  return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
+}
+
+/**
+ * Kurzbeschreibung einer Aktivität für Listen: "Laufen · 45 min · 8,2 km".
+ * Bei Krafttraining mit Sätzen statt Distanz die Zahl der Sätze.
+ */
+export function describeActivity(a: {
+  sportName: string;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM?: number | null;
+  setCount: number;
+}): string {
+  return [
+    a.sportName,
+    a.durationMinutes ? formatActivityDuration(a.durationMinutes) : null,
+    a.distanceM ? `${formatDistance(a.distanceM).value}\u00a0${formatDistance(a.distanceM).unit}` : null,
+    a.elevationM ? `${formatNumber(a.elevationM)}\u00a0Hm` : null,
+    a.setCount > 0 ? `${a.setCount}\u00a0${a.setCount === 1 ? "Satz" : "Sätze"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Dauer einer Aktivität: eingetragen oder aus Start und Ende eines Trainings (bis 24 Stunden). */
+export function activityMinutes(a: {
+  durationMinutes: number | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+}): number | null {
+  if (a.durationMinutes) return a.durationMinutes;
+  if (!a.startedAt || !a.finishedAt) return null;
+  const minutes = Math.round((Date.parse(a.finishedAt) - Date.parse(a.startedAt)) / 60000);
+  return minutes >= 1 && minutes <= 1440 ? minutes : null;
+}
+
+/** Stunden und Minuten aus dem Formular zu Minuten. Ungültig oder 0 -> null. */
+export function parseDurationMinutes(hours: string, minutes: string): number | null {
+  const h = hours.trim() === "" ? 0 : Number(hours);
+  const m = minutes.trim() === "" ? 0 : Number(minutes);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
+  const total = h * 60 + m;
+  return total >= 1 && total <= 1440 ? total : null;
+}
+
+/** Kilometer mit Komma oder Punkt zu Metern: "8,2" -> 8200. Leer -> null, ungültig -> NaN. */
+export function parseDistanceKm(input: string): number | null {
+  if (input.trim() === "") return null;
+  const km = parseDecimal(input);
+  if (km === null || km <= 0 || km > 1000) return Number.NaN;
+  return Math.round(km * 1000 * 10) / 10;
+}
+
 // ---------- Bestwerte je Übung ----------
 
 export type BestRow = {
@@ -635,14 +703,6 @@ export function formatClock(totalSeconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
-/** Dauer eines Workouts in Worten: "52 min", "1 h 05 min". Unter einer Minute: "unter 1 min". */
-export function formatWorkoutDuration(startedAt: string, finishedAt: string): string {
-  const minutes = Math.floor((Date.parse(finishedAt) - Date.parse(startedAt)) / 60000);
-  if (!Number.isFinite(minutes) || minutes < 1) return "unter 1\u00a0min";
-  if (minutes < 60) return `${minutes}\u00a0min`;
-  return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
-}
-
 /** Schlüssel des laufenden Trainings im Speicher des Geräts. Ein Training je Gerät. */
 export const TRAINING_KEY = "ohealth:training";
 
@@ -844,7 +904,7 @@ export function formatLastSets(sets: readonly StoredSet[]): string {
   return sets.map(formatSetLine).join(", ");
 }
 
-// ---------- Letzte Workouts ----------
+// ---------- Letzte Aktivitäten ----------
 
 const whenDay = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
 const whenTime = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" });

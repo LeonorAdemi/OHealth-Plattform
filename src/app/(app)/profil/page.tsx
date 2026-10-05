@@ -67,24 +67,27 @@ export default async function ProfilePage() {
         </h2>
         {recent.length === 0 ? (
           <div className="mt-4">
-            <p>Noch keine Workouts. Starte dein erstes.</p>
+            <p>Noch keine Aktivitäten. Trag deine erste ein.</p>
             <Button asChild className="mt-6 w-full md:w-auto">
-              <Link href="/training">Workout starten</Link>
+              <Link href="/aktivitaet/neu">Aktivität eintragen</Link>
             </Button>
           </div>
         ) : (
           <>
             <div className="mt-2">
               <WorkoutFeed
-                label="Letzte Workouts"
+                label="Letzte Aktivitäten"
                 now={now}
                 workouts={recent.slice(0, RECENT).map((workout) => ({
                   id: workout.id,
                   isMe: true,
                   title: workout.title,
+                  sportName: workout.sportName,
                   performedAt: workout.performed_at,
                   startedAt: workout.started_at,
                   finishedAt: workout.finished_at,
+                  durationMinutes: workout.duration_minutes,
+                  distanceM: workout.distance_m,
                   setCount: workout.workout_sets.length,
                 }))}
               />
@@ -92,7 +95,7 @@ export default async function ProfilePage() {
             {recent.length > RECENT && (
               <p className="mt-4">
                 <Link href="/verlauf" className="inline-flex min-h-11 items-center underline underline-offset-4">
-                  Alle Workouts ansehen
+                  Alle Aktivitäten ansehen
                 </Link>
               </p>
             )}

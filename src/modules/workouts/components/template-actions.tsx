@@ -115,7 +115,7 @@ export function DeleteTemplate({ id }: { id: string }) {
     <form action={action} className="space-y-3">
       <input type="hidden" name="id" value={id} />
       <p>
-        Die Vorlage und alle ihre Versionen werden gelöscht. Bereits gespeicherte Workouts und
+        Die Vorlage und alle ihre Versionen werden gelöscht. Bereits gespeicherte Aktivitäten und
         Kopien anderer Personen bleiben bestehen. Das lässt sich nicht rückgängig machen.
       </p>
       {state.error && (

@@ -31,7 +31,7 @@ Beschlossen am 5. Oktober 2026. Details, Abnahmekriterien und Zeitplan stehen in
 | --- | --- | --- | --- |
 | 17 | Vorbereitung: Pull Request #8 mergen, Migrationen einspielen, `v0.2.0` | Produktion auf aktuellem Stand | Offen |
 | 18 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Im Pull Request #8 (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
-| 19 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Offen |
+| 19 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Im Pull Request #8 (Migration log_activity, Test 23): „Aktivität eintragen“ unter /aktivitaet/neu mit Sportart, Dauer, Distanz, Höhenmetern, Gefühl und Notiz; Listen und Detailansicht zeigen Sportart und Dauer; „Workout“ heißt in der Oberfläche „Aktivität“ |
 | 20 | „Warst du dabei?" nach Events | Gemeinsames Training zählt automatisch | Offen |
 | 21 | Bestwerte und Profil je Sportart | Fortschritt auch außerhalb des Krafttrainings | Offen |
 | 22 | Einstieg mit Sportarten, Stadt und Vorschlägen | Keine leere App für Neue | Offen |

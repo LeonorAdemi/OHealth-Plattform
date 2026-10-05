@@ -15,7 +15,7 @@ const archivo = localFont({
 
 export const metadata: Metadata = {
   title: { default: "OHealth", template: "%s · OHealth" },
-  description: "Workouts tracken und in der Gruppe vergleichen.",
+  description: "Jede Sportart tracken und in der Gruppe vergleichen.",
 };
 
 export const viewport: Viewport = {

@@ -60,14 +60,14 @@ export default async function CommunityBestsPage({
                 ? "Geschätztes Maximum für eine Wiederholung, berechnet aus dem besten Satz."
                 : bests.selected.measure === "duration"
                   ? "Längste gehaltene Zeit."
-                  : "Gesamte Strecke aller Workouts."}
+                  : "Gesamte Strecke aller Aktivitäten."}
             </p>
             <div className="mt-2">
               <BestRanking rows={bests.ranking} />
             </div>
           </>
         ) : (
-          <p>Noch keine Bestwerte. Sie erscheinen, sobald jemand hier ein Workout speichert.</p>
+          <p>Noch keine Bestwerte. Sie erscheinen, sobald jemand hier eine Aktivität mit Übungen speichert.</p>
         )}
       </section>
     </>

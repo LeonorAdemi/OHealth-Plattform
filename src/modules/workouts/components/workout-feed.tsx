@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
-import { formatWorkoutDuration, formatWorkoutWhen } from "../logic";
+import { activityMinutes, describeActivity, formatWorkoutWhen } from "../logic";
 
 export type FeedWorkout = {
   id: string;
@@ -10,14 +10,17 @@ export type FeedWorkout = {
   name?: string;
   isMe: boolean;
   title: string | null;
+  sportName: string;
   performedAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  durationMinutes: number | null;
+  distanceM: number | null;
   setCount: number;
 };
 
 /**
- * Liste der letzten Workouts. Eigene Workouts führen zur Detailansicht. Die Workouts anderer
+ * Liste der letzten Aktivitäten. Eigene führen zur Detailansicht. Die Aktivitäten anderer
  * Personen sind in der Liste sichtbar, ihre Detailansicht gehört aber nur ihnen selbst.
  */
 export function WorkoutFeed({ workouts, now, label }: { workouts: readonly FeedWorkout[]; now: Date; label: string }) {
@@ -26,10 +29,13 @@ export function WorkoutFeed({ workouts, now, label }: { workouts: readonly FeedW
       {workouts.map((workout) => {
         const detail = [
           formatWorkoutWhen(workout.performedAt, now),
-          workout.startedAt && workout.finishedAt
-            ? formatWorkoutDuration(workout.startedAt, workout.finishedAt)
-            : null,
-          `${workout.setCount} ${workout.setCount === 1 ? "Satz" : "Sätze"}`,
+          describeActivity({
+            // Ohne eigenen Titel steht die Sportart schon in der Überschrift
+            sportName: workout.title ? workout.sportName : "",
+            durationMinutes: activityMinutes(workout),
+            distanceM: workout.distanceM,
+            setCount: workout.setCount,
+          }),
         ]
           .filter(Boolean)
           .join(" · ");
@@ -38,7 +44,7 @@ export function WorkoutFeed({ workouts, now, label }: { workouts: readonly FeedW
           <>
             <span className={cn("block font-medium", workout.isMe && workout.name !== undefined && "text-brand")}>
               {workout.name !== undefined && <>{workout.isMe ? "Du" : workout.name} · </>}
-              {workout.title ?? "Workout"}
+              {workout.title ?? workout.sportName}
             </span>
             <span className="text-muted-foreground mt-1 block text-sm">{detail}</span>
           </>

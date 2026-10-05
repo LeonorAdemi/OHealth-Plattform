@@ -31,7 +31,7 @@ export function DeleteAccount() {
       <input type="hidden" name="confirm" value="yes" />
       <p>Wenn du dein Konto löschst, passiert Folgendes:</p>
       <ul className="list-disc space-y-1 pl-5">
-        <li>Dein Profil, alle deine Workouts und Sätze werden gelöscht.</li>
+        <li>Dein Profil, alle deine Aktivitäten und Sätze werden gelöscht.</li>
         <li>
           Du verlässt alle Gruppen und verschwindest aus ihren Ranglisten.
         </li>

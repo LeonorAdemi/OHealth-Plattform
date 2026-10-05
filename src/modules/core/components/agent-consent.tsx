@@ -24,7 +24,7 @@ export function AgentConsentView({
       <h2 className="mt-8 text-xl font-semibold">Lesen darf die App</h2>
       <ul className="mt-2">
         <li className="flex min-h-11 items-center border-b">Dein Profil mit Namen</li>
-        <li className="flex min-h-11 items-center border-b">Deine Workouts mit allen Sätzen</li>
+        <li className="flex min-h-11 items-center border-b">Deine Aktivitäten mit allen Sätzen</li>
         <li className="flex min-h-11 items-center border-b">Trainingstage und Bestwerte</li>
         <li className="flex min-h-11 items-center border-b">Deine Vorlagen mit allen Versionen</li>
       </ul>
@@ -39,7 +39,7 @@ export function AgentConsentView({
       <ul className="mt-2">
         <li className="flex min-h-11 items-center border-b">Daten deiner Gruppen und Freunde</li>
         <li className="flex min-h-11 items-center border-b">Etwas löschen oder eine Vorlage veröffentlichen</li>
-        <li className="flex min-h-11 items-center border-b">Workouts eintragen oder ändern</li>
+        <li className="flex min-h-11 items-center border-b">Aktivitäten eintragen oder ändern</li>
       </ul>
 
       <p className="text-muted-foreground mt-6 text-sm">

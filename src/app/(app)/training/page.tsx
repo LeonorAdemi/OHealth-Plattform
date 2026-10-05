@@ -47,7 +47,7 @@ export default async function StartTrainingPage() {
 
       <p className="mt-10 text-sm">
         <Link href="/workouts/neu" className="underline underline-offset-4">
-          Ohne Vorlage: Workout nachtragen
+          Ohne Vorlage: Sätze nachtragen
         </Link>
       </p>
     </>

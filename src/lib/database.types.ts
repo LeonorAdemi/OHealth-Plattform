@@ -1351,6 +1351,19 @@ export type Database = {
       }
       join_group: { Args: { code: string }; Returns: string }
       leave_group: { Args: { gid: string }; Returns: undefined }
+      log_activity: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_feeling?: number
+          p_id: string
+          p_notes?: string
+          p_performed_at: string
+          p_sport_id: string
+        }
+        Returns: string
+      }
       log_training: {
         Args: {
           p_finished_at: string
@@ -1504,6 +1517,19 @@ export type Database = {
       unblock_person: { Args: { target: string }; Returns: undefined }
       unfollow_person: { Args: { target: string }; Returns: undefined }
       unread_chat_count: { Args: never; Returns: number }
+      update_activity: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_feeling?: number
+          p_id: string
+          p_notes?: string
+          p_performed_at: string
+          p_sport_id: string
+        }
+        Returns: string
+      }
       update_workout: {
         Args: { p_id: string; p_sets: Json; p_title: string }
         Returns: string

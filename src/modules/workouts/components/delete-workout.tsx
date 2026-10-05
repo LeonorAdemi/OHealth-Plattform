@@ -21,7 +21,7 @@ export function DeleteWorkout({ id }: { id: string }) {
         className="-ml-4"
         onClick={() => setConfirming(true)}
       >
-        Workout löschen
+        Aktivität löschen
       </Button>
     );
   }
@@ -30,7 +30,7 @@ export function DeleteWorkout({ id }: { id: string }) {
     <form action={action} className="space-y-3">
       <input type="hidden" name="id" value={id} />
       <p>
-        Das Workout und alle seine Sätze werden gelöscht. Das lässt sich nicht
+        Die Aktivität und alle ihre Sätze werden gelöscht. Das lässt sich nicht
         rückgängig machen.
       </p>
       {state.error && (

@@ -118,13 +118,13 @@ Handy (bis 767 px)            Desktop (ab 1024 px)
 │ Titel              │        │          │ Titel                     │
 │                    │        │ Heute    │                           │
 │ 3                  │        │ Vorlagen │ 3                         │
-│ Workouts diese Wo. │        │ Communit.│ Workouts diese Woche      │
+│ Trainingstage      │        │ Communit.│ Trainingstage diese Woche │
 │ ■ ■ □ ■ □ □ □      │        │ Chats    │ ■ ■ □ ■ □ □ □             │
 │                    │        │          │                           │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
 │                    │        │          │                           │
-│ [ Workout starten ]│        │          │                           │
+│ [Aktivität eintr.] │        │          │                           │
 ├────────────────────┤        └──────────┴───────────────────────────┘
 │Heute Vorl Comm Chat│         240 px      Inhalt max. 960 px
 └────────────────────┘
@@ -146,8 +146,9 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Follower und Menschen finden:** „Follower“ mit den Reitern Follower, Folgt und Anfragen; Anfragen mit „Bestätigen“ (gefüllt, klein) und „Löschen“ (Umriss) in der Zeile. „Menschen finden“ mit Namenssuche und Vorschlägen aus den eigenen Communities, je Zeile Profilbild, Name, Angaben und rechts der Stand in Stein (Gefolgt, Angefragt, Folgt dir, Privat).
 - **Nachrichtenanfragen:** In „Chats“ oben ein eigener Abschnitt „Nachrichtenanfragen“. Im Chat steht über den Nachrichten eine Leiste mit „Annehmen“ (gefüllt) und „Ablehnen“ (Umriss). Eigene offene Anfragen tragen statt der Uhrzeit „Angefragt“.
 - **Auswahl-Chips** (zum Beispiel Sportarten): Umriss mit 8 px Rundung. Gewählt: Rahmen und Schrift in Eisen mit Häkchen, nicht gefüllt. Nicht gewählt: Rahmen in Linie, Schrift in Stein.
+- **Aktivität eintragen:** Die Hauptaktion auf „Heute“. Oben die zuletzt genutzten Sportarten als Chips, darunter „Alle Sportarten“ mit Suche und den Gruppen des Katalogs. Dann Datum, Dauer in Stunden und Minuten und nur bei passenden Sportarten Distanz und Höhenmeter, danach „Wie anstrengend?“ als Chips und eine Notiz. Drei Tipps reichen: Sportart, Dauer, Speichern. In Listen steht die Aktivität als Titel oder Sportart, darunter „Laufen · 45 min · 8,2 km“. Übungen mit Sätzen bleiben ein eigener Weg („Mit Vorlage trainieren“, „Sätze nachtragen“).
 - **Schatten:** keine. Einzige Ausnahme sind Overlays (Dialog, Drawer, Menü) mit einem einzigen weichen Schatten.
-- **Buttons:** Pro Ansicht genau ein gefüllter Button (Eisen auf Weiß). Alle weiteren sind Umriss oder reiner Text. Höhe 48 px am Handy, 40 px am Desktop. Beschriftung ist ein Verb und sagt genau, was passiert: „Workout speichern".
+- **Buttons:** Pro Ansicht genau ein gefüllter Button (Eisen auf Weiß). Alle weiteren sind Umriss oder reiner Text. Höhe 48 px am Handy, 40 px am Desktop. Beschriftung ist ein Verb und sagt genau, was passiert: „Aktivität speichern".
 - **Eingaben:** Beschriftung steht immer über dem Feld. Zahlenfelder für Gewicht und Wiederholungen sind groß (Zahl-Stil), rechtsbündig und öffnen die Zifferntastatur.
 - **Leaderboard:** Eine gesetzte Tabelle: Rang, Name, Wochenraster, Zahl. Die eigene Zeile hat Namen und Zahl in Moos, sonst keine Hervorhebung. Keine Medaillen, keine Podeste, keine Avatare als Schmuck.
 - **Bestwert:** Ein neuer Bestwert wird einmalig mit Moos hell hinterlegt und mit dem Wort „Bestwert" in Klein gekennzeichnet.
@@ -186,14 +187,14 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 
 | So | Nicht so |
 | --- | --- |
-| 3 Workouts diese Woche | Wahnsinn, du bist on fire! |
+| 3 Trainingstage diese Woche | Wahnsinn, du bist on fire! |
 | Neuer Bestwert: 82,5 kg | Neuer PR freigeschaltet 🎉 |
-| Workout speichern | Los geht's |
-| Noch keine Workouts. Starte dein erstes. | Hier ist es noch ganz schön leer … |
+| Aktivität speichern | Los geht's |
+| Noch keine Aktivitäten. Trag deine erste ein. | Hier ist es noch ganz schön leer … |
 | Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut. | Ups, da ist etwas schiefgelaufen! |
 
 - Keine Ausrufezeichen, keine Emojis, keine Motivationssprüche.
-- Ein Ding hat überall denselben Namen: Workout, Satz, Übung, Gruppe, Bestwert.
+- Ein Ding hat überall denselben Namen: Aktivität, Sportart, Satz, Übung, Gruppe, Bestwert. „Workout“ steht nicht mehr in der Oberfläche, nur noch im Code.
 - Fehler sagen, was passiert ist und was zu tun ist.
 
 ## 11. Bewegung

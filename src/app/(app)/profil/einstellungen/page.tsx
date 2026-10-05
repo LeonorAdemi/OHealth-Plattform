@@ -79,7 +79,7 @@ export default async function SettingsPage() {
           KI-Zugriff
         </h2>
         <p className="mt-2">
-          Verbinde Claude oder eine andere KI-App mit OHealth, um dir aus deinen Workouts
+          Verbinde Claude oder eine andere KI-App mit OHealth, um dir aus deinen Aktivitäten
           Trainingstipps geben zu lassen. Die App kann nur deine eigenen Daten lesen, nichts ändern
           und nichts von deinen Gruppen sehen.
         </p>
