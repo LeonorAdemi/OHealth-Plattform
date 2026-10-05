@@ -83,8 +83,10 @@ Leitidee: **Organisatorin gewinnen → Schleife schließen → sicher starten �
 
 ### N1 Events für Organisatorinnen (M)
 
-- Events bekommen `sport_id` und `duration_minutes`. Beim Planen sind beide aus der Community vorbelegt. Daraus ergibt sich das Ende des Events.
-- **Wöchentliche Wiederholung:** „Jeden Dienstag, 18:30" legt die nächsten acht Termine an (`series_id`). Einen Termin oder die ganze Reihe ändern oder absagen. Die Reihe wird automatisch fortgeschrieben.
+Am 5. Oktober 2026 in zwei Schritte geteilt (mit der Nutzerin abgestimmt):
+
+- **N1 Events je Sportart:** Events bekommen Sportart, Dauer und je nach Sportart eigene Angaben: Trainingsplan bei Kraft, Distanz, Höhenmeter und Tempo bei Ausdauer, Niveau für alle. Die Sportart ist aus der Community vorbelegt. Aus der Dauer ergibt sich das Ende des Events. Bei „Aktivität eintragen“ mit Krafttraining stehen die eigenen Trainingspläne direkt zur Auswahl. Kosten pro Person bleiben bewusst in der Notiz, bis Zahlungen kommen.
+- **N1b Wöchentliche Wiederholung:** „Jeden Dienstag, 18:30" legt die nächsten acht Termine an (`series_id`). Einen Termin oder die ganze Reihe ändern oder absagen. Die Reihe wird automatisch fortgeschrieben.
 - **Nicht** in N1: Warteliste. Die Obergrenze (`max_participants`) gibt es schon. Ob eine Warteliste gebraucht wird, zeigen die Gespräche.
 - **Fertig, wenn:** Eine Organisatorin legt einen wöchentlichen Lauftreff in unter einer Minute an. Datenbanktests für Reihe, Ändern und Absagen (nur Verwaltung der Community) sowie für die Rechte von KI-Tokens.
 

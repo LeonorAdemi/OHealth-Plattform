@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 
-import { describeMeetupCount, formatMeetupWhen, isMeetupFull, meetupDateBlock } from "../logic";
+import { describeMeetupCount, describeMeetupDetails, formatMeetupWhen, isMeetupFull, meetupDateBlock } from "../logic";
 import type { ChatSummary, Meetup } from "../queries";
 import { ChatLine } from "./chat-link";
 import { MeetupToggle } from "./meetup-forms";
@@ -27,7 +27,8 @@ function Joined() {
 }
 
 /**
- * Geplante Trainings als Zeilen, nächstes zuerst. Zweite Zeile: wer plant, wann, wo, wie viele dabei.
+ * Geplante Trainings als Zeilen, nächstes zuerst. Darunter Sportart und Angaben („Laufen · 60 min ·
+ * 10 km“), dann wer plant, wann, wo, wie viele dabei.
  * Mit chats steht darunter der Chat des Trainings: für alle, die dabei sind, mit letzter Nachricht;
  * sonst der Hinweis, dass der Chat nach der Zusage offen ist.
  */
@@ -50,6 +51,7 @@ export function MeetupList({
           m.place,
           describeMeetupCount(m.count, m.maxParticipants),
         ].filter(Boolean);
+        const details = describeMeetupDetails(m);
 
         return (
           <li key={m.id} className="flex min-h-16 items-center gap-4 border-b py-3">
@@ -59,6 +61,7 @@ export function MeetupList({
                 <span className="line-clamp-2 block font-medium break-words group-hover:underline group-hover:underline-offset-4">
                   {m.title}
                 </span>
+                {details && <span className="num mt-0.5 block text-sm">{details}</span>}
                 <span className="text-muted-foreground mt-0.5 block text-sm">{meta.join(" · ")}</span>
               </Link>
               {chats && m.isJoined && chats[m.id] && <ChatLine chat={chats[m.id]} title={m.title} />}

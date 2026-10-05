@@ -520,11 +520,18 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          distance_m: number | null
+          duration_minutes: number | null
+          elevation_m: number | null
           group_id: string | null
           id: string
+          level: string | null
           max_participants: number | null
           note: string | null
+          pace_seconds_per_km: number | null
           place: string | null
+          speed_kmh: number | null
+          sport_id: string | null
           starts_at: string
           template_id: string | null
           title: string
@@ -532,11 +539,18 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
           group_id?: string | null
           id?: string
+          level?: string | null
           max_participants?: number | null
           note?: string | null
+          pace_seconds_per_km?: number | null
           place?: string | null
+          speed_kmh?: number | null
+          sport_id?: string | null
           starts_at: string
           template_id?: string | null
           title: string
@@ -544,11 +558,18 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
           group_id?: string | null
           id?: string
+          level?: string | null
           max_participants?: number | null
           note?: string | null
+          pace_seconds_per_km?: number | null
           place?: string | null
+          speed_kmh?: number | null
+          sport_id?: string | null
           starts_at?: string
           template_id?: string | null
           title?: string
@@ -566,6 +587,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
             referencedColumns: ["id"]
           },
           {
@@ -845,6 +873,7 @@ export type Database = {
           has_sets: boolean
           id: string
           name: string
+          pace_unit: string | null
           position: number
         }
         Insert: {
@@ -855,6 +884,7 @@ export type Database = {
           has_sets?: boolean
           id: string
           name: string
+          pace_unit?: string | null
           position?: number
         }
         Update: {
@@ -865,6 +895,7 @@ export type Database = {
           has_sets?: boolean
           id?: string
           name?: string
+          pace_unit?: string | null
           position?: number
         }
         Relationships: []
@@ -1406,14 +1437,23 @@ export type Database = {
         }
         Returns: {
           creator_name: string
+          distance_m: number
+          duration_minutes: number
+          elevation_m: number
           id: string
           is_joined: boolean
           is_mine: boolean
+          level: string
           max_participants: number
           note: string
+          pace_seconds_per_km: number
+          pace_unit: string
           participant_count: number
           place: string
           share_count: number
+          speed_kmh: number
+          sport_id: string
+          sport_name: string
           starts_at: string
           template_id: string
           title: string

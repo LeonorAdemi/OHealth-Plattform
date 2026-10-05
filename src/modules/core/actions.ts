@@ -9,7 +9,19 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { berlinLocalToDate, CHAT_NOTIFICATION_KINDS, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
+import {
+  berlinLocalToDate,
+  CHAT_NOTIFICATION_KINDS,
+  groupTypeFor,
+  MAX_BIO,
+  MEETUP_LEVELS,
+  meetupErrorMessage,
+  normalizeSports,
+  parseDistanceKm,
+  parseDurationMinutes,
+  parsePace,
+  parseSpeed,
+} from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -215,7 +227,31 @@ const meetupSchema = z.object({
   ]),
   note: z.string().trim().max(300, "Höchstens 300 Zeichen für die Notiz."),
   shareWith: z.array(z.uuid()).max(20),
+  sportId: z.string().regex(/^[a-z0-9_]{2,30}$/, "Wähl eine Sportart."),
+  hours: z.string(),
+  minutes: z.string(),
+  distance: z.string(),
+  elevation: z.union([
+    z.literal(""),
+    z.coerce.number().int("Gib die Höhenmeter als ganze Zahl ein.").min(0).max(20000, "Höchstens 20.000 Höhenmeter."),
+  ]),
+  pace: z.string(),
+  speed: z.string(),
+  level: z.union([z.literal(""), z.enum(MEETUP_LEVELS)]),
 });
+
+/** Dauer, Distanz und Tempo aus den Textfeldern. Fehler als Satz für das Formular. */
+function meetupMeasures(d: z.infer<typeof meetupSchema>) {
+  const durationMinutes = parseDurationMinutes(d.hours, d.minutes);
+  if (durationMinutes === null) return { error: "Gib eine Dauer zwischen 1 Minute und 24 Stunden ein." } as const;
+  const distanceM = parseDistanceKm(d.distance);
+  if (Number.isNaN(distanceM)) return { error: "Gib die Distanz in Kilometern ein, zum Beispiel 8,5." } as const;
+  const paceSecondsPerKm = parsePace(d.pace);
+  if (Number.isNaN(paceSecondsPerKm)) return { error: "Gib das Tempo in Minuten je Kilometer ein, zum Beispiel 6:00." } as const;
+  const speedKmh = parseSpeed(d.speed);
+  if (Number.isNaN(speedKmh)) return { error: "Gib das Tempo in km/h ein, zum Beispiel 25." } as const;
+  return { durationMinutes, distanceM, paceSecondsPerKm, speedKmh } as const;
+}
 
 const MEETUP_FAILED = "Das hat nicht geklappt. Prüf deine Verbindung und versuch es erneut.";
 
@@ -237,8 +273,18 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
     max: formData.get("max") ?? "",
     note: formData.get("note") ?? "",
     shareWith: shareIds(formData),
+    sportId: formData.get("sportId") ?? "",
+    hours: formData.get("hours") ?? "",
+    minutes: formData.get("minutes") ?? "",
+    distance: formData.get("distance") ?? "",
+    elevation: formData.get("elevation") ?? "",
+    pace: formData.get("pace") ?? "",
+    speed: formData.get("speed") ?? "",
+    level: formData.get("level") ?? "",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const measures = meetupMeasures(parsed.data);
+  if ("error" in measures) return { error: measures.error };
 
   const startsAt = berlinLocalToDate(parsed.data.date, parsed.data.time);
   if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." };
@@ -249,7 +295,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
-  // Ohne eigenen Titel heißt das Training wie die Vorlage.
+  // Ohne eigenen Titel heißt das Training wie der Trainingsplan, sonst wie die Sportart.
   let title = parsed.data.title;
   if (!title && parsed.data.templateId) {
     const { data: template } = await supabase
@@ -260,7 +306,11 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       .maybeSingle();
     title = template?.name ?? "";
   }
-  if (!title) return { error: "Wähl eine Vorlage oder schreib, was du vorhast." };
+  if (!title) {
+    const { data: sport } = await supabase.from("sports").select("name").eq("id", parsed.data.sportId).maybeSingle();
+    if (!sport) return { error: "Wähl eine Sportart aus der Liste." };
+    title = sport.name;
+  }
 
   const { data, error } = await supabase
     .from("meetups")
@@ -272,11 +322,20 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       place: parsed.data.place || null,
       max_participants: parsed.data.max === "" ? null : parsed.data.max,
       note: parsed.data.note || null,
+      sport_id: parsed.data.sportId,
+      duration_minutes: measures.durationMinutes,
+      distance_m: measures.distanceM,
+      elevation_m: parsed.data.elevation === "" ? null : parsed.data.elevation,
+      pace_seconds_per_km: measures.paceSecondsPerKm,
+      speed_kmh: measures.speedKmh,
+      level: parsed.data.level || null,
     })
     .select("id")
     .single();
 
   if (error) {
+    const sportError = meetupErrorMessage(error);
+    if (sportError) return { error: sportError };
     if (error.message.includes("Höchstens 30")) {
       return { error: "Du hast schon 30 geplante Trainings. Warte, bis eins vorbei ist." };
     }

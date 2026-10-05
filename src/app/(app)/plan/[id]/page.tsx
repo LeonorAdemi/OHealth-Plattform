@@ -14,7 +14,7 @@ import {
 import { ChatRow } from "@/modules/core/components/chat-link";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
-import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull } from "@/modules/core/logic";
+import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull, meetupDetailRows } from "@/modules/core/logic";
 import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
@@ -64,6 +64,12 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <dl className="mt-6 max-w-2xl">
+        {meetupDetailRows(meetup).map((row) => (
+          <div key={row.label} className="flex min-h-14 items-center gap-4 border-b py-3">
+            <dt className="text-muted-foreground w-28 shrink-0 text-sm">{row.label}</dt>
+            <dd className="num min-w-0 break-words">{row.value}</dd>
+          </div>
+        ))}
         {meetup.place && (
           <div className="flex min-h-14 items-center gap-4 border-b py-3">
             <dt className="text-muted-foreground w-28 shrink-0 text-sm">Treffpunkt</dt>

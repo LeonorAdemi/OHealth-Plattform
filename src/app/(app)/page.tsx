@@ -43,7 +43,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       href: `/plan/${m.id}`,
       time: formatMeetupWhen(m.startsAt).split(" ")[1],
       title: m.title,
-      meta: m.place ? `${meta} · ${m.place}` : meta,
+      // Sportart nur, wenn der Titel sie nicht schon nennt
+      meta: [m.sportName !== m.title ? m.sportName : null, meta, m.place].filter(Boolean).join(" · "),
       done: false,
     });
   }

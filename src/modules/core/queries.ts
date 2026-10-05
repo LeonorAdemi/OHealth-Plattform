@@ -9,7 +9,14 @@ import type { AgentClient } from "@/lib/supabase/agent";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createClient } from "@/lib/supabase/server";
 
-import { CHAT_NOTIFICATION_KINDS, communityKind, toNotificationKind, toSportCategory } from "./logic";
+import {
+  CHAT_NOTIFICATION_KINDS,
+  communityKind,
+  toMeetupLevel,
+  toNotificationKind,
+  toPaceUnit,
+  toSportCategory,
+} from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
 export const requireUser = cache(async () => {
@@ -131,6 +138,14 @@ export const getMyCommunities = cache(async () => {
   }));
 });
 
+/** Sportart einer Community aus dem Katalog, zum Vorbelegen beim Planen. null ohne Zuordnung. */
+export async function getCommunitySportId(groupId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("groups").select("sport_id").eq("id", groupId).maybeSingle();
+  if (error) throw new Error("Die Community konnte nicht geladen werden.");
+  return data?.sport_id ?? null;
+}
+
 /** Eine eigene Community. null, wenn ich (nicht mehr) Mitglied bin. */
 export async function getMyCommunity(id: string) {
   const mine = await getMyCommunities();
@@ -144,7 +159,7 @@ export const getSports = cache(async () => {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("sports")
-    .select("id, name, category, has_distance, has_elevation, has_sets, aliases")
+    .select("id, name, category, has_distance, has_elevation, has_sets, pace_unit, aliases")
     .order("position")
     .limit(200);
   if (error) throw new Error("Sportarten konnten nicht geladen werden.");
@@ -155,6 +170,7 @@ export const getSports = cache(async () => {
     hasDistance: s.has_distance,
     hasElevation: s.has_elevation,
     hasSets: s.has_sets,
+    paceUnit: toPaceUnit(s.pace_unit),
     aliases: s.aliases,
   }));
 });
@@ -445,6 +461,15 @@ type FeedRow = {
   is_joined: boolean;
   is_mine: boolean;
   share_count: number;
+  sport_id: string | null;
+  sport_name: string | null;
+  pace_unit: string | null;
+  duration_minutes: number | null;
+  distance_m: number | null;
+  elevation_m: number | null;
+  pace_seconds_per_km: number | null;
+  speed_kmh: number | null;
+  level: string | null;
 };
 
 function toMeetup(row: FeedRow) {
@@ -461,6 +486,14 @@ function toMeetup(row: FeedRow) {
     isJoined: row.is_joined,
     isMine: row.is_mine,
     shareCount: row.share_count,
+    sportId: row.sport_id,
+    sportName: row.sport_name,
+    durationMinutes: row.duration_minutes,
+    distanceM: row.distance_m,
+    elevationM: row.elevation_m,
+    paceSecondsPerKm: row.pace_seconds_per_km,
+    speedKmh: row.speed_kmh,
+    level: toMeetupLevel(row.level),
   };
 }
 

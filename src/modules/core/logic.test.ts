@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeMeetupDetails,
+  formatPace,
+  formatSpeed,
+  meetupDetailRows,
+  meetupErrorMessage,
+  parsePace,
+  parseSpeed,
   chatDayLabel,
   chatListTime,
   chatTime,
@@ -327,5 +334,87 @@ describe("Sportarten", () => {
   it("unbekannte Bereiche landen unter Sonstiges", () => {
     expect(toSportCategory("klettern")).toBe("klettern");
     expect(toSportCategory("quidditch")).toBe("sonstiges");
+  });
+});
+
+describe("Events je Sportart", () => {
+  const run = {
+    sportName: "Laufen",
+    durationMinutes: 60,
+    distanceM: 10000,
+    elevationM: 80,
+    paceSecondsPerKm: 360,
+    speedKmh: null,
+    level: "einsteiger" as const,
+  };
+
+  it("liest das Tempo in Minuten je Kilometer mit Doppelpunkt, Punkt oder Komma", () => {
+    expect(parsePace("6:00")).toBe(360);
+    expect(parsePace("5.30")).toBe(330);
+    expect(parsePace("5,45")).toBe(345);
+    expect(parsePace("7")).toBe(420);
+    expect(parsePace("")).toBeNull();
+    expect(parsePace("6:75")).toBeNaN();
+    expect(parsePace("0:30")).toBeNaN();
+    expect(parsePace("schnell")).toBeNaN();
+  });
+
+  it("liest km/h mit einer Nachkommastelle und lehnt Unsinn ab", () => {
+    expect(parseSpeed("27,5")).toBe(27.5);
+    expect(parseSpeed("25")).toBe(25);
+    expect(parseSpeed(" ")).toBeNull();
+    expect(parseSpeed("0,5")).toBeNaN();
+    expect(parseSpeed("120")).toBeNaN();
+  });
+
+  it("zeigt Tempo und Geschwindigkeit in deutscher Schreibweise", () => {
+    expect(formatPace(330)).toBe("5:30\u00a0min/km");
+    expect(formatSpeed(27.5)).toBe("27,5\u00a0km/h");
+    expect(formatSpeed(25)).toBe("25\u00a0km/h");
+  });
+
+  it("beschreibt ein Event mit Sportart und allen Angaben in einer Zeile", () => {
+    expect(describeMeetupDetails(run)).toBe(
+      "Laufen · 1\u00a0h 00\u00a0min · 10,0\u00a0km · 80\u00a0Hm · 6:00\u00a0min/km · Einsteiger willkommen",
+    );
+    expect(
+      describeMeetupDetails({ ...run, sportName: "Volleyball", distanceM: null, elevationM: null, paceSecondsPerKm: null, level: "gemischt" }),
+    ).toBe("Volleyball · 1\u00a0h 00\u00a0min · Gemischtes Niveau");
+  });
+
+  it("alte Events ohne Sportart und Angaben ergeben eine leere Beschreibung", () => {
+    expect(
+      describeMeetupDetails({
+        sportName: null,
+        durationMinutes: null,
+        distanceM: null,
+        elevationM: null,
+        paceSecondsPerKm: null,
+        speedKmh: null,
+        level: null,
+      }),
+    ).toBe("");
+  });
+
+  it("zeigt auf der Detailseite nur vorhandene Angaben als Zeilen", () => {
+    expect(meetupDetailRows({ ...run, elevationM: null, level: null }).map((r) => r.label)).toEqual([
+      "Sportart",
+      "Dauer",
+      "Distanz",
+      "Tempo",
+    ]);
+    expect(meetupDetailRows({ ...run, paceSecondsPerKm: null, speedKmh: 27.5 }).find((r) => r.label === "Tempo")?.value).toBe(
+      "27,5\u00a0km/h",
+    );
+  });
+
+  it("übernimmt die Meldungen der Datenbank, wenn Angaben nicht zur Sportart passen", () => {
+    expect(meetupErrorMessage({ code: "23514", message: "Zu Bouldern gibt es keinen Trainingsplan" })).toBe(
+      "Zu Bouldern gibt es keinen Trainingsplan.",
+    );
+    expect(meetupErrorMessage({ code: "23503", message: "Die Sportart quidditch gibt es nicht" })).toBe(
+      "Wähl eine Sportart aus der Liste.",
+    );
+    expect(meetupErrorMessage({ code: "42501", message: "new row violates row-level security" })).toBeNull();
   });
 });

@@ -1,16 +1,16 @@
 "use client";
 
-import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { berlinDateTimeParts, berlinLocalToDate, matchesSport, SPORT_CATEGORY_LABEL } from "@/modules/core/logic";
+import { SportPicker } from "@/modules/core/components/sport-picker";
+import { berlinDateTimeParts, berlinLocalToDate } from "@/modules/core/logic";
 import type { Sport } from "@/modules/core/queries";
 
 import { saveActivity, updateActivity } from "../actions";
@@ -29,24 +29,6 @@ export type ActivityValues = {
 
 const FEELINGS = Object.entries(FEELING_LABEL).map(([value, label]) => ({ value: Number(value), label }));
 
-function SportChip({ sport, selected, onSelect }: { sport: Sport; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-        "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-        selected ? "border-foreground text-foreground font-medium" : "border-input text-muted-foreground hover:bg-accent",
-      )}
-    >
-      {selected && <Check size={16} strokeWidth={1.5} aria-hidden />}
-      {sport.name}
-    </button>
-  );
-}
-
 /**
  * Aktivität eintragen oder ändern: Sportart, Datum, Dauer, je nach Sportart Distanz und Höhenmeter,
  * dazu Gefühl und Notiz. Drei Tipps reichen: Sportart, Dauer, Speichern.
@@ -54,10 +36,13 @@ function SportChip({ sport, selected, onSelect }: { sport: Sport; selected: bool
 export function ActivityForm({
   sports,
   recentSportIds,
+  templates = [],
   existing,
 }: {
   sports: readonly Sport[];
   recentSportIds: readonly string[];
+  /** Eigene Trainingspläne, für Sportarten mit Übungen und Sätzen */
+  templates?: readonly { id: string; name: string; exerciseCount: number }[];
   existing?: ActivityValues;
 }) {
   const router = useRouter();
@@ -67,8 +52,6 @@ export function ActivityForm({
   const initialDate = existing ? berlinDateTimeParts(new Date(existing.performedAt)).date : today;
 
   const [sportId, setSportId] = useState<string | null>(existing?.sportId ?? recentSportIds[0] ?? null);
-  const [showAll, setShowAll] = useState(recentSportIds.length === 0 && !existing);
-  const [query, setQuery] = useState("");
   const [date, setDate] = useState(initialDate);
   const [hours, setHours] = useState(existing?.durationMinutes ? String(Math.floor(existing.durationMinutes / 60)) : "");
   const [minutes, setMinutes] = useState(existing?.durationMinutes ? String(existing.durationMinutes % 60) : "");
@@ -83,14 +66,6 @@ export function ActivityForm({
   const [failedToSend, setFailedToSend] = useState(false);
 
   const sport = sports.find((s) => s.id === sportId) ?? null;
-  const recent = recentSportIds.flatMap((rid) => sports.filter((s) => s.id === rid));
-  const grouped = useMemo(() => {
-    const groups = new Map<string, Sport[]>();
-    for (const s of sports.filter((s) => matchesSport(s, query))) {
-      groups.set(s.category, [...(groups.get(s.category) ?? []), s]);
-    }
-    return [...groups.entries()];
-  }, [sports, query]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -141,86 +116,9 @@ export function ActivityForm({
 
   return (
     <form onSubmit={submit} className="max-w-xl space-y-8" noValidate>
-      <fieldset className="space-y-3">
-        <legend className="text-xl font-semibold">Sportart</legend>
-        {recent.length > 0 && (
-          <ul className="flex flex-wrap gap-2" aria-label="Zuletzt">
-            {recent.map((s) => (
-              <li key={s.id}>
-                <SportChip sport={s} selected={s.id === sportId} onSelect={() => setSportId(s.id)} />
-              </li>
-            ))}
-          </ul>
-        )}
-        {sport && !recent.some((s) => s.id === sport.id) && (
-          <p>
-            <SportChip sport={sport} selected onSelect={() => setShowAll(true)} />
-          </p>
-        )}
-        {!showAll ? (
-          <button
-            type="button"
-            onClick={() => setShowAll(true)}
-            className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-          >
-            Alle Sportarten
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <div className="max-w-sm space-y-2">
-              <Label htmlFor="sport-search">Sportart suchen</Label>
-              <Input
-                id="sport-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="zum Beispiel Bouldern"
-                autoComplete="off"
-              />
-            </div>
-            {grouped.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Keine passende Sportart. Wähl „Sonstiges“, wenn deine fehlt.
-              </p>
-            ) : (
-              grouped.map(([category, list]) => (
-                <div key={category}>
-                  <p className="text-muted-foreground mb-2 text-sm">
-                    {SPORT_CATEGORY_LABEL[category as keyof typeof SPORT_CATEGORY_LABEL]}
-                  </p>
-                  <ul className="flex flex-wrap gap-2">
-                    {list.map((s) => (
-                      <li key={s.id}>
-                        <SportChip
-                          sport={s}
-                          selected={s.id === sportId}
-                          onSelect={() => {
-                            setSportId(s.id);
-                            setShowAll(false);
-                            setQuery("");
-                          }}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-        {sport?.hasSets && !existing && (
-          <p className="text-muted-foreground text-sm">
-            Mit Übungen und Sätzen?{" "}
-            <Link href="/training" className="text-foreground underline underline-offset-4">
-              Mit Vorlage trainieren
-            </Link>{" "}
-            oder{" "}
-            <Link href="/workouts/neu" className="text-foreground underline underline-offset-4">
-              Sätze nachtragen
-            </Link>
-          </p>
-        )}
-      </fieldset>
+      <SportPicker sports={sports} recentSportIds={recentSportIds} value={sportId} onChange={setSportId}>
+        {sport?.hasSets && !existing && <StrengthPlans templates={templates} />}
+      </SportPicker>
 
       <div className="grid max-w-sm grid-cols-2 gap-3">
         <div className="col-span-2 space-y-2">
@@ -319,5 +217,47 @@ export function ActivityForm({
               : "Aktivität speichern"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Bei Sportarten mit Übungen und Sätzen: eigene Trainingspläne zum direkten Start, dazu Sätze
+ * nachtragen. Ohne Plan ein Hinweis, wie man einen anlegt.
+ */
+function StrengthPlans({ templates }: { templates: readonly { id: string; name: string; exerciseCount: number }[] }) {
+  return (
+    <div className="space-y-2 pt-2">
+      <p className="text-sm font-medium">Mit Übungen und Sätzen</p>
+      {templates.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Noch kein Trainingsplan.{" "}
+          <Link href="/vorlagen/neu" className="text-foreground underline underline-offset-4">
+            Trainingsplan erstellen
+          </Link>
+        </p>
+      ) : (
+        <ul aria-label="Deine Trainingspläne" className="max-w-xl">
+          {templates.map((t) => (
+            <li key={t.id} className="border-b">
+              <Link
+                href={`/training/${t.id}`}
+                className="hover:bg-accent -mx-2 flex min-h-14 items-center justify-between gap-3 rounded-lg px-2 transition-colors duration-150 ease-out"
+              >
+                <span className="font-medium">{t.name}</span>
+                <span className="text-muted-foreground shrink-0 text-sm">
+                  {t.exerciseCount} {t.exerciseCount === 1 ? "Übung" : "Übungen"}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-sm">
+        <Link href="/workouts/neu" className="inline-flex min-h-11 items-center underline underline-offset-4">
+          Ohne Plan: Sätze nachtragen
+        </Link>
+      </p>
+      <p className="text-muted-foreground text-sm">Oder trag unten nur die Dauer ein.</p>
+    </div>
   );
 }
