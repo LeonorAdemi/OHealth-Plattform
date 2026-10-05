@@ -31,7 +31,7 @@ Beschlossen am 5. Oktober 2026. Reihenfolge und Zeitplan stehen in `docs/strateg
 | --- | --- | --- | --- |
 | 17 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Erledigt in Pull Request #9 (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
 | 18 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Erledigt in Pull Request #9 (Migration log_activity, Test 23): „Aktivität eintragen“ unter /aktivitaet/neu mit Sportart, Datum, Dauer, Distanz, Höhenmetern, Gefühl und Notiz; „Workout“ heißt in der Oberfläche „Aktivität“ |
-| 19 | N0 Fundament: Migrationen einspielen, `v0.2.0`, Nachtrag zu Schritt 18 | Produktion auf aktuellem Stand, KI sieht jede Sportart, Formular robust bei Netzfehlern | In Arbeit |
+| 19 | N0 Fundament: Migrationen einspielen, `v0.2.0`, Nachtrag zu Schritt 18 | Produktion auf aktuellem Stand, KI sieht jede Sportart, Formular robust bei Netzfehlern | Code fertig (Migration activity_checks_invoker_and_squash, Test 24): KI liest Sportart, Dauer, Distanz, Höhenmeter und Anstrengung; Formular übersteht Netzfehler; genauere Fehlermeldungen; Squash im Katalog. Offen beim Betreiber: Migrationen einspielen, `v0.2.0` |
 | 20 | N1 Events mit Sportart, Dauer und wöchentlicher Wiederholung | Kern der Organisatorin: kein Lauftreff legt jede Woche ein Event von Hand an | Offen |
 | 21 | N2 Öffentlicher Event-Link, Zusage nach Registrierung, Herkunft messen | Wachstumsmotor: der Link in WhatsApp zeigt eine Vorschau | Offen |
 | 22 | N3 „Warst du dabei?“ nach Events | Gemeinsames Training zählt automatisch | Offen |

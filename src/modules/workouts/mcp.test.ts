@@ -8,18 +8,33 @@ import { createTrainingMcpServer } from "./mcp";
 const NOW = new Date("2026-09-28T08:00:00Z");
 
 const bench = { exerciseId: "e1", exerciseName: "Bankdrücken", measure: "weight_reps" as const, muscleGroup: "Brust" };
+const noDetails = { durationMinutes: null, distanceM: null, elevationM: null, feeling: null };
 const workouts: AgentWorkout[] = [
   {
     performedAt: "2026-09-26T16:00:00Z",
     title: "Push",
+    sportName: "Krafttraining",
+    ...noDetails,
     sets: [
       { ...bench, reps: 5, weightKg: 80, durationSeconds: null, distanceM: null },
       { ...bench, reps: 5, weightKg: 82.5, durationSeconds: null, distanceM: null },
     ],
   },
   {
+    performedAt: "2026-09-24T05:30:00Z",
+    title: null,
+    sportName: "Laufen",
+    durationMinutes: 52,
+    distanceM: 10200,
+    elevationM: 80,
+    feeling: 4,
+    sets: [],
+  },
+  {
     performedAt: "2026-07-01T16:00:00Z",
     title: "Alt",
+    sportName: "Krafttraining",
+    ...noDetails,
     sets: [{ ...bench, reps: 3, weightKg: 70, durationSeconds: null, distanceM: null }],
   },
 ];
@@ -148,7 +163,7 @@ describe("KI-Zugriff: MCP-Server", () => {
       clientInfo: { name: "test", version: "0" },
     });
     expect(reply.result.serverInfo.name).toBe("ohealth");
-    expect(reply.result.instructions).toContain("Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Workouts eintragen");
+    expect(reply.result.instructions).toContain("Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Aktivitäten eintragen");
     expect(reply.result.instructions).toContain("speichere erst, wenn sie zustimmt");
   });
 
@@ -174,15 +189,31 @@ describe("KI-Zugriff: MCP-Server", () => {
     expect(tools.some((t) => t.annotations.destructiveHint)).toBe(false);
   });
 
-  it("liefert Workouts nur aus dem gewählten Zeitraum, mit Sätzen in deutscher Schreibweise", async () => {
+  it("liefert Aktivitäten nur aus dem gewählten Zeitraum, mit Sätzen in deutscher Schreibweise", async () => {
     const result = await callTool("list_workouts", { weeks: 2 });
     expect(result.zeitraumAb).toBe("2026-09-21");
-    expect(result.workouts).toHaveLength(1);
-    expect(result.workouts[0].uebungen[0]).toEqual({
+    expect(result.aktivitaeten).toHaveLength(2);
+    expect(result.aktivitaeten[0].sportart).toBe("Krafttraining");
+    expect(result.aktivitaeten[0].uebungen[0]).toEqual({
       name: "Bankdrücken",
       muskelgruppe: "Brust",
       saetze: ["5 × 80 kg", "5 × 82,5 kg"],
     });
+  });
+
+  it("beschreibt einen Lauf mit Sportart, Dauer, Distanz, Höhenmetern und Anstrengung", async () => {
+    const result = await callTool("list_workouts", { weeks: 2 });
+    expect(result.aktivitaeten[1]).toEqual({
+      datum: "Do., 24.09.2026",
+      sportart: "Laufen",
+      titel: null,
+      dauer: "52 min",
+      distanz: "10,2 km",
+      hoehenmeter: 80,
+      anstrengung: "hart",
+      uebungen: [],
+    });
+    expect(result.aktivitaeten[0]).not.toHaveProperty("dauer");
   });
 
   it("zählt Trainingstage je Kalenderwoche, neueste zuerst", async () => {

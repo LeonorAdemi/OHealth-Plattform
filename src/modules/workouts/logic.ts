@@ -288,6 +288,21 @@ export function parseDistanceKm(input: string): number | null {
   return Math.round(km * 1000 * 10) / 10;
 }
 
+/**
+ * Meldung für einen Fehler beim Speichern einer Aktivität (log_activity, update_activity).
+ * Die Prüfungen der Datenbank (23514) melden auf Deutsch, was nicht passt; diese Texte werden
+ * übernommen. Verletzte Prüfregeln an Spalten melden auf Englisch und bekommen einen eigenen Text.
+ */
+export function activityErrorMessage(error: { code?: string; message?: string } | null): string {
+  const message = error?.message ?? "";
+  if (error?.code === "23514") {
+    if (/^(Eine Aktivität liegt|Die Notiz darf|Zu .+ gibt es keine)/.test(message)) return `${message}.`;
+    return "Diese Angaben sind nicht möglich. Prüf Dauer, Distanz und Höhenmeter.";
+  }
+  if (error?.code === "23503") return "Wähl eine Sportart aus der Liste.";
+  return "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.";
+}
+
 // ---------- Bestwerte je Übung ----------
 
 export type BestRow = {

@@ -113,7 +113,6 @@ export function ActivityForm({
           ? new Date().toISOString()
           : (berlinLocalToDate(date, "12:00") ?? new Date()).toISOString();
 
-    setSaving(true);
     const values = {
       id,
       sportId: sport.id,
@@ -124,8 +123,12 @@ export function ActivityForm({
       feeling,
       notes: notes.trim() || null,
     };
-    const result = existing ? await updateActivity(values) : await saveActivity(values);
+    setSaving(true);
+    // Ohne Netz wirft der Aufruf statt ein Ergebnis zu liefern. Die Eingaben bleiben stehen, und
+    // ein neuer Versuch legt dank der ID vom Gerät nichts doppelt an.
+    const result = await (existing ? updateActivity(values) : saveActivity(values)).catch(() => null);
     setSaving(false);
+    if (!result) return setError("Keine Verbindung. Deine Angaben sind noch da, versuch es gleich noch einmal.");
     if (!result.ok) return setError(result.error);
     router.push(existing ? `/workouts/${result.data.id}` : "/");
     router.refresh();

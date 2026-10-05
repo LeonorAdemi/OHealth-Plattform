@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activityErrorMessage,
   buildBestRanking,
   buildLeaderboard,
   buildSetsPayload,
@@ -773,5 +774,24 @@ describe("Aktivität", () => {
     expect(parseDistanceKm("  ")).toBeNull();
     expect(parseDistanceKm("abc")).toBeNaN();
     expect(parseDistanceKm("0")).toBeNaN();
+  });
+
+  it("meldet beim Speichern, was nicht passt, statt immer die Sportart zu nennen", () => {
+    expect(activityErrorMessage({ code: "23514", message: "Eine Aktivität liegt nicht in der Zukunft" })).toBe(
+      "Eine Aktivität liegt nicht in der Zukunft.",
+    );
+    expect(activityErrorMessage({ code: "23514", message: "Die Notiz darf höchstens 500 Zeichen haben" })).toBe(
+      "Die Notiz darf höchstens 500 Zeichen haben.",
+    );
+    expect(activityErrorMessage({ code: "23514", message: "Zu Bouldern gibt es keine Distanz" })).toBe(
+      "Zu Bouldern gibt es keine Distanz.",
+    );
+    expect(
+      activityErrorMessage({ code: "23514", message: 'new row violates check constraint "workouts_feeling_check"' }),
+    ).toBe("Diese Angaben sind nicht möglich. Prüf Dauer, Distanz und Höhenmeter.");
+    expect(activityErrorMessage({ code: "23503", message: "violates foreign key" })).toBe(
+      "Wähl eine Sportart aus der Liste.",
+    );
+    expect(activityErrorMessage(null)).toBe("Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.");
   });
 });
