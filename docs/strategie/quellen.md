@@ -14,6 +14,20 @@ Abgerufen am 5. Oktober 2026. Angaben zu Umsatz und Nutzern aus Branchendiensten
 - Vereine in Deutschland: [DOSB Bestandserhebung 2025](https://cdn.dosb.de/user_upload/www.dosb.de/uber_uns/Bestandserhebung/Bestandserhebung_2025.pdf), [LSB Rheinland-Pfalz](https://www.lsb-rlp.de/news/2025/der-organisierte-sport-zaehlt-erstmals-mehr-als-29-millionen-mitgliedschaften)
 - Trennen von Apps, Foursquare und Swarm: [InformationWeek](https://www.informationweek.com/it-leadership/foursquare-splits-into-2-apps-targets-yelp), [Fast Company](https://www.fastcompany.com/3054603/why-the-great-app-unbundling-trend-is-already-in-trouble), [Medium, Foursquare's dilemma](https://alexcombessie.medium.com/foursquare-s-dilemma-1-app-1-use-case-and-crossing-the-chasm-8f721f8437d4)
 
+## Erlösmodell (10)
+
+Abgerufen am 5. Oktober 2026.
+
+- Spond, Gebühren für Zahlungen (2,5 % + 0,20 € in Deutschland, inklusive Stripe): [Spond Hilfe](https://help.spond.com/club/en/articles/58192-what-are-the-transaction-costs-for-payments-made-in-spond-club)
+- Stripe, Gebühren in Deutschland (1,5 % + 0,25 € je EWR-Karte, 0,35 € je SEPA-Lastschrift): [ki-syndikat.de](https://www.ki-syndikat.de/tools/stripe/), [Stripe Support SEPA](https://support.stripe.com/questions/june-2024-pricing-update-for-sepa-direct-debit)
+- Meetup, Preise für Organisatoren (ab 29,99 $ im Monat, Pro ab 47 $ je Gruppe): [Meetup Hilfe](https://help.meetup.com/hc/en-us/articles/39428296529421), [group.app](https://www.group.app/blog/meetup-alternatives/)
+- Eversports Manager ab 49 € im Monat: [softwareabc24.de](https://www.softwareabc24.de/yoga-studio-software/eversports-manager)
+- Strava, Preis in Deutschland (10,99 € im Monat): [gpsradler.de](https://gpsradler.de/news/strava-preis-chaos/); Anteil zahlender Nutzer (Schätzungen um 5 %, Spanne unsicher): [huddleup](https://huddleup.substack.com/p/inside-stravas-22-billion-ipo-how), [curvedtrading](https://curvedtrading.com/articles/en/investing/strava-ipo/)
+- Hevy Pro (23,99 $ im Jahr): [recurdash](https://recurdash.com/subscription-pricing/hevy)
+- Marken und Run-Clubs: [Marketing Brew](https://www.marketingbrew.com/stories/2025/10/30/run-clubs-marathon-sponsorships), [Modern Retail](https://www.modernretail.co/marketing/as-running-clubs-explode-in-popularity-brands-are-tapping-these-groups-for-sampling-opportunities-and-sponsorships/), [SGI Europe](https://www.sgieurope.com/consumer/brands-race-to-catch-the-run-clubs-wave/122870.article)
+- Firmenfitness in Deutschland (rund 1,5 Mio. Nutzer von Aggregatoren, +21 %): [Wellhub Studie 2025](https://wellhub.com/de-de/ressourcen/studie-markt-firmenfitness-2025/), [Deloitte](https://www.deloitte.com/de/de/about/press-room/deutscher-fitnessmarkt-waechst-trotz-schwaechelnder-wirtschaft.html)
+- Kleinunternehmerregelung ab 2025 (25.000 € / 100.000 €): [sevdesk](https://sevdesk.de/blog/kleinunternehmerregelung-2025/), [selbststaendigkeit.de](https://selbststaendigkeit.de/buchhaltung-fuer-gruender/ustg-kleinunternehmer/)
+
 ## Code
 
 Alle Angaben zur Ausgangslage stammen aus dem Repository (Zeilenzahlen, Seiten, Migrationen, Tests) auf dem Stand des Pull Requests #8.
