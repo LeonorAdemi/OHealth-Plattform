@@ -14,7 +14,14 @@ import {
 import { ChatRow } from "@/modules/core/components/chat-link";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
-import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull, meetupDetailRows, meetupTimeRange } from "@/modules/core/logic";
+import {
+  COMMUNITY_KIND_LABEL,
+  describeMeetupCount,
+  describeWeekly,
+  isMeetupFull,
+  meetupDetailRows,
+  meetupTimeRange,
+} from "@/modules/core/logic";
 import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
@@ -58,6 +65,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <p className="text-muted-foreground mt-1 text-sm">
             {longDate.format(new Date(meetup.startsAt))}, {meetupTimeRange(meetup.startsAt, meetup.durationMinutes)}&nbsp;Uhr · {meetup.isMine ? "von dir" : `von ${meetup.creatorName}`}
           </p>
+          {meetup.seriesId && <p className="text-muted-foreground mt-1 text-sm">{describeWeekly(meetup.startsAt)}</p>}
         </div>
       </div>
 
@@ -112,6 +120,11 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <p className="text-muted-foreground">Dieses Training ist voll.</p>
         ) : (
           <MeetupToggle meetupId={meetup.id} joined={false} title={meetup.title} primary />
+        )}
+        {meetup.isMine && !isPast && (
+          <Button asChild variant="outline" className="w-full md:w-auto">
+            <Link href={`/plan/${meetup.id}/bearbeiten`}>Bearbeiten</Link>
+          </Button>
         )}
         {!isPast && (
           <p>
@@ -188,7 +201,10 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           {managed.map((c) => (
             <RemoveFromCommunity key={c.id} meetupId={meetup.id} groupId={c.id} name={c.name} />
           ))}
-          {meetup.isMine && <DeleteMeetup meetupId={meetup.id} shared={hasCompany} />}
+          {meetup.isMine && !isPast && (
+            <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null} />
+          )}
+          {meetup.isMine && isPast && <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={false} />}
         </section>
       )}
     </>

@@ -90,7 +90,7 @@ Am 5. Oktober 2026 in zwei Schritte geteilt (mit der Nutzerin abgestimmt):
 - **N1b Wöchentliche Wiederholung:** „Jeden Dienstag, 18:30" legt die nächsten acht Termine an (`series_id`). Einen Termin oder die ganze Reihe ändern oder absagen. Die Reihe wird automatisch fortgeschrieben.
 - **Nicht** in N1: Warteliste. Die Obergrenze (`max_participants`) gibt es schon. Ob eine Warteliste gebraucht wird, zeigen die Gespräche.
 - **N1 fertig, wenn:** Ein Event lässt sich für jede Sportart mit den passenden Angaben planen, aus einer Community ist deren Sportart vorbelegt, und Pinnwand, Wochenplan und Event-Seite zeigen die Angaben. Datenbanktest belegt, dass nur passende Angaben gespeichert werden und eine KI keine Events sieht.
-- **N1b fertig, wenn:** Eine Organisatorin legt einen wöchentlichen Lauftreff in unter einer Minute an. Datenbanktests für Reihe, Ändern und Absagen (nur Verwaltung der Community) sowie für die Rechte von KI-Tokens.
+- **N1b fertig, wenn:** Eine Organisatorin legt einen wöchentlichen Lauftreff in unter einer Minute an. Ändern und Absagen darf nur, wer plant; die Verwaltung einer Community nimmt fremde Events weiter von ihrer Pinnwand (gibt es schon). Datenbanktests für Reihe, Ändern und Absagen (nur Verwaltung der Community) sowie für die Rechte von KI-Tokens.
 
 ### N2 Öffentlicher Event-Link (M)
 

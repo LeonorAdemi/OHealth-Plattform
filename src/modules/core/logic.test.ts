@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   describeMeetupDetails,
+  describeWeekly,
+  meetupFormValues,
   meetupTimeRange,
   parseElevation,
   formatPace,
@@ -201,6 +203,7 @@ describe("Mitteilungen", () => {
       "3 neue Nachrichten zu „Lauf“, zuletzt von Ben",
     );
     expect(describeNotification({ ...base, kind: "cancelled" })).toBe("Ben hat „Lauf“ abgesagt");
+    expect(describeNotification({ ...base, kind: "changed" })).toBe("Ben hat Zeit oder Treffpunkt von „Lauf“ geändert");
     expect(describeNotification({ ...base, kind: "reminder" })).toBe("„Lauf“ beginnt in etwa einer Stunde");
   });
 
@@ -442,5 +445,54 @@ describe("Events je Sportart", () => {
   it("zeigt Beginn und Ende eines Events in deutscher Zeit", () => {
     expect(meetupTimeRange("2026-10-06T16:30:00Z", 60)).toBe("18:30\u201319:30");
     expect(meetupTimeRange("2026-10-06T16:30:00Z", null)).toBe("18:30");
+  });
+
+  it("beschreibt den Rhythmus einer Reihe in deutscher Zeit", () => {
+    expect(describeWeekly("2026-10-06T16:30:00Z")).toBe("Jeden Dienstag, 18:30\u00a0Uhr");
+    // nach der Zeitumstellung: dieselbe Uhrzeit
+    expect(describeWeekly("2026-10-27T17:30:00Z")).toBe("Jeden Dienstag, 18:30\u00a0Uhr");
+  });
+
+  it("belegt das Formular zum Bearbeiten so vor, wie man es eintippen würde", () => {
+    expect(
+      meetupFormValues({
+        id: "m1",
+        seriesId: "s1",
+        sportId: "laufen",
+        templateId: null,
+        title: "Isarlauf",
+        durationMinutes: 75,
+        distanceM: 8200,
+        elevationM: 0,
+        paceSecondsPerKm: 330,
+        speedKmh: null,
+        level: "einsteiger",
+        place: null,
+        maxParticipants: 20,
+        note: null,
+      }),
+    ).toEqual({
+      id: "m1",
+      seriesId: "s1",
+      sportId: "laufen",
+      templateId: null,
+      title: "Isarlauf",
+      hours: "1",
+      minutes: "15",
+      distance: "8,2",
+      elevation: "0",
+      pace: "5:30",
+      speed: "",
+      level: "einsteiger",
+      place: "",
+      max: "20",
+      note: "",
+    });
+  });
+
+  it("übernimmt die Meldung, dass sich bei einer Reihe der Tag nur je Termin ändern lässt", () => {
+    expect(meetupErrorMessage({ code: "23514", message: "Den Tag änderst du nur für einen einzelnen Termin" })).toBe(
+      "Den Tag änderst du nur für einen einzelnen Termin.",
+    );
   });
 });

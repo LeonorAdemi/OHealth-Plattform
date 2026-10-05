@@ -470,6 +470,7 @@ type FeedRow = {
   pace_seconds_per_km: number | null;
   speed_kmh: number | null;
   level: string | null;
+  series_id: string | null;
 };
 
 function toMeetup(row: FeedRow) {
@@ -494,6 +495,7 @@ function toMeetup(row: FeedRow) {
     paceSecondsPerKm: row.pace_seconds_per_km,
     speedKmh: row.speed_kmh,
     level: toMeetupLevel(row.level),
+    seriesId: row.series_id,
   };
 }
 

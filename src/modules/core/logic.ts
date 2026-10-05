@@ -310,7 +310,8 @@ export type NotificationKind =
   | "follow_request"
   | "new_follower"
   | "follow_accepted"
-  | "message_request";
+  | "message_request"
+  | "changed";
 
 const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_training",
@@ -324,6 +325,7 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_follower",
   "follow_accepted",
   "message_request",
+  "changed",
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
@@ -346,6 +348,8 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
         : `${n.actorName} hat zu „${n.title}“ geschrieben`;
     case "cancelled":
       return `${n.actorName} hat „${n.title}“ abgesagt`;
+    case "changed":
+      return `${n.actorName} hat Zeit oder Treffpunkt von „${n.title}“ geändert`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
     case "community_message":
@@ -629,7 +633,9 @@ export function describeMeetupDetails(m: {
  */
 export function meetupErrorMessage(error: { code?: string; message?: string } | null): string | null {
   const message = error?.message ?? "";
-  if (error?.code === "23514" && /^(Zu .+ gibt es|Ohne Sportart gibt es)/.test(message)) return `${message}.`;
+  if (error?.code === "23514" && /^(Zu .+ gibt es|Ohne Sportart gibt es|Den Tag änderst du)/.test(message)) {
+    return `${message}.`;
+  }
   if (error?.code === "23503" && message.startsWith("Die Sportart")) return "Wähl eine Sportart aus der Liste.";
   return null;
 }
@@ -654,4 +660,70 @@ export function meetupDetailRows(m: Parameters<typeof describeMeetupDetails>[0])
     ["Niveau", m.level ? MEETUP_LEVEL_LABEL[m.level] : null],
   ];
   return rows.flatMap(([label, value]) => (value ? [{ label, value }] : []));
+}
+
+const weeklyFormat = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "long" });
+
+/** Rhythmus einer Reihe aus einem ihrer Termine: "Jeden Dienstag, 18:30 Uhr". */
+export function describeWeekly(startsAt: string): string {
+  const date = new Date(startsAt);
+  return `Jeden ${weeklyFormat.format(date)}, ${berlinDateTimeParts(date).time}\u00a0Uhr`;
+}
+
+/** Vorbelegung des Formulars „Training bearbeiten“, alle Angaben als Text wie im Formular. */
+export type MeetupFormValues = {
+  id: string;
+  seriesId: string | null;
+  sportId: string | null;
+  templateId: string | null;
+  title: string;
+  hours: string;
+  minutes: string;
+  distance: string;
+  elevation: string;
+  pace: string;
+  speed: string;
+  level: MeetupLevel | null;
+  place: string;
+  max: string;
+  note: string;
+};
+
+const toInput = (value: number) => String(value).replace(".", ",");
+
+export function meetupFormValues(m: {
+  id: string;
+  seriesId: string | null;
+  sportId: string | null;
+  templateId: string | null;
+  title: string;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM: number | null;
+  paceSecondsPerKm: number | null;
+  speedKmh: number | null;
+  level: MeetupLevel | null;
+  place: string | null;
+  maxParticipants: number | null;
+  note: string | null;
+}): MeetupFormValues {
+  return {
+    id: m.id,
+    seriesId: m.seriesId,
+    sportId: m.sportId,
+    templateId: m.templateId,
+    title: m.title,
+    hours: m.durationMinutes ? String(Math.floor(m.durationMinutes / 60)) : "1",
+    minutes: m.durationMinutes ? String(m.durationMinutes % 60) : "0",
+    distance: m.distanceM ? toInput(m.distanceM / 1000) : "",
+    elevation: m.elevationM !== null ? String(m.elevationM) : "",
+    pace: m.paceSecondsPerKm
+      ? `${Math.floor(m.paceSecondsPerKm / 60)}:${String(m.paceSecondsPerKm % 60).padStart(2, "0")}`
+      : "",
+    speed: m.speedKmh ? toInput(m.speedKmh) : "",
+    level: m.level,
+    place: m.place ?? "",
+    max: m.maxParticipants ? String(m.maxParticipants) : "",
+    note: m.note ?? "",
+  };
 }

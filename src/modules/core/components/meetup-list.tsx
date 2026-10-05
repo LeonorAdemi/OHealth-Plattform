@@ -48,6 +48,7 @@ export function MeetupList({
         const meta = [
           m.isMine ? "Du" : m.creatorName,
           formatMeetupWhen(m.startsAt),
+          m.seriesId ? "jede Woche" : null,
           m.place,
           describeMeetupCount(m.count, m.maxParticipants),
         ].filter(Boolean);

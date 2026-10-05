@@ -261,11 +261,8 @@ function shareIds(formData: FormData) {
   return [...new Set(formData.getAll("shareWith").map(String))];
 }
 
-/**
- * Plant ein Training. Ohne Teilen bleibt es privat, sonst erscheint es auf der Pinnwand der
- * gewählten Communities. Wer plant, ist automatisch dabei (Trigger).
- */
-export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+/** Eingaben des Formulars „Training planen“ bzw. „bearbeiten“ geprüft und umgerechnet. */
+async function readMeetupForm(formData: FormData) {
   const parsed = meetupSchema.safeParse({
     title: formData.get("title") ?? "",
     templateId: formData.get("templateId") ?? "",
@@ -284,18 +281,18 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
     speed: formData.get("speed") ?? "",
     level: formData.get("level") ?? "",
   });
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  if (!parsed.success) return { error: firstIssue(parsed.error) } as const;
   const measures = meetupMeasures(parsed.data);
-  if ("error" in measures) return { error: measures.error };
+  if ("error" in measures) return { error: measures.error } as const;
 
   const startsAt = berlinLocalToDate(parsed.data.date, parsed.data.time);
-  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." };
-  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." };
+  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." } as const;
+  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." } as const;
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
-  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." } as const;
 
   // Ohne eigenen Titel heißt das Training wie die Vorlage, sonst wie die Sportart.
   let title = parsed.data.title;
@@ -310,53 +307,88 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   }
   if (!title) {
     const { data: sport } = await supabase.from("sports").select("name").eq("id", parsed.data.sportId).maybeSingle();
-    if (!sport) return { error: "Wähl eine Sportart aus der Liste." };
+    if (!sport) return { error: "Wähl eine Sportart aus der Liste." } as const;
     title = sport.name;
   }
 
-  const { data, error } = await supabase
-    .from("meetups")
-    .insert({
-      created_by: userId,
-      title: title.slice(0, 80),
-      template_id: parsed.data.templateId || null,
-      starts_at: startsAt.toISOString(),
-      place: parsed.data.place || null,
-      max_participants: parsed.data.max === "" ? null : parsed.data.max,
-      note: parsed.data.note || null,
-      sport_id: parsed.data.sportId,
-      duration_minutes: measures.durationMinutes,
-      distance_m: measures.distanceM,
-      elevation_m: measures.elevationM,
-      pace_seconds_per_km: measures.paceSecondsPerKm,
-      speed_kmh: measures.speedKmh,
-      level: parsed.data.level || null,
-    })
-    .select("id")
-    .single();
+  return {
+    supabase,
+    shareWith: parsed.data.shareWith,
+    // Gemeinsame Angaben für plan_meetup und update_meetup
+    fields: {
+      p_title: title.slice(0, 80),
+      p_starts_at: startsAt.toISOString(),
+      // Leere Angaben schickt die App als null; die Typen der Datenbankfunktion kennen dafür undefined.
+      p_place: parsed.data.place || undefined,
+      p_max_participants: parsed.data.max === "" ? undefined : parsed.data.max,
+      p_note: parsed.data.note || undefined,
+      p_template_id: parsed.data.templateId || undefined,
+      p_sport_id: parsed.data.sportId,
+      p_duration_minutes: measures.durationMinutes,
+      p_distance_m: measures.distanceM ?? undefined,
+      p_elevation_m: measures.elevationM ?? undefined,
+      p_pace_seconds_per_km: measures.paceSecondsPerKm ?? undefined,
+      p_speed_kmh: measures.speedKmh ?? undefined,
+      p_level: parsed.data.level || undefined,
+    },
+  } as const;
+}
 
-  if (error) {
-    const sportError = meetupErrorMessage(error);
-    if (sportError) return { error: sportError };
-    if (error.message.includes("Höchstens 30")) {
-      return { error: "Du hast schon 30 geplante Trainings. Warte, bis eins vorbei ist." };
-    }
-    return { error: MEETUP_FAILED };
+/** Fehler der Datenbank beim Planen oder Ändern als Satz für das Formular. */
+function meetupWriteError(error: { code?: string; message?: string }): string {
+  const known = meetupErrorMessage(error);
+  if (known) return known;
+  if (error.message?.includes("Höchstens 60")) {
+    return "Du hast schon 60 geplante Trainings. Warte, bis eins vorbei ist, oder sag eine Reihe ab.";
   }
+  if (error.code === "42501") return "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?";
+  return MEETUP_FAILED;
+}
 
-  if (parsed.data.shareWith.length > 0) {
-    const { error: shareError } = await supabase
-      .from("meetup_shares")
-      .insert(parsed.data.shareWith.map((groupId) => ({ meetup_id: data.id, group_id: groupId })));
-    if (shareError) {
-      // Ganz oder gar nicht: ohne Teilen soll kein halbes Training stehen bleiben.
-      await supabase.from("meetups").delete().eq("id", data.id);
-      return { error: "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?" };
-    }
-  }
+/**
+ * Plant ein Training (plan_meetup): ganz oder gar nicht, samt Teilen. Ohne Teilen bleibt es privat.
+ * Mit „Jede Woche“ entsteht eine Reihe mit den nächsten acht Terminen. Die ID kommt vom Gerät,
+ * ein erneutes Senden legt nichts doppelt an. Wer plant, ist automatisch dabei (Trigger).
+ */
+export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: MEETUP_FAILED };
+  const input = await readMeetupForm(formData);
+  if ("error" in input) return { error: input.error };
+
+  const { data, error } = await input.supabase.rpc("plan_meetup", {
+    ...input.fields,
+    p_id: id.data,
+    p_share_ids: input.shareWith,
+    p_weekly: formData.get("weekly") === "on",
+  });
+  if (error || !data) return { error: error ? meetupWriteError(error) : MEETUP_FAILED };
 
   revalidatePath("/", "layout");
-  redirect(`/plan/${data.id}`);
+  redirect(`/plan/${data}`);
+}
+
+/**
+ * Ändert ein eigenes kommendes Training (update_meetup): nur diesen Termin oder bei einer Reihe
+ * diesen und alle folgenden. Wer zugesagt hat, erfährt von neuer Zeit oder neuem Treffpunkt.
+ */
+export async function updateMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("meetupId"));
+  const scope = z.enum(["single", "series"]).safeParse(formData.get("scope") ?? "single");
+  if (!id.success || !scope.success) return { error: "Dieses Training gibt es nicht mehr." };
+  const input = await readMeetupForm(formData);
+  if ("error" in input) return { error: input.error };
+
+  const { data, error } = await input.supabase.rpc("update_meetup", {
+    ...input.fields,
+    p_id: id.data,
+    p_scope: scope.data,
+  });
+  if (error) return { error: meetupWriteError(error) };
+  if (!data) return { error: "Dieses Training gibt es nicht mehr oder es hat schon begonnen." };
+
+  revalidatePath("/", "layout");
+  redirect(`/plan/${data}`);
 }
 
 const meetupId = z.uuid();
@@ -465,6 +497,19 @@ export async function deleteMeetup(_prev: FormState, formData: FormData): Promis
   const supabase = await createClient();
   const { data, error } = await supabase.from("meetups").delete().eq("id", id.data).select("id");
   if (error || data.length === 0) return { error: "Das Training konnte nicht entfernt werden." };
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+/** Sagt diesen und alle folgenden Termine einer eigenen Reihe ab und beendet die Reihe. */
+export async function cancelMeetupSeries(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("cancel_meetup_series", { p_id: id.data });
+  if (error || !data) return { error: "Die Reihe konnte nicht abgesagt werden." };
 
   revalidatePath("/", "layout");
   redirect("/");

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CreateMeetupForm } from "@/modules/core/components/meetup-forms";
+import { MeetupForm } from "@/modules/core/components/meetup-forms";
 import { berlinDateTimeParts, COMMUNITY_KIND_LABEL } from "@/modules/core/logic";
 import { getCommunitySportId, getMyCommunities, getSports } from "@/modules/core/queries";
 import { getMyRecentSportIds, getMyTemplates } from "@/modules/workouts/queries";
@@ -47,7 +47,7 @@ export default async function NewPlanPage({
         Wähl die Sportart und wann es losgeht. Teilst du es mit einer Community, können andere mitmachen.
       </p>
       <div className="mt-8">
-        <CreateMeetupForm
+        <MeetupForm
           sports={sports}
           recentSportIds={recentSportIds}
           // Aus einer Community heraus: deren Sportart vorbelegen
