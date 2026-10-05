@@ -40,7 +40,12 @@ import {
   weekKeys,
   weekStreak,
   activityMinutes,
+  ACTIVITY_MIN_DATE,
+  activityDateError,
+  activityPerformedAt,
   describeActivity,
+  distanceToKmInput,
+  formatDistanceText,
   formatActivityDuration,
   parseDistanceKm,
   parseDurationMinutes,
@@ -764,7 +769,7 @@ describe("Aktivität", () => {
     expect(parseDurationMinutes("1", "30")).toBe(90);
     expect(parseDurationMinutes("", "45")).toBe(45);
     expect(parseDurationMinutes("0", "0")).toBeNull();
-    expect(parseDurationMinutes("1", "75")).toBeNull();
+    expect(parseDurationMinutes("1", "75")).toBe(135);
     expect(parseDurationMinutes("25", "0")).toBeNull();
     expect(parseDurationMinutes("x", "5")).toBeNull();
   });
@@ -773,5 +778,78 @@ describe("Aktivität", () => {
     expect(parseDistanceKm("  ")).toBeNull();
     expect(parseDistanceKm("abc")).toBeNaN();
     expect(parseDistanceKm("0")).toBeNaN();
+  });
+});
+
+describe("Aktivität: Eingaben im Formular", () => {
+  it("nimmt Minuten über 59 an und rechnet sie um", () => {
+    expect(parseDurationMinutes("", "90")).toBe(90);
+    expect(parseDurationMinutes("1", "30")).toBe(90);
+    expect(parseDurationMinutes("24", "0")).toBe(1440);
+    expect(parseDurationMinutes("24", "1")).toBeNull();
+    expect(parseDurationMinutes("0", "0")).toBeNull();
+    expect(parseDurationMinutes("", "")).toBeNull();
+    expect(parseDurationMinutes("1,5", "0")).toBeNull();
+  });
+
+  it("liest Kilometer mit Komma oder Punkt und lehnt Unsinn ab", () => {
+    expect(parseDistanceKm("8,2")).toBe(8200);
+    expect(parseDistanceKm("8.25")).toBe(8250);
+    expect(parseDistanceKm("")).toBeNull();
+    expect(parseDistanceKm("0")).toBeNaN();
+    expect(parseDistanceKm("0,00001")).toBeNaN();
+    expect(parseDistanceKm("1001")).toBeNaN();
+    expect(parseDistanceKm("abc")).toBeNaN();
+  });
+
+  it("schreibt Meter als Kilometer ins Eingabefeld", () => {
+    expect(distanceToKmInput(8200)).toBe("8,2");
+    expect(distanceToKmInput(12345.6)).toBe("12,346");
+    expect(distanceToKmInput(500)).toBe("0,5");
+  });
+
+  it("zeigt eine Distanz mit Einheit", () => {
+    expect(formatDistanceText(8200)).toBe("8,2\u00a0km");
+    expect(formatDistanceText(450)).toBe("450\u00a0m");
+  });
+
+  it("beschreibt einen einzelnen Satz in der Einzahl", () => {
+    expect(describeActivity({ sportName: "Krafttraining", durationMinutes: null, distanceM: null, setCount: 1 })).toBe(
+      "Krafttraining · 1\u00a0Satz",
+    );
+  });
+
+  it("nimmt die Dauer aus Start und Ende, gerundet, und lehnt Unsinn ab", () => {
+    const at = (startedAt: string, finishedAt: string) => activityMinutes({ durationMinutes: null, startedAt, finishedAt });
+    expect(at("2026-10-04T08:00:00Z", "2026-10-04T08:59:30Z")).toBe(60);
+    expect(at("2026-10-04T08:00:00Z", "2026-10-04T08:00:20Z")).toBeNull();
+    expect(at("2026-10-04T08:00:00Z", "2026-10-05T08:00:00Z")).toBe(1440);
+    expect(at("2026-10-04T08:00:00Z", "2026-10-06T08:00:00Z")).toBeNull();
+  });
+
+  it("prüft das Datum", () => {
+    expect(activityDateError("2026-10-05", "2026-10-05")).toBeNull();
+    expect(activityDateError("2026-10-06", "2026-10-05")).toBe("Eine Aktivität liegt nicht in der Zukunft.");
+    expect(activityDateError("", "2026-10-05")).toBe("Gib ein Datum ein.");
+    expect(activityDateError("2026-13-40", "2026-10-05")).toBe("Gib ein Datum ein.");
+    expect(activityDateError("1900-01-01", "2026-10-05")).toBe("Dieses Datum liegt zu weit zurück.");
+    expect(activityDateError(ACTIVITY_MIN_DATE, "2026-10-05")).toBeNull();
+  });
+
+  it("legt den Zeitpunkt aus dem Tag fest", () => {
+    const now = new Date("2026-10-05T10:15:00Z");
+    // heute: jetzt
+    expect(activityPerformedAt({ date: "2026-10-05", today: "2026-10-05", now })).toBe("2026-10-05T10:15:00.000Z");
+    // früherer Tag: 12:00 deutscher Zeit (Sommerzeit, UTC+2)
+    expect(activityPerformedAt({ date: "2026-10-01", today: "2026-10-05", now })).toBe("2026-10-01T10:00:00.000Z");
+    // Winterzeit (UTC+1)
+    expect(activityPerformedAt({ date: "2026-12-01", today: "2026-12-05", now })).toBe("2026-12-01T11:00:00.000Z");
+    // Bearbeiten ohne Datumsänderung behält die Uhrzeit, auch wenn der Tag heute ist
+    const existing = { date: "2026-10-05", performedAt: "2026-10-05T06:30:00.000Z" };
+    expect(activityPerformedAt({ date: "2026-10-05", today: "2026-10-05", now, existing })).toBe(existing.performedAt);
+    // Bearbeiten mit anderem Datum
+    expect(activityPerformedAt({ date: "2026-10-03", today: "2026-10-05", now, existing })).toBe("2026-10-03T10:00:00.000Z");
+    // ungültiges Datum
+    expect(activityPerformedAt({ date: "", today: "2026-10-05", now })).toBeNull();
   });
 });

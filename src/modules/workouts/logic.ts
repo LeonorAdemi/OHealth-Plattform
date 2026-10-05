@@ -1,6 +1,7 @@
 // Reine Funktionen ohne Seiteneffekte. Tests: logic.test.ts
 
 import type { ExerciseMeasure } from "@/lib/domain";
+import { berlinLocalToDate } from "@/modules/core/logic";
 
 // Draft 1 rechnet fest in deutscher Zeit, passend zur View v_training_days.
 export const APP_TIME_ZONE = "Europe/Berlin";
@@ -237,6 +238,12 @@ export function formatActivityDuration(minutes: number): string {
   return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
 }
 
+/** Distanz mit Einheit: 8200 -> "8,2 km". */
+export function formatDistanceText(meters: number): string {
+  const { value, unit } = formatDistance(meters);
+  return `${value}\u00a0${unit}`;
+}
+
 /**
  * Kurzbeschreibung einer Aktivität für Listen: "Laufen · 45 min · 8,2 km".
  * Bei Krafttraining mit Sätzen statt Distanz die Zahl der Sätze.
@@ -251,7 +258,7 @@ export function describeActivity(a: {
   return [
     a.sportName,
     a.durationMinutes ? formatActivityDuration(a.durationMinutes) : null,
-    a.distanceM ? `${formatDistance(a.distanceM).value}\u00a0${formatDistance(a.distanceM).unit}` : null,
+    a.distanceM ? formatDistanceText(a.distanceM) : null,
     a.elevationM ? `${formatNumber(a.elevationM)}\u00a0Hm` : null,
     a.setCount > 0 ? `${a.setCount}\u00a0${a.setCount === 1 ? "Satz" : "Sätze"}` : null,
   ]
@@ -271,11 +278,11 @@ export function activityMinutes(a: {
   return minutes >= 1 && minutes <= 1440 ? minutes : null;
 }
 
-/** Stunden und Minuten aus dem Formular zu Minuten. Ungültig oder 0 -> null. */
+/** Stunden und Minuten aus dem Formular zu Minuten ("0 h 90 min" ergibt 90). Ungültig oder 0 -> null. */
 export function parseDurationMinutes(hours: string, minutes: string): number | null {
   const h = hours.trim() === "" ? 0 : Number(hours);
   const m = minutes.trim() === "" ? 0 : Number(minutes);
-  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0) return null;
   const total = h * 60 + m;
   return total >= 1 && total <= 1440 ? total : null;
 }
@@ -285,7 +292,39 @@ export function parseDistanceKm(input: string): number | null {
   if (input.trim() === "") return null;
   const km = parseDecimal(input);
   if (km === null || km <= 0 || km > 1000) return Number.NaN;
-  return Math.round(km * 1000 * 10) / 10;
+  const meters = Math.round(km * 1000 * 10) / 10;
+  return meters > 0 ? meters : Number.NaN;
+}
+
+/** Meter als Kilometer für das Eingabefeld: 8200 -> "8,2", 12345.6 -> "12,346". */
+export function distanceToKmInput(meters: number): string {
+  return String(Math.round(meters) / 1000).replace(".", ",");
+}
+
+/** Frühestes Datum, das das Formular annimmt. */
+export const ACTIVITY_MIN_DATE = "2000-01-01";
+
+/** Fehlermeldung zu einem Datum "JJJJ-MM-TT" aus dem Formular, null wenn es passt. */
+export function activityDateError(date: string, today: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || berlinLocalToDate(date, "12:00") === null) return "Gib ein Datum ein.";
+  if (date > today) return "Eine Aktivität liegt nicht in der Zukunft.";
+  if (date < ACTIVITY_MIN_DATE) return "Dieses Datum liegt zu weit zurück.";
+  return null;
+}
+
+/**
+ * Zeitpunkt der Aktivität aus dem gewählten Tag. Unverändertes Datum beim Bearbeiten behält die
+ * gespeicherte Uhrzeit, heute heißt jetzt, frühere Tage mittags deutscher Zeit (damit der Tag sicher stimmt).
+ */
+export function activityPerformedAt(a: {
+  date: string;
+  today: string;
+  now: Date;
+  existing?: { date: string; performedAt: string };
+}): string | null {
+  if (a.existing && a.date === a.existing.date) return a.existing.performedAt;
+  if (a.date === a.today) return a.now.toISOString();
+  return berlinLocalToDate(a.date, "12:00")?.toISOString() ?? null;
 }
 
 // ---------- Bestwerte je Übung ----------

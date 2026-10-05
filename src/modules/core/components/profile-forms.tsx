@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useActionState, useId, useRef, useState, useTransition } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -200,22 +201,9 @@ export function ProfileForm({
             const selected = isSelected(sport);
             return (
               <li key={sport}>
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  disabled={!selected && full}
-                  onClick={() => toggle(sport)}
-                  className={cn(
-                    "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out disabled:opacity-50 md:min-h-9",
-                    "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-                    selected
-                      ? "border-foreground text-foreground font-medium"
-                      : "border-input text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  {selected && <Check size={16} strokeWidth={1.5} aria-hidden />}
+                <Chip selected={selected} disabled={!selected && full} onClick={() => toggle(sport)}>
                   {sport}
-                </button>
+                </Chip>
               </li>
             );
           })}

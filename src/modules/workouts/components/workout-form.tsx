@@ -60,9 +60,12 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export function WorkoutForm({
   exercises,
   existing,
+  sportId,
 }: {
   exercises: readonly Exercise[];
   existing?: Draft;
+  /** Sportart eines neuen Eintrags (Calisthenics, CrossFit …); ohne Angabe Krafttraining */
+  sportId?: string;
 }) {
   const router = useRouter();
   const draftKey = existing ? editDraftKey(existing.id) : NEW_DRAFT_KEY;
@@ -125,7 +128,7 @@ export function WorkoutForm({
     setError(null);
 
     // Dieselbe Workout-ID bei jedem Versuch: Wiederholungen erzeugen kein Duplikat.
-    const input = { id: draft.id, title: draft.title, sets: payload.sets };
+    const input = { id: draft.id, title: draft.title, sets: payload.sets, sportId };
     let lastError = "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.";
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {

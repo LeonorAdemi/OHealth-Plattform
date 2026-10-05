@@ -1,7 +1,7 @@
 // MCP-Server für KI-Assistenten: lesende Werkzeuge über die eigenen Trainingsdaten und
 // schreibende nur für eigene Vorlagen (anlegen, neue Version). Die Datenbank erzwingt das
 // zusätzlich (Migrationen agent_read_only und agent_write_templates): nur Eigenes, nichts
-// löschen, nichts veröffentlichen, keine Workouts eintragen. Aufgerufen von src/app/api/mcp/route.ts.
+// löschen, nichts veröffentlichen, keine Aktivitäten eintragen. Aufgerufen von src/app/api/mcp/route.ts.
 
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -18,11 +18,11 @@ import {
   type AgentDataSource,
 } from "./agent";
 
-const INSTRUCTIONS = `OHealth ist eine App, in der die Person ihre Workouts loggt und Workout-Vorlagen pflegt (zum Beispiel "Oberkörper"). Du siehst nur ihre eigenen Daten: Profil, Workouts mit Sätzen, Trainingstage je Woche, Bestwerte je Übung und ihre Vorlagen. Daten anderer Personen gibt es hier nicht.
+const INSTRUCTIONS = `OHealth ist eine App, in der die Person Aktivitäten jeder Sportart (Laufen, Bouldern, Krafttraining …) einträgt und Trainingsvorlagen pflegt (zum Beispiel "Oberkörper"). Du siehst nur ihre eigenen Daten: Profil, Aktivitäten mit Sportart, Dauer, Distanz und Sätzen, Trainingstage je Woche, Bestwerte je Übung und ihre Vorlagen. Daten anderer Personen gibt es hier nicht.
 
-Lesen: Für Trainingstipps lies zuerst die Trainingstage und die Workouts der letzten Wochen, dann die Bestwerte. Achte auf Konstanz, Verteilung der Muskelgruppen, Fortschritt bei Gewicht und Wiederholungen sowie auf Erholung. Gib wenige, konkrete Vorschläge mit Begründung aus den Daten.
+Lesen: Für Trainingstipps lies zuerst die Trainingstage und die Aktivitäten der letzten Wochen, dann die Bestwerte. Achte auf Konstanz, Abwechslung der Sportarten, Verteilung der Muskelgruppen beim Krafttraining, Fortschritt bei Gewicht und Wiederholungen sowie auf Erholung. Gib wenige, konkrete Vorschläge mit Begründung aus den Daten.
 
-Schreiben: Du darfst eigene Vorlagen anlegen (create_template) und von einer bestehenden Vorlage eine neue Version erstellen (add_template_version). Jede Version bleibt erhalten, die Person kann in der App jederzeit zu einer älteren zurück. Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Workouts eintragen. Übungen gibst du mit ihrer exercise_id an, die du über search_exercises findest. Zeig der Person deinen Vorschlag zuerst und speichere erst, wenn sie zustimmt. Schreib in die Notiz einer Version kurz, was sich geändert hat und warum.
+Schreiben: Du darfst eigene Vorlagen anlegen (create_template) und von einer bestehenden Vorlage eine neue Version erstellen (add_template_version). Jede Version bleibt erhalten, die Person kann in der App jederzeit zu einer älteren zurück. Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Aktivitäten eintragen. Übungen gibst du mit ihrer exercise_id an, die du über search_exercises findest. Zeig der Person deinen Vorschlag zuerst und speichere erst, wenn sie zustimmt. Schreib in die Notiz einer Version kurz, was sich geändert hat und warum.
 
 Du ersetzt keine ärztliche oder physiotherapeutische Beratung. Erwähnt die Person Schmerzen oder eine Verletzung, empfiehl, das mit Fachleuten abzuklären, statt das Training dafür zu planen.`;
 
@@ -54,7 +54,7 @@ export function createTrainingMcpServer(data: AgentDataSource, now: () => Date =
     {
       title: "Profil und Überblick",
       description:
-        "Name, Mitglied seit, Zahl aller Workouts und Trainingstage der letzten vier Wochen. Guter erster Schritt.",
+        "Name, Mitglied seit, Zahl aller Aktivitäten und Trainingstage der letzten vier Wochen. Guter erster Schritt.",
       annotations: READ_ONLY,
     },
     async () => {
@@ -75,9 +75,9 @@ export function createTrainingMcpServer(data: AgentDataSource, now: () => Date =
   server.registerTool(
     "list_workouts",
     {
-      title: "Workouts",
+      title: "Aktivitäten",
       description:
-        "Eigene Workouts der letzten Wochen mit allen Sätzen je Übung, neueste zuerst. Gewichte in kg, Dauer in Sekunden oder Minuten, Strecken in m oder km.",
+        "Eigene Aktivitäten der letzten Wochen, neueste zuerst: Sportart, Dauer in Minuten, Distanz in m, Höhenmeter, Anstrengung und, falls vorhanden, alle Sätze je Übung. Gewichte in kg, Dauer der Sätze in Sekunden oder Minuten, Strecken in m oder km.",
       inputSchema: z.object({
         weeks: z.number().int().min(1).max(26).default(4).describe("Zeitraum in Wochen, einschließlich der laufenden"),
       }),
@@ -97,7 +97,7 @@ export function createTrainingMcpServer(data: AgentDataSource, now: () => Date =
     {
       title: "Trainingstage je Woche",
       description:
-        "Anzahl der Tage mit mindestens einem Workout je Kalenderwoche (Montag bis Sonntag, deutsche Zeit), neueste Woche zuerst.",
+        "Anzahl der Tage mit mindestens einer Aktivität je Kalenderwoche (Montag bis Sonntag, deutsche Zeit), neueste Woche zuerst.",
       inputSchema: z.object({
         weeks: z.number().int().min(1).max(52).default(12).describe("Anzahl der Wochen"),
       }),
@@ -124,7 +124,7 @@ export function createTrainingMcpServer(data: AgentDataSource, now: () => Date =
     "list_templates",
     {
       title: "Vorlagen",
-      description: "Eigene Workout-Vorlagen mit template_id, Sichtbarkeit, aktueller Version und Zahl der Übungen, zuletzt geänderte zuerst.",
+      description: "Eigene Trainingsvorlagen mit template_id, Sichtbarkeit, aktueller Version und Zahl der Übungen, zuletzt geänderte zuerst.",
       annotations: READ_ONLY,
     },
     async () => json({ vorlagen: describeTemplateList(await data.templates()) }),

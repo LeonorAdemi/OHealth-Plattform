@@ -1,20 +1,31 @@
 "use client";
 
-import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { berlinDateTimeParts, berlinLocalToDate, matchesSport, SPORT_CATEGORY_LABEL } from "@/modules/core/logic";
+import { berlinDateTimeParts, matchesSport, SPORT_CATEGORY_LABEL } from "@/modules/core/logic";
 import type { Sport } from "@/modules/core/queries";
 
 import { saveActivity, updateActivity } from "../actions";
-import { FEELING_LABEL, parseDistanceKm, parseDurationMinutes } from "../logic";
+import {
+  ACTIVITY_MIN_DATE,
+  activityDateError,
+  activityPerformedAt,
+  distanceToKmInput,
+  FEELING_LABEL,
+  parseDistanceKm,
+  parseDurationMinutes,
+} from "../logic";
+
+// Wie beim Workout-Formular: zwei Wiederholungen nach 2 und 5 Sekunden, dieselbe ID bei jedem Versuch.
+const RETRY_DELAYS_MS = [2000, 5000];
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type ActivityValues = {
   id: string;
@@ -28,24 +39,6 @@ export type ActivityValues = {
 };
 
 const FEELINGS = Object.entries(FEELING_LABEL).map(([value, label]) => ({ value: Number(value), label }));
-
-function SportChip({ sport, selected, onSelect }: { sport: Sport; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-        "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-        selected ? "border-foreground text-foreground font-medium" : "border-input text-muted-foreground hover:bg-accent",
-      )}
-    >
-      {selected && <Check size={16} strokeWidth={1.5} aria-hidden />}
-      {sport.name}
-    </button>
-  );
-}
 
 /**
  * Aktivität eintragen oder ändern: Sportart, Datum, Dauer, je nach Sportart Distanz und Höhenmeter,
@@ -73,7 +66,7 @@ export function ActivityForm({
   const [hours, setHours] = useState(existing?.durationMinutes ? String(Math.floor(existing.durationMinutes / 60)) : "");
   const [minutes, setMinutes] = useState(existing?.durationMinutes ? String(existing.durationMinutes % 60) : "");
   const [distance, setDistance] = useState(
-    existing?.distanceM ? String(existing.distanceM / 1000).replace(".", ",") : "",
+    existing?.distanceM ? distanceToKmInput(existing.distanceM) : "",
   );
   const [elevation, setElevation] = useState(existing?.elevationM ? String(existing.elevationM) : "");
   const [feeling, setFeeling] = useState<number | null>(existing?.feeling ?? null);
@@ -91,8 +84,15 @@ export function ActivityForm({
     return [...groups.entries()];
   }, [sports, query]);
 
+  function pick(id: string) {
+    setSportId(id);
+    setShowAll(false);
+    setQuery("");
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (saving) return;
     setError(null);
     if (!sport) return setError("Wähl eine Sportart.");
     const durationMinutes = parseDurationMinutes(hours, minutes);
@@ -103,15 +103,15 @@ export function ActivityForm({
     if (elevationM !== null && (!Number.isInteger(elevationM) || elevationM < 0 || elevationM > 20000)) {
       return setError("Gib die Höhenmeter als ganze Zahl ein.");
     }
-    if (date > today) return setError("Eine Aktivität liegt nicht in der Zukunft.");
-
-    // Heute: jetzt. Frühere Tage: mittags, damit der Tag in deutscher Zeit sicher stimmt.
-    const performedAt =
-      existing && date === initialDate
-        ? existing.performedAt
-        : date === today
-          ? new Date().toISOString()
-          : (berlinLocalToDate(date, "12:00") ?? new Date()).toISOString();
+    const dateError = activityDateError(date, today);
+    if (dateError) return setError(dateError);
+    const performedAt = activityPerformedAt({
+      date,
+      today,
+      now: new Date(),
+      existing: existing && { date: initialDate, performedAt: existing.performedAt },
+    });
+    if (!performedAt) return setError("Gib ein Datum ein.");
 
     setSaving(true);
     const values = {
@@ -124,11 +124,25 @@ export function ActivityForm({
       feeling,
       notes: notes.trim() || null,
     };
-    const result = existing ? await updateActivity(values) : await saveActivity(values);
+
+    // Dieselbe ID bei jedem Versuch: Wiederholungen erzeugen kein Duplikat.
+    let lastError = "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.";
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) await wait(RETRY_DELAYS_MS[attempt - 1]);
+      try {
+        const result = existing ? await updateActivity(values) : await saveActivity(values);
+        if (result.ok) {
+          router.push(existing ? `/workouts/${result.data.id}` : "/");
+          router.refresh();
+          return;
+        }
+        lastError = result.error;
+      } catch {
+        // Netzwerkfehler: nächster Versuch
+      }
+    }
     setSaving(false);
-    if (!result.ok) return setError(result.error);
-    router.push(existing ? `/workouts/${result.data.id}` : "/");
-    router.refresh();
+    setError(lastError);
   }
 
   return (
@@ -139,14 +153,14 @@ export function ActivityForm({
           <ul className="flex flex-wrap gap-2" aria-label="Zuletzt">
             {recent.map((s) => (
               <li key={s.id}>
-                <SportChip sport={s} selected={s.id === sportId} onSelect={() => setSportId(s.id)} />
+                <Chip selected={s.id === sportId} onClick={() => setSportId(s.id)}>{s.name}</Chip>
               </li>
             ))}
           </ul>
         )}
         {sport && !recent.some((s) => s.id === sport.id) && (
           <p>
-            <SportChip sport={sport} selected onSelect={() => setShowAll(true)} />
+            <Chip selected onClick={() => setShowAll(true)}>{sport.name}</Chip>
           </p>
         )}
         {!showAll ? (
@@ -166,6 +180,13 @@ export function ActivityForm({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter wählt bei genau einem Treffer diese Sportart und schickt das Formular nicht ab.
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  const hits = sports.filter((s) => matchesSport(s, query));
+                  if (hits.length === 1) pick(hits[0].id);
+                }}
                 placeholder="zum Beispiel Bouldern"
                 autoComplete="off"
               />
@@ -183,15 +204,9 @@ export function ActivityForm({
                   <ul className="flex flex-wrap gap-2">
                     {list.map((s) => (
                       <li key={s.id}>
-                        <SportChip
-                          sport={s}
-                          selected={s.id === sportId}
-                          onSelect={() => {
-                            setSportId(s.id);
-                            setShowAll(false);
-                            setQuery("");
-                          }}
-                        />
+                        <Chip selected={s.id === sportId} onClick={() => pick(s.id)}>
+                          {s.name}
+                        </Chip>
                       </li>
                     ))}
                   </ul>
@@ -203,11 +218,15 @@ export function ActivityForm({
         {sport?.hasSets && !existing && (
           <p className="text-muted-foreground text-sm">
             Mit Übungen und Sätzen?{" "}
-            <Link href="/training" className="text-foreground underline underline-offset-4">
-              Mit Vorlage trainieren
-            </Link>{" "}
-            oder{" "}
-            <Link href="/workouts/neu" className="text-foreground underline underline-offset-4">
+            {sport.id === "krafttraining" && (
+              <>
+                <Link href="/training" className="text-foreground underline underline-offset-4">
+                  Mit Vorlage trainieren
+                </Link>{" "}
+                oder{" "}
+              </>
+            )}
+            <Link href={`/workouts/neu?sport=${sport.id}`} className="text-foreground underline underline-offset-4">
               Sätze nachtragen
             </Link>
           </p>
@@ -217,7 +236,7 @@ export function ActivityForm({
       <div className="grid max-w-sm grid-cols-2 gap-3">
         <div className="col-span-2 space-y-2">
           <Label htmlFor="date">Datum</Label>
-          <Input id="date" type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} required />
+          <Input id="date" type="date" value={date} min={ACTIVITY_MIN_DATE} max={today} onChange={(e) => setDate(e.target.value)} required />
         </div>
         <div className="space-y-2">
           <Label htmlFor="hours">Stunden</Label>
@@ -239,7 +258,6 @@ export function ActivityForm({
             onChange={(e) => setMinutes(e.target.value.replace(/\D/g, "").slice(0, 2))}
             placeholder="45"
             className="num text-right"
-            autoFocus={!existing && Boolean(sportId)}
           />
         </div>
         {sport?.hasDistance && (
@@ -272,27 +290,16 @@ export function ActivityForm({
         <legend className="text-sm font-medium">Wie anstrengend? (optional)</legend>
         <div className="flex flex-wrap gap-2">
           {FEELINGS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              aria-pressed={feeling === f.value}
-              onClick={() => setFeeling(feeling === f.value ? null : f.value)}
-              className={cn(
-                "inline-flex min-h-11 items-center rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-                "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-                feeling === f.value
-                  ? "border-foreground text-foreground font-medium"
-                  : "border-input text-muted-foreground hover:bg-accent",
-              )}
-            >
+            <Chip key={f.value} selected={feeling === f.value} onClick={() => setFeeling(feeling === f.value ? null : f.value)}>
               {f.label}
-            </button>
+            </Chip>
           ))}
         </div>
       </fieldset>
 
       <div className="space-y-2">
         <Label htmlFor="notes">Notiz (optional)</Label>
+        <p className="text-muted-foreground text-sm">Sichtbar für alle, die deine Aktivitäten sehen dürfen.</p>
         <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} rows={2} />
       </div>
 

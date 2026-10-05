@@ -12,6 +12,11 @@ const workouts: AgentWorkout[] = [
   {
     performedAt: "2026-09-26T16:00:00Z",
     title: "Push",
+    sportName: "Krafttraining",
+    durationMinutes: 62,
+    distanceM: null,
+    elevationM: null,
+    feeling: 4,
     sets: [
       { ...bench, reps: 5, weightKg: 80, durationSeconds: null, distanceM: null },
       { ...bench, reps: 5, weightKg: 82.5, durationSeconds: null, distanceM: null },
@@ -20,6 +25,11 @@ const workouts: AgentWorkout[] = [
   {
     performedAt: "2026-07-01T16:00:00Z",
     title: "Alt",
+    sportName: "Laufen",
+    durationMinutes: 30,
+    distanceM: 5000,
+    elevationM: null,
+    feeling: null,
     sets: [{ ...bench, reps: 3, weightKg: 70, durationSeconds: null, distanceM: null }],
   },
 ];
@@ -148,7 +158,7 @@ describe("KI-Zugriff: MCP-Server", () => {
       clientInfo: { name: "test", version: "0" },
     });
     expect(reply.result.serverInfo.name).toBe("ohealth");
-    expect(reply.result.instructions).toContain("Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Workouts eintragen");
+    expect(reply.result.instructions).toContain("Du kannst nichts löschen, keine Vorlage veröffentlichen und keine Aktivitäten eintragen");
     expect(reply.result.instructions).toContain("speichere erst, wenn sie zustimmt");
   });
 
@@ -178,6 +188,12 @@ describe("KI-Zugriff: MCP-Server", () => {
     const result = await callTool("list_workouts", { weeks: 2 });
     expect(result.zeitraumAb).toBe("2026-09-21");
     expect(result.workouts).toHaveLength(1);
+    expect(result.workouts[0]).toMatchObject({
+      sportart: "Krafttraining",
+      dauerMinuten: 62,
+      distanzM: null,
+      anstrengung: "hart",
+    });
     expect(result.workouts[0].uebungen[0]).toEqual({
       name: "Bankdrücken",
       muskelgruppe: "Brust",

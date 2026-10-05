@@ -22,8 +22,11 @@ const setSchema = z
     "Ein Satz braucht Wiederholungen, Dauer oder Distanz.",
   );
 
+const sportIdSchema = z.string().regex(/^[a-z0-9_]{2,30}$/, "Wähl eine Sportart.");
+
 const workoutSchema = z.object({
   id: z.uuid(),
+  sportId: sportIdSchema.optional(),
   title: z.string().trim().max(80).optional(),
   sets: z.array(setSchema).min(1, "Trag mindestens einen Satz ein.").max(200),
 });
@@ -44,6 +47,7 @@ export async function saveWorkout(input: unknown): Promise<Result<{ id: string }
     p_title: parsed.data.title ?? "",
     p_performed_at: new Date().toISOString(),
     p_sets: parsed.data.sets,
+    p_sport_id: parsed.data.sportId,
   });
 
   if (error || !data) {
@@ -104,11 +108,13 @@ export async function saveTraining(input: unknown): Promise<Result<{ id: string 
 
 const activitySchema = z.object({
   id: z.uuid(),
-  sportId: z.string().regex(/^[a-z0-9_]{2,30}$/, "Wähl eine Sportart."),
-  performedAt: z.iso.datetime({ offset: true }),
+  sportId: sportIdSchema,
+  performedAt: z.iso
+    .datetime({ offset: true })
+    .refine((t) => Date.parse(t) <= Date.now() + 24 * 60 * 60 * 1000, "Eine Aktivität liegt nicht in der Zukunft."),
   durationMinutes: z.int("Gib eine Dauer ein.").min(1, "Gib eine Dauer ein.").max(1440, "Höchstens 24 Stunden."),
-  distanceM: z.number().positive().max(1_000_000).nullable(),
-  elevationM: z.int().min(0).max(20_000).nullable(),
+  distanceM: z.number().positive("Gib die Distanz in Kilometern ein.").max(1_000_000, "Diese Distanz ist zu groß.").nullable(),
+  elevationM: z.int("Gib die Höhenmeter als ganze Zahl ein.").min(0).max(20_000, "Diese Höhe ist zu groß.").nullable(),
   feeling: z.int().min(1).max(5).nullable(),
   notes: z.string().trim().max(500, "Die Notiz darf höchstens 500 Zeichen haben.").nullable(),
 });
@@ -127,44 +133,36 @@ function activityParams(a: z.infer<typeof activitySchema>) {
   };
 }
 
+/** Gemeinsamer Ablauf von saveActivity und updateActivity: prüfen, Funktion aufrufen, Fehler übersetzen. */
+async function runActivity(fn: "log_activity" | "update_activity", input: unknown): Promise<Result<{ id: string }>> {
+  const parsed = activitySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(fn, activityParams(parsed.data));
+  if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
+  if (error) return { ok: false, error: SAVE_FAILED };
+  // update_activity trifft keine Zeile, wenn es die Aktivität nicht (mehr) gibt oder sie nicht dir gehört.
+  if (!data) return { ok: false, error: "Diese Aktivität gibt es nicht mehr." };
+
+  revalidateWorkoutViews(fn === "update_activity" ? data : undefined);
+  return { ok: true, data: { id: data } };
+}
+
 /**
  * Trägt eine Aktivität mit Sportart und Dauer ein (log_activity). Die ID vergibt das Gerät, ein
  * wiederholter Versuch legt nichts doppelt an. Ob Distanz und Höhenmeter zur Sportart passen,
  * prüft die Datenbank.
  */
 export async function saveActivity(input: unknown): Promise<Result<{ id: string }>> {
-  const parsed = activitySchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("log_activity", activityParams(parsed.data));
-  if (error || !data) {
-    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
-    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
-  }
-
-  revalidateWorkoutViews();
-  return { ok: true, data: { id: data } };
+  return runActivity("log_activity", input);
 }
 
 /** Ändert die Angaben einer eigenen Aktivität (update_activity). Sätze bleiben unberührt. */
 export async function updateActivity(input: unknown): Promise<Result<{ id: string }>> {
-  const parsed = activitySchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Die Eingabe ist ungültig." };
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_activity", activityParams(parsed.data));
-  if (error || !data) {
-    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
-    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
-  }
-
-  revalidateWorkoutViews(data);
-  return { ok: true, data: { id: data } };
+  return runActivity("update_activity", input);
 }
 
 function revalidateWorkoutViews(id?: string) {

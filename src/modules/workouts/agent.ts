@@ -12,6 +12,7 @@ import {
   formatSetLine,
   formatWeight,
   groupSetsIntoBlocks,
+  FEELING_LABEL,
   formatTemplateTarget,
   isoWeek,
   searchExercises,
@@ -87,6 +88,13 @@ export type AgentExerciseInput = {
 export type AgentWorkout = {
   performedAt: string;
   title: string | null;
+  /** Sportart aus dem Katalog; null, wenn sie nicht lesbar ist */
+  sportName: string | null;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM: number | null;
+  /** Anstrengung 1 (locker) bis 5 (am Limit) */
+  feeling: number | null;
   sets: (StoredSet & { muscleGroup: string | null })[];
 };
 
@@ -118,7 +126,7 @@ export function firstDayOfWindow(now: Date, weeks: number): string {
   return new Date(monday - (weeks - 1) * 7 * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Workouts mit Sätzen je Übung, neueste zuerst, nur ab dem ersten Tag des Zeitraums. */
+/** Aktivitäten mit Sportart, Dauer, Distanz und Sätzen je Übung, neueste zuerst, nur ab dem ersten Tag des Zeitraums. */
 export function describeWorkouts(workouts: readonly AgentWorkout[], fromDay: string) {
   return workouts
     .filter((w) => dayKey(new Date(w.performedAt)) >= fromDay)
@@ -126,6 +134,11 @@ export function describeWorkouts(workouts: readonly AgentWorkout[], fromDay: str
     .map((w) => ({
       datum: dateFormat.format(new Date(w.performedAt)),
       titel: w.title,
+      sportart: w.sportName,
+      dauerMinuten: w.durationMinutes,
+      distanzM: w.distanceM,
+      hoehenmeter: w.elevationM,
+      anstrengung: w.feeling ? FEELING_LABEL[w.feeling] : null,
       uebungen: groupSetsIntoBlocks(w.sets).map((block) => ({
         name: block.exerciseName,
         muskelgruppe: w.sets.find((s) => s.exerciseId === block.exerciseId)?.muscleGroup ?? null,

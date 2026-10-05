@@ -60,7 +60,7 @@ export default async function CommunityBestsPage({
                 ? "Geschätztes Maximum für eine Wiederholung, berechnet aus dem besten Satz."
                 : bests.selected.measure === "duration"
                   ? "Längste gehaltene Zeit."
-                  : "Gesamte Strecke aller Aktivitäten."}
+                  : "Gesamte Strecke aller Sätze dieser Übung."}
             </p>
             <div className="mt-2">
               <BestRanking rows={bests.ranking} />

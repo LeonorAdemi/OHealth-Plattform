@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(27);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -56,6 +56,45 @@ select results_eq(
   $$ select sport_id, duration_minutes, elevation_m from public.workouts where id = '20000000-0000-0000-0000-000000000002' $$,
   $$ values ('klettern'::text, 120, 300) $$, 'Änderung gespeichert');
 
+-- Ändern und direkte Wege in die Tabelle
+select throws_ok(
+  $$ select public.update_activity('20000000-0000-0000-0000-000000000002', 'bouldern', now(), 60, 500) $$,
+  '23514', null, 'Ändern: Bouldern hat keine Distanz');
+select throws_ok(
+  $$ update public.workouts set sport_id = 'yoga' where id = '20000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'Sportwechsel mit vorhandener Distanz und Höhenmetern wird abgelehnt');
+select throws_ok(
+  $$ insert into public.workouts (sport_id, distance_m) values ('yoga', 100) $$,
+  '23514', null, 'Direkter Insert: Yoga hat keine Distanz');
+select throws_ok(
+  $$ update public.workouts set notes = repeat('x', 501) where id = '20000000-0000-0000-0000-000000000001' $$,
+  '23514', null, 'Direktes Update: Notiz höchstens 500 Zeichen');
+select lives_ok(
+  $$ select public.log_activity('20000000-0000-0000-0000-000000000003', 'yoga', now(), 20, null, null, null, '   ') $$,
+  'Yoga mit leerer Notiz');
+select is((select notes from public.workouts where id = '20000000-0000-0000-0000-000000000003'), null,
+  'Eine leere Notiz wird zu null');
+
+-- Übungen mit Sätzen behalten die gewählte Sportart
+select public.log_workout(
+  '20000000-0000-0000-0000-000000000004', 'Calis', now(),
+  (select jsonb_build_array(jsonb_build_object('exercise_id', id, 'set_number', 1, 'reps', 5))
+   from public.exercises where name = 'Bankdrücken'), 'calisthenics');
+select public.log_training(
+  '20000000-0000-0000-0000-000000000005', null, null, now() - interval '1 hour', now(),
+  (select jsonb_build_array(jsonb_build_object('exercise_id', id, 'set_number', 1, 'reps', 5))
+   from public.exercises where name = 'Bankdrücken'), 'crossfit');
+select public.log_workout(
+  '20000000-0000-0000-0000-000000000006', 'Ohne', now(),
+  (select jsonb_build_array(jsonb_build_object('exercise_id', id, 'set_number', 1, 'reps', 5))
+   from public.exercises where name = 'Bankdrücken'));
+select is((select sport_id from public.workouts where id = '20000000-0000-0000-0000-000000000004'),
+  'calisthenics', 'log_workout: Sportart bleibt erhalten');
+select is((select sport_id from public.workouts where id = '20000000-0000-0000-0000-000000000005'),
+  'crossfit', 'log_training: Sportart bleibt erhalten');
+select is((select sport_id from public.workouts where id = '20000000-0000-0000-0000-000000000006'),
+  'krafttraining', 'log_workout ohne Sportart: Krafttraining');
+
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';
 select is(
   public.update_activity('20000000-0000-0000-0000-000000000002', 'yoga', now(), 10),
@@ -69,6 +108,10 @@ set local request.jwt.claims to
 select throws_ok(
   $$ select public.log_activity(gen_random_uuid(), 'laufen', now(), 30) $$,
   '42501', null, 'KI: trägt keine Aktivität ein');
+select is(public.update_activity('20000000-0000-0000-0000-000000000001', 'laufen', now(), 10), null,
+  'KI: ändert keine Aktivität');
+select is((select duration_minutes from public.workouts where id = '20000000-0000-0000-0000-000000000001'), 45,
+  'KI: die Dauer bleibt unverändert');
 
 select * from finish();
 rollback;

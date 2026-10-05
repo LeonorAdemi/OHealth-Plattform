@@ -1369,6 +1369,7 @@ export type Database = {
           p_finished_at: string
           p_id: string
           p_sets: Json
+          p_sport_id?: string
           p_started_at: string
           p_template_version_id: string
           p_title: string
@@ -1380,6 +1381,7 @@ export type Database = {
           p_id: string
           p_performed_at: string
           p_sets: Json
+          p_sport_id?: string
           p_title: string
         }
         Returns: string

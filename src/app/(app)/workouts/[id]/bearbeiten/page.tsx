@@ -18,12 +18,17 @@ export default async function EditWorkoutPage({
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const workout = await getWorkout(id);
+  // Unabhängige Abfragen laufen zusammen; welches Formular gebraucht wird, zeigt erst die Aktivität.
+  const [workout, exercises, sports, recentSportIds] = await Promise.all([
+    getWorkout(id),
+    getExercises(),
+    getSports(),
+    getMyRecentSportIds(),
+  ]);
   if (!workout) notFound();
 
   // Mit Sätzen: Übungen und Sätze korrigieren. Ohne: die Angaben der Aktivität.
   if (workout.sets.length > 0) {
-    const exercises = await getExercises();
     return (
       <>
         <h1 className="text-titel font-semibold">Aktivität korrigieren</h1>
@@ -41,7 +46,6 @@ export default async function EditWorkoutPage({
     );
   }
 
-  const [sports, recentSportIds] = await Promise.all([getSports(), getMyRecentSportIds()]);
   return (
     <>
       <h1 className="text-titel font-semibold">Aktivität korrigieren</h1>

@@ -137,6 +137,10 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
+        Wer eine Aktivität sehen darf, sieht sie ganz, auch Notiz und Anstrengung.
+        Schreib in die Notiz nichts, was nur du wissen sollst.
+      </p>
+      <p>
         Dein Profil (Profilbild, Anzeigename, Kurztext, Sportarten und Stadt)
         sehen alle, mit denen du in einer privaten oder öffentlichen Community
         bist, in einer Coaching-Community der Coach, deine Follower und Personen,
