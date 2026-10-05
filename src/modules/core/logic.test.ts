@@ -232,12 +232,19 @@ describe("Push", () => {
     expect(pushContent(direct)).toEqual({ title: "Ben", body: "Lust?", url: "/chats/c3", tag: "chat-c3" });
   });
 
-  it("Freundschaft: Anfrage führt zu den Freunden, Annahme zum Profil", () => {
-    expect(pushContent({ ...base, kind: "friend_request", meetupId: null, actorId: "u1" })).toMatchObject({
-      body: "Ben möchte mit dir befreundet sein",
-      url: "/freunde",
+  it("Folgen: Anfrage führt zu den Anfragen, neuer Follower zum Profil", () => {
+    expect(pushContent({ ...base, kind: "follow_request", meetupId: null, actorId: "u1" })).toMatchObject({
+      body: "Ben möchte dir folgen",
+      url: "/verbindungen?tab=anfragen",
     });
-    expect(pushContent({ ...base, kind: "friend_accepted", meetupId: null, actorId: "u1" }).url).toBe("/person/u1");
+    expect(pushContent({ ...base, kind: "new_follower", meetupId: null, actorId: "u1" }).url).toBe("/person/u1");
+  });
+
+  it("Nachrichtenanfrage: ohne Inhalt, öffnet den Chat", () => {
+    expect(pushContent({ ...base, kind: "message_request", meetupId: null, chatId: "c4" })).toMatchObject({
+      body: "Ben möchte dir schreiben",
+      url: "/chats/c4",
+    });
   });
 
   it("nimmt sonst den Satz der Mitteilung", () => {

@@ -70,10 +70,10 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
   },
   {
     name: "directMessage",
-    label: "Neue Nachrichten von Freunden",
+    label: "Neue Privatnachrichten und Nachrichtenanfragen",
     hint: "Als Push aufs Handy. In der App zeigt der Tab Chats neue Nachrichten.",
   },
-  { name: "friends", label: "Freundschaftsanfragen und Annahmen" },
+  { name: "friends", label: "Neue Follower und Folgen-Anfragen" },
   { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt" },
   { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
 ];

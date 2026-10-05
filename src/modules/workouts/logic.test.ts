@@ -39,6 +39,7 @@ import {
   type StoredSet,
   weekGrid,
   weekKeys,
+  weekStreak,
 } from "./logic";
 
 // Samstag, 3. Oktober 2026, 12:00 Uhr deutscher Zeit
@@ -709,5 +710,23 @@ describe("Letzte Workouts: Zeitangabe", () => {
 
   it("nennt ältere Workouts mit Wochentag und Datum", () => {
     expect(formatWorkoutWhen("2026-09-28T16:05:00Z", now)).toMatch(/^Mo\.?, 28\. Sept\.?, 18:05$/);
+  });
+});
+
+describe("Serie in Wochen", () => {
+  // Sonntag, 4. Oktober 2026, mittags deutscher Zeit
+  const now = new Date("2026-10-04T10:00:00Z");
+
+  it("zählt aufeinanderfolgende Wochen bis zur laufenden", () => {
+    expect(weekStreak(["2026-10-01", "2026-09-22", "2026-09-14"], now)).toBe(3);
+  });
+  it("die laufende Woche ohne Training beendet die Serie nicht", () => {
+    expect(weekStreak(["2026-09-22", "2026-09-14"], new Date("2026-09-28T10:00:00Z"))).toBe(2);
+  });
+  it("eine Woche Pause beendet die Serie", () => {
+    expect(weekStreak(["2026-10-01", "2026-09-14"], now)).toBe(1);
+  });
+  it("ohne Training keine Serie", () => {
+    expect(weekStreak([], now)).toBe(0);
   });
 });

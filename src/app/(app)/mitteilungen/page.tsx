@@ -39,7 +39,7 @@ export default async function NotificationsPage() {
         </h2>
         {notifications.length === 0 ? (
           <p className="text-muted-foreground mt-2">
-            Noch keine Mitteilungen. Hier erscheint, wenn jemand ein Training teilt, bei deinem zusagt oder dich als Freund hinzufügt.
+            Noch keine Mitteilungen. Hier erscheint, wenn jemand ein Training teilt, bei deinem zusagt oder dir folgt.
           </p>
         ) : (
           <ul className="mt-2" aria-label="Mitteilungen">
@@ -59,9 +59,9 @@ export default async function NotificationsPage() {
               );
               const href = n.meetupId
                 ? `/plan/${n.meetupId}`
-                : n.kind === "friend_request"
-                  ? "/freunde"
-                  : n.kind === "friend_accepted" && n.actorId
+                : n.kind === "follow_request"
+                  ? "/verbindungen?tab=anfragen"
+                  : (n.kind === "new_follower" || n.kind === "follow_accepted") && n.actorId
                     ? `/person/${n.actorId}`
                     : null;
               return (

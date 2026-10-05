@@ -125,29 +125,35 @@ export type Database = {
       }
       chats: {
         Row: {
+          accepted_at: string | null
           created_at: string
           group_id: string | null
           id: string
           kind: string
           meetup_id: string | null
+          requested_by: string | null
           user_high: string | null
           user_low: string | null
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           kind: string
           meetup_id?: string | null
+          requested_by?: string | null
           user_high?: string | null
           user_low?: string | null
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           kind?: string
           meetup_id?: string | null
+          requested_by?: string | null
           user_high?: string | null
           user_low?: string | null
         }
@@ -164,6 +170,13 @@ export type Database = {
             columns: ["meetup_id"]
             isOneToOne: true
             referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -226,42 +239,39 @@ export type Database = {
           },
         ]
       }
-      friendships: {
+      follows: {
         Row: {
           accepted_at: string | null
-          addressee_id: string
           created_at: string
-          id: string
-          requester_id: string
+          followee_id: string
+          follower_id: string
           status: string
         }
         Insert: {
           accepted_at?: string | null
-          addressee_id: string
           created_at?: string
-          id?: string
-          requester_id: string
+          followee_id: string
+          follower_id: string
           status?: string
         }
         Update: {
           accepted_at?: string | null
-          addressee_id?: string
           created_at?: string
-          id?: string
-          requester_id?: string
+          followee_id?: string
+          follower_id?: string
           status?: string
         }
         Relationships: [
           {
-            foreignKeyName: "friendships_addressee_id_fkey"
-            columns: ["addressee_id"]
+            foreignKeyName: "follows_followee_id_fkey"
+            columns: ["followee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "friendships_requester_id_fkey"
-            columns: ["requester_id"]
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -656,6 +666,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          is_private: boolean
           sports: string[]
         }
         Insert: {
@@ -665,6 +676,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id: string
+          is_private?: boolean
           sports?: string[]
         }
         Update: {
@@ -674,6 +686,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          is_private?: boolean
           sports?: string[]
         }
         Relationships: []
@@ -1207,6 +1220,7 @@ export type Database = {
         Returns: string
       }
       delete_own_account: { Args: never; Returns: undefined }
+      follow_person: { Args: { target: string }; Returns: string }
       group_invite_preview: {
         Args: { code: string }
         Returns: {
@@ -1293,6 +1307,7 @@ export type Database = {
           meetup_id: string
           other_avatar_url: string
           other_user_id: string
+          request_state: string
           starts_at: string
           title: string
           unread: number
@@ -1313,26 +1328,43 @@ export type Database = {
           type: string
         }[]
       }
-      my_friends: {
-        Args: never
+      my_follows: {
+        Args: { list: string }
         Returns: {
           avatar_url: string
           display_name: string
-          incoming: boolean
+          follows_back: boolean
           since: string
-          status: string
           user_id: string
         }[]
       }
       open_direct_chat: { Args: { other: string }; Returns: string }
+      people_search: {
+        Args: { max_rows?: number; search?: string }
+        Returns: {
+          avatar_url: string
+          city: string
+          display_name: string
+          follow_status: string
+          follows_me: boolean
+          is_private: boolean
+          sports: string[]
+          user_id: string
+        }[]
+      }
+      profile_stats: { Args: { target: string }; Returns: Json }
       push_forget: {
         Args: { endpoint: string; secret: string }
         Returns: undefined
       }
       push_payload: { Args: { nid: string; secret: string }; Returns: Json }
-      remove_friend: { Args: { other: string }; Returns: undefined }
-      respond_friend_request: {
-        Args: { accept: boolean; requester: string }
+      remove_follower: { Args: { follower: string }; Returns: undefined }
+      respond_chat_request: {
+        Args: { accept: boolean; cid: string }
+        Returns: undefined
+      }
+      respond_follow_request: {
+        Args: { accept: boolean; follower: string }
         Returns: undefined
       }
       save_push_subscription: {
@@ -1350,8 +1382,8 @@ export type Database = {
         }
         Returns: string
       }
-      send_friend_request: { Args: { target: string }; Returns: string }
       unblock_person: { Args: { target: string }; Returns: undefined }
+      unfollow_person: { Args: { target: string }; Returns: undefined }
       unread_chat_count: { Args: never; Returns: number }
       update_workout: {
         Args: { p_id: string; p_sets: Json; p_title: string }

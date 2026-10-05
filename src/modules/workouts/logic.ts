@@ -44,6 +44,27 @@ export function weekGrid(
   return weekKeys(now, timeZone).map((key) => trained.has(key));
 }
 
+/**
+ * Serie in Wochen: aufeinanderfolgende Wochen (Montag bis Sonntag) mit mindestens einem Trainingstag.
+ * Zählt bis zur laufenden Woche; ist sie noch ohne Training, endet die Serie mit der Vorwoche.
+ */
+export function weekStreak(trainingDays: readonly string[], now: Date, timeZone: string = APP_TIME_ZONE): number {
+  const mondays = new Set(
+    trainingDays.map((key) => {
+      const ms = keyToUtc(key);
+      return ms - ((new Date(ms).getUTCDay() + 6) % 7) * DAY_MS;
+    }),
+  );
+  let monday = keyToUtc(weekKeys(now, timeZone)[0]);
+  if (!mondays.has(monday)) monday -= 7 * DAY_MS;
+  let streak = 0;
+  while (mondays.has(monday)) {
+    streak += 1;
+    monday -= 7 * DAY_MS;
+  }
+  return streak;
+}
+
 /** Kalenderwoche nach ISO 8601. */
 export function isoWeek(now: Date, timeZone: string = APP_TIME_ZONE): number {
   const today = keyToUtc(dayKey(now, timeZone));

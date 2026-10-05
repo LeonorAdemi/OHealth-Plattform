@@ -2,38 +2,36 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
-import { Avatar } from "@/components/ui/avatar";
-import { FriendActions } from "@/modules/core/components/friend-actions";
-import { describeProfile } from "@/modules/core/logic";
-import { getFriendState, getPersonProfile } from "@/modules/core/queries";
+import { FollowActions } from "@/modules/core/components/follow-actions";
+import { ProfileHeader } from "@/modules/core/components/profile-header";
+import { getFollowState, getPersonProfile, getProfileStats } from "@/modules/core/queries";
+import { ProfileTiles } from "@/modules/workouts/components/profile-tiles";
 
 export const metadata: Metadata = { title: "Profil" };
 
-/** Profil einer anderen Person. Sichtbar mit gemeinsamer Gruppe oder Community oder als Freund. */
+/**
+ * Profil einer anderen Person. Sichtbar bei öffentlichen Konten, mit gemeinsamer Gruppe oder
+ * Community und bei einer Folgen-Beziehung. Die Kacheln nur bei öffentlichen Konten und für Follower.
+ */
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const [person, friendState] = await Promise.all([getPersonProfile(id), getFriendState(id)]);
-  if (!person) notFound();
+  const [person, state, stats] = await Promise.all([getPersonProfile(id), getFollowState(id), getProfileStats(id)]);
+  if (!person || !stats) notFound();
   if (person.isMe) redirect("/profil");
-
-  const details = describeProfile(person);
 
   return (
     <>
-      <div className="flex items-start gap-4 md:gap-6">
-        <Avatar path={person.avatar_url} name={person.display_name} size="lg" />
-        <div className="min-w-0 flex-1 pt-2">
-          <h1 className="text-titel font-semibold break-words">{person.display_name}</h1>
-          {details && <p className="text-muted-foreground mt-1">{details}</p>}
-        </div>
-      </div>
-      {person.bio && <p className="mt-6 max-w-xl whitespace-pre-line">{person.bio}</p>}
+      <ProfileHeader profile={person} followers={stats.followers} following={stats.following} isMe={false} />
 
-      <section className="mt-8 max-w-xl" aria-label="Freundschaft">
-        <FriendActions personId={person.id} name={person.display_name} state={friendState} />
+      <section className="mt-6 max-w-xl" aria-label="Folgen und Nachricht">
+        <FollowActions personId={person.id} name={person.display_name} isPrivate={person.is_private} state={state} />
       </section>
+
+      <div className="mt-10 max-w-2xl">
+        <ProfileTiles stats={stats} name={person.display_name} isMe={false} />
+      </div>
     </>
   );
 }

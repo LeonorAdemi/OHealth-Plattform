@@ -25,7 +25,7 @@ export async function getProfile() {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, bio, city, sports")
+    .select("id, display_name, avatar_url, bio, city, sports, is_private")
     .eq("id", userId)
     .single();
 
@@ -41,7 +41,7 @@ export async function getPersonProfile(personId: string) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, bio, city, sports")
+    .select("id, display_name, avatar_url, bio, city, sports, is_private")
     .eq("id", personId)
     .maybeSingle();
 
@@ -155,6 +155,7 @@ export async function getMyChats(limit = 50) {
     groupId: c.group_id,
     otherUserId: c.other_user_id,
     otherAvatarUrl: c.other_avatar_url,
+    request: c.request_state === "incoming" || c.request_state === "outgoing" ? c.request_state : null,
     title: c.title,
     startsAt: c.starts_at,
     last: c.last_at
@@ -197,7 +198,11 @@ export async function getUnreadChatCount() {
 export async function getChat(chatId: string) {
   const { supabase, userId } = await requireUser();
   const [chat, messages] = await Promise.all([
-    supabase.from("chats").select("id, kind, meetup_id, group_id, user_low, user_high").eq("id", chatId).maybeSingle(),
+    supabase
+      .from("chats")
+      .select("id, kind, meetup_id, group_id, user_low, user_high, requested_by, accepted_at")
+      .eq("id", chatId)
+      .maybeSingle(),
     supabase.rpc("chat_messages_page", { cid: chatId }),
   ]);
   if (chat.error || messages.error) throw new Error("Der Chat konnte nicht geladen werden.");
@@ -209,6 +214,13 @@ export async function getChat(chatId: string) {
     groupId: chat.data.group_id,
     // Im Privatchat die andere Person
     otherUserId: chat.data.user_low === userId ? chat.data.user_high : chat.data.user_low,
+    // Nachrichtenanfrage: an mich (incoming) oder von mir, noch nicht angenommen (outgoing)
+    request:
+      chat.data.kind === "direct" && !chat.data.accepted_at
+        ? chat.data.requested_by === userId
+          ? ("outgoing" as const)
+          : ("incoming" as const)
+        : null,
     messages: messages.data.map((m) => ({
       id: m.id,
       userId: m.user_id,
@@ -220,46 +232,136 @@ export async function getChat(chatId: string) {
   };
 }
 
-// ---------- Freunde ----------
+// ---------- Folgen ----------
 
-/** Eigene Freundschaften und offene Anfragen mit Namen und Profilbild. */
-export async function getMyFriends() {
+export type FollowList = "followers" | "following" | "requests";
+
+/** Eigene Follower, Gefolgte oder offene Anfragen an mich. */
+export async function getMyFollows(list: FollowList) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("my_friends");
-  if (error) throw new Error("Freunde konnten nicht geladen werden.");
-  const rows = data.map((f) => ({
+  const { data, error } = await supabase.rpc("my_follows", { list });
+  if (error) throw new Error("Die Liste konnte nicht geladen werden.");
+  return data.map((f) => ({
     userId: f.user_id,
     name: f.display_name,
     avatarUrl: f.avatar_url,
-    status: f.status === "accepted" ? ("accepted" as const) : ("pending" as const),
-    incoming: f.incoming,
     since: f.since,
+    followsBack: f.follows_back,
   }));
+}
+
+/** Zahl der offenen Folgen-Anfragen an mich. */
+export async function getFollowRequestCount() {
+  const { supabase, userId } = await requireUser();
+  const { count, error } = await supabase
+    .from("follows")
+    .select("follower_id", { count: "exact", head: true })
+    .eq("followee_id", userId)
+    .eq("status", "pending");
+  return error ? 0 : (count ?? 0);
+}
+
+export type FollowState = {
+  /** Folge ich der Person? */
+  following: "none" | "pending" | "accepted";
+  /** Folgt die Person mir (bestätigt)? */
+  followsMe: boolean;
+  /** Hat sie angefragt, mir zu folgen? */
+  requestedMe: boolean;
+  blocked: boolean;
+};
+
+/** Wie ich zu einer Person stehe. */
+export async function getFollowState(personId: string): Promise<FollowState> {
+  const { supabase, userId } = await requireUser();
+  const [follows, block] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("follower_id, status")
+      .or(`and(follower_id.eq.${userId},followee_id.eq.${personId}),and(follower_id.eq.${personId},followee_id.eq.${userId})`)
+      .limit(2),
+    supabase.from("blocks").select("blocked_id").eq("blocked_id", personId).maybeSingle(),
+  ]);
+  if (follows.error || block.error) throw new Error("Folgen konnte nicht geladen werden.");
+  const mine = follows.data.find((f) => f.follower_id === userId);
+  const theirs = follows.data.find((f) => f.follower_id === personId);
   return {
-    friends: rows.filter((f) => f.status === "accepted"),
-    incoming: rows.filter((f) => f.status === "pending" && f.incoming),
-    outgoing: rows.filter((f) => f.status === "pending" && !f.incoming),
+    following: mine ? (mine.status === "accepted" ? "accepted" : "pending") : "none",
+    followsMe: theirs?.status === "accepted",
+    requestedMe: theirs?.status === "pending",
+    blocked: Boolean(block.data),
   };
 }
 
-export type FriendState = "none" | "outgoing" | "incoming" | "friends" | "blocked";
+const profileStatsSchema = z.object({
+  followers: z.number(),
+  following: z.number(),
+  can_see: z.boolean(),
+  days: z.array(z.string()).optional(),
+  bests: z
+    .array(z.object({ exercise: z.string(), e1rm: z.number(), max_weight: z.number().nullable() }))
+    .optional(),
+  events: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        starts_at: z.string(),
+        place: z.string().nullable(),
+        visible: z.boolean(),
+        invite_code: z.string().nullable(),
+      }),
+    )
+    .optional(),
+  communities: z
+    .array(z.object({ id: z.string(), name: z.string(), invite_code: z.string(), is_member: z.boolean() }))
+    .optional(),
+});
 
-/** Wie ich zu einer Person stehe: befreundet, angefragt, blockiert oder nichts davon. */
-export async function getFriendState(personId: string): Promise<FriendState> {
-  const { supabase, userId } = await requireUser();
-  const [friendship, block] = await Promise.all([
-    supabase
-      .from("friendships")
-      .select("requester_id, status")
-      .or(`requester_id.eq.${personId},addressee_id.eq.${personId}`)
-      .maybeSingle(),
-    supabase.from("blocks").select("blocked_id").eq("blocked_id", personId).maybeSingle(),
-  ]);
-  if (friendship.error || block.error) throw new Error("Freundschaft konnte nicht geladen werden.");
-  if (block.data) return "blocked";
-  if (!friendship.data) return "none";
-  if (friendship.data.status === "accepted") return "friends";
-  return friendship.data.requester_id === userId ? "outgoing" : "incoming";
+/** Kacheln eines Profils. Ohne Recht auf die Inhalte nur Follower- und Folgt-Zahl. */
+export async function getProfileStats(personId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("profile_stats", { target: personId });
+  if (error) throw new Error("Das Profil konnte nicht geladen werden.");
+  const parsed = profileStatsSchema.safeParse(data);
+  if (!parsed.success) return null;
+  const p = parsed.data;
+  return {
+    followers: p.followers,
+    following: p.following,
+    canSee: p.can_see,
+    days: p.days ?? [],
+    bests: (p.bests ?? []).map((b) => ({ exercise: b.exercise, e1rm: b.e1rm, maxWeight: b.max_weight })),
+    events: (p.events ?? []).map((e) => ({
+      id: e.id,
+      title: e.title,
+      startsAt: e.starts_at,
+      place: e.place,
+      href: e.visible ? `/plan/${e.id}` : e.invite_code ? `/beitreten/${e.invite_code}` : null,
+    })),
+    communities: (p.communities ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      href: c.is_member ? `/community/${c.id}` : `/beitreten/${c.invite_code}`,
+    })),
+  };
+}
+
+/** Menschen finden: mit Suchbegriff nach Namen, sonst Vorschläge aus den eigenen Communities. */
+export async function searchPeople(search: string, limit = 20) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("people_search", { search: search || undefined, max_rows: limit });
+  if (error) throw new Error("Die Suche hat nicht geklappt.");
+  return data.map((p) => ({
+    userId: p.user_id,
+    name: p.display_name,
+    avatarUrl: p.avatar_url,
+    isPrivate: p.is_private,
+    city: p.city,
+    sports: p.sports,
+    following: p.follow_status === "accepted" ? ("accepted" as const) : p.follow_status === "pending" ? ("pending" as const) : ("none" as const),
+    followsMe: p.follows_me,
+  }));
 }
 
 /** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */

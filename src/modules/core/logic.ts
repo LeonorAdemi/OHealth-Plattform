@@ -273,9 +273,11 @@ export type NotificationKind =
   | "cancelled"
   | "reminder"
   | "community_message"
-  | "friend_request"
-  | "friend_accepted"
-  | "direct_message";
+  | "direct_message"
+  | "follow_request"
+  | "new_follower"
+  | "follow_accepted"
+  | "message_request";
 
 const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_training",
@@ -284,13 +286,15 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "cancelled",
   "reminder",
   "community_message",
-  "friend_request",
-  "friend_accepted",
   "direct_message",
+  "follow_request",
+  "new_follower",
+  "follow_accepted",
+  "message_request",
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
-export const CHAT_NOTIFICATION_KINDS = ["message", "community_message", "direct_message"] as const;
+export const CHAT_NOTIFICATION_KINDS = ["message", "community_message", "direct_message", "message_request"] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
   return NOTIFICATION_KINDS.find((k) => k === value) ?? "new_training";
@@ -315,10 +319,14 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return n.count > 1
         ? `${n.count} neue Nachrichten in „${n.title}“, zuletzt von ${n.actorName}`
         : `${n.actorName} hat in „${n.title}“ geschrieben`;
-    case "friend_request":
-      return `${n.actorName} möchte mit dir befreundet sein`;
-    case "friend_accepted":
-      return `${n.actorName} hat deine Freundschaftsanfrage angenommen`;
+    case "follow_request":
+      return `${n.actorName} möchte dir folgen`;
+    case "new_follower":
+      return `${n.actorName} folgt dir jetzt`;
+    case "follow_accepted":
+      return `${n.actorName} hat deine Anfrage angenommen`;
+    case "message_request":
+      return `${n.actorName} möchte dir schreiben`;
     case "direct_message":
       return n.count > 1 ? `${n.count} neue Nachrichten von ${n.actorName}` : `${n.actorName} hat dir geschrieben`;
   }
@@ -338,13 +346,17 @@ export function pushContent(p: {
   actorId?: string | null;
   latest: string | null;
 }): { title: string; body: string; url: string; tag: string } {
-  const isChat = p.kind === "message" || p.kind === "community_message" || p.kind === "direct_message";
+  const isChat =
+    p.kind === "message" ||
+    p.kind === "community_message" ||
+    p.kind === "direct_message" ||
+    p.kind === "message_request";
   const url =
     isChat && p.chatId
       ? `/chats/${p.chatId}`
-      : p.kind === "friend_request"
-        ? "/freunde"
-        : p.kind === "friend_accepted" && p.actorId
+      : p.kind === "follow_request"
+        ? "/verbindungen?tab=anfragen"
+        : (p.kind === "new_follower" || p.kind === "follow_accepted") && p.actorId
           ? `/person/${p.actorId}`
           : p.meetupId
             ? p.kind === "message"

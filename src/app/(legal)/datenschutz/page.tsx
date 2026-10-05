@@ -74,15 +74,16 @@ export default function PrivacyPage() {
           wann und in welcher Rolle.
         </li>
         <li>
-          <strong>Freunde:</strong> wen du angefragt hast, von wem du Anfragen
-          hast, mit wem du befreundet bist und wen du blockiert hast.
+          <strong>Folgen:</strong> ob dein Konto privat oder öffentlich ist,
+          wem du folgst, wer dir folgt, offene Anfragen und wen du blockiert
+          hast.
         </li>
         <li>
           <strong>Geplante Trainings und Chat:</strong> Trainings, die du
           planst (Titel, Zeitpunkt, optional Vorlage, Treffpunkt, Höchstzahl,
           Notiz), mit welchen Communities du sie teilst, bei welchen Trainings
           du zugesagt hast, deine Nachrichten im Chat eines Trainings, einer
-          Community oder mit Freunden und bis
+          Community oder in Privatchats und bis
           wann du einen Chat gelesen hast, damit wir ungelesene Nachrichten
           zählen können.
         </li>
@@ -136,7 +137,9 @@ export default function PrivacyPage() {
       <p>
         Dein Profil (Profilbild, Anzeigename, Kurztext, Sportarten und Stadt)
         sehen alle, mit denen du in einer privaten oder öffentlichen Community
-        bist, und in einer Coaching-Community der Coach. Workouts gibt das
+        bist, in einer Coaching-Community der Coach, deine Follower und Personen,
+        die dir folgen möchten, und bei einem öffentlichen Konto alle angemeldeten
+        Nutzer. Workouts gibt das
         Profil nicht frei, dafür gelten die Regeln oben. Das Profilbild liegt
         unter einer zufälligen Adresse, die nur kennt, wer dein Profil sehen
         darf; wer die Adresse hat, kann das Bild auch ohne Anmeldung abrufen.
@@ -170,13 +173,20 @@ export default function PrivacyPage() {
         Training, wird der Chat mit gelöscht.
       </p>
       <p>
-        Freundschaftsanfragen kannst du nur an Personen schicken, mit denen du in
-        einer Community bist. Wir speichern, wer wen angefragt hat und ob die
-        Anfrage angenommen ist. Befreundete sehen einander das Profil, auch ohne
-        gemeinsame Community, und können privat schreiben. Diesen Chat lesen nur
-        die beiden. Endet die Freundschaft, ist der Chat für beide geschlossen.
-        Blockierst du jemanden, speichern wir das; die Person erfährt davon
-        nichts, kann dich aber nicht mehr anfragen oder dir privat schreiben.
+        Dein Konto ist privat, bis du es selbst auf öffentlich stellst. Bei
+        einem privaten Konto braucht jede Person, die dir folgen will, deine
+        Bestätigung; nur bestätigte Follower sehen deine Trainingstage dieser
+        Woche, deine Serie, deine drei stärksten Bestwerte, deine kommenden
+        Trainings in öffentlichen Communities und deine öffentlichen
+        Communities, und nur sie können dir schreiben. Bei einem öffentlichen
+        Konto sehen das alle angemeldeten Nutzer, sie finden dich über die Suche
+        nach Namen und können dir folgen und eine Nachricht als Anfrage
+        schicken. Einzelne Workouts gibt das Profil nie frei. Wir speichern, wer
+        wem folgt oder folgen möchte. Wer sich gegenseitig folgt, schreibt
+        direkt; sonst entscheidest du, ob du eine Nachrichtenanfrage annimmst.
+        Lehnst du ab, wird der Chat gelöscht. Blockierst du jemanden, speichern
+        wir das; die Person erfährt davon nichts, folgt dir nicht mehr und kann
+        dir nicht schreiben.
       </p>
       <p>
         Jede Community außer Coaching-Communities hat einen Chat. Ihn lesen und
@@ -296,7 +306,7 @@ export default function PrivacyPage() {
         kannst du jederzeit löschen. In den Einstellungen kannst du dein Konto löschen:
         Dann werden dein Profil, alle Workouts, alle Vorlagen mit ihren
         Versionen, alle Mitgliedschaften, deine geplanten Trainings, Zusagen,
-        Chat-Nachrichten, Freundschaften, Blockierungen, Mitteilungen, Push-Abos und dein Profilbild sofort
+        Chat-Nachrichten, Follower und Gefolgte, Blockierungen, Mitteilungen, Push-Abos und dein Profilbild sofort
         entfernt. Privatchats mit dir werden dabei für beide Seiten gelöscht. Communities, die
         du allein verwaltest, übernimmt das Mitglied, das am längsten dabei ist;
         Coaching-Communities, die du allein betreust, werden gelöscht.

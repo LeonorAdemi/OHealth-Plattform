@@ -28,6 +28,19 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
     <>
       <h1 className="text-titel font-semibold">Community</h1>
 
+      <p className="mt-4 max-w-2xl border-y">
+        <Link
+          href="/menschen"
+          className="hover:bg-accent -mx-2 flex min-h-14 items-center gap-3 rounded-lg px-2 transition-colors duration-150 ease-out"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Menschen finden</span>
+            <span className="text-muted-foreground block text-sm">Folge anderen und sieh ihre Trainings und Events</span>
+          </span>
+          <ChevronRight size={20} strokeWidth={1.5} className="text-muted-foreground shrink-0" aria-hidden />
+        </Link>
+      </p>
+
       {mine.length > 0 && (
         <section className="mt-8 max-w-2xl" aria-labelledby="treffen">
           <h2 id="treffen" className="text-xl font-semibold">
