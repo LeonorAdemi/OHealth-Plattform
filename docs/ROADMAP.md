@@ -25,25 +25,25 @@ Reihenfolge der Weiterentwicklung von Draft 1. Jeder Schritt ist für sich abges
 
 ## Nächste Phase: Sport-Community (Option C)
 
-Beschlossen am 5. Oktober 2026. Details, Abnahmekriterien und Zeitplan stehen in `docs/strategie/08-umsetzungsplan.md`.
+Beschlossen am 5. Oktober 2026. Reihenfolge und Zeitplan stehen in `docs/strategie/09-strategie-review.md` (Arbeitspakete N0 bis N6), Datenmodell und Abnahmekriterien in `docs/strategie/08-umsetzungsplan.md`. Öffentlicher Start in München am 7. Januar 2027, Pilot-Schwerpunkt Laufen, Bouldern und Volleyball.
 
 | Nr. | Schritt | Warum an dieser Stelle | Stand |
 | --- | --- | --- | --- |
-| 17 | Vorbereitung: Pull Request #8 mergen, Migrationen einspielen, `v0.2.0` | Produktion auf aktuellem Stand | Offen |
-| 18 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Im Pull Request #8 (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
-| 19 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Im Pull Request #8 (Migration log_activity, Test 23): „Aktivität eintragen“ unter /aktivitaet/neu mit Sportart, Dauer, Distanz, Höhenmetern, Gefühl und Notiz; Listen und Detailansicht zeigen Sportart und Dauer; „Workout“ heißt in der Oberfläche „Aktivität“ |
-| 20 | „Warst du dabei?" nach Events | Gemeinsames Training zählt automatisch | Offen |
-| 21 | Bestwerte und Profil je Sportart | Fortschritt auch außerhalb des Krafttrainings | Offen |
-| 22 | Einstieg mit Sportarten, Stadt und Vorschlägen | Keine leere App für Neue | Offen |
-| 23 | Navigation Heute, Entdecken, Gruppen, Chats | Klares Versprechen | Offen |
-| 24 | Melden und Moderation | Vertrauen vor dem öffentlichen Start | Offen |
-| 25 | Öffentliche Event-Seite, wiederkehrende Events, Warteliste | Werkzeug, das WhatsApp ersetzt | Offen |
-| 26 | Kennzahlen und Ende-zu-Ende-Tests (zusammen mit Schritt 5) | Pilot messen und absichern | Offen |
+| 17 | Sportarten-Katalog und Städte (München live, weitere geplant) | Grundlage für alles Weitere | Erledigt in Pull Request #9 (Migration sports_and_cities, Test 22): 33 Sportarten, 8 Städte, bestehende Workouts und Communities zugeordnet |
+| 18 | Aktivität eintragen für jede Sportart, Kraft als Detail-Modus | Jede Sportart gehört dazu | Erledigt in Pull Request #9 (Migration log_activity, Test 23): „Aktivität eintragen“ unter /aktivitaet/neu mit Sportart, Datum, Dauer, Distanz, Höhenmetern, Gefühl und Notiz; „Workout“ heißt in der Oberfläche „Aktivität“ |
+| 19 | N0 Fundament: Migrationen einspielen, `v0.2.0`, Nachtrag zu Schritt 18 | Produktion auf aktuellem Stand, KI sieht jede Sportart, Formular robust bei Netzfehlern | In Arbeit |
+| 20 | N1 Events mit Sportart, Dauer und wöchentlicher Wiederholung | Kern der Organisatorin: kein Lauftreff legt jede Woche ein Event von Hand an | Offen |
+| 21 | N2 Öffentlicher Event-Link, Zusage nach Registrierung, Herkunft messen | Wachstumsmotor: der Link in WhatsApp zeigt eine Vorschau | Offen |
+| 22 | N3 „Warst du dabei?“ nach Events | Gemeinsames Training zählt automatisch | Offen |
+| 23 | N4 Melden, Mitglieder entfernen, Nutzungsbedingungen, Rechtstexte | Vertrauen und Recht vor dem öffentlichen Start | Offen |
+| 24 | N5 Navigation Heute, Entdecken, Gruppen, Chats mit schlankem Einstieg | Klares Versprechen, keine leere App für Neue | Offen |
+| 25 | N6 Kennzahlen und Ende-zu-Ende-Tests (zusammen mit Schritt 5) | Pilot messen und absichern, vor dem Start | Offen |
+| 26 | Nach dem Pilot: Warteliste, Bestwerte je Sportart, Vorschläge, native Hülle | Nur, wenn die Kennzahlen es verlangen (Auslöser in 09) | Zurückgestellt |
 
 Danach folgen die Module Physio und Health. Vor dem ersten davon werden die Regeln für Gesundheitsdaten in `docs/ENGINEERING.md`, Abschnitt 5, ergänzt.
 
 ## Bewusst zurückgestellt
 
 - **Eigene Übungen anlegen.** Die Datenbank erlaubt es bereits, eine Oberfläche gibt es noch nicht. Vorher ist zu klären, was mit einer eigenen Übung passiert, die andere Gruppenmitglieder in ihren Workouts verwendet haben, wenn ihr Ersteller die Gruppe verlässt oder sein Konto löscht.
-- **Datum eines Workouts ändern**, um ein Training nachzutragen.
+- **Datum eines Workouts mit Sätzen ändern**, um ein Training nachzutragen. Bei Aktivitäten ohne Sätze geht das seit Schritt 18.
 - **Widerruf der Apple-Verbindung beim Konto-Löschen**, kommt mit der nativen Hülle.

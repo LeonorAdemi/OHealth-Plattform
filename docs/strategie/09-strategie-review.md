@@ -1,6 +1,6 @@
 # 09 Strategie-Review und neu geschnittene Arbeitspakete
 
-Stand: 5. Oktober 2026. Kritische Prüfung von 01 bis 08 nach dem Merge von Pull Request #9 (AP1 und AP2). Status: **Vorschlag, Freigabe offen.** Bis zur Freigabe gilt 08.
+Stand: 5. Oktober 2026. Kritische Prüfung von 01 bis 08 nach dem Merge von Pull Request #9 (AP1 und AP2). Status: **Freigegeben am 5. Oktober 2026** (Reihenfolge N0 bis N6, Start am 7. Januar 2027, Pilot-Sportarten). Die Reihenfolge und der Zeitplan hier ersetzen die in 08. Inhalte und Abnahmekriterien aus 08 gelten weiter, soweit hier nichts anderes steht.
 
 ## Die Antwort zuerst
 
@@ -172,11 +172,13 @@ Zwischen 21. Dezember und 3. Januar ist keine Entwicklung geplant.
 | Organisatorinnen mit „ja" oder „vielleicht" zur Bezahlung | ≥ 3 von 10 | 1 von 10 |
 | Aktive mit eingeschaltetem Push | ≥ 50 % | 30 % (dann E-Mail-Erinnerung) |
 
-## Entscheidungen für die Nutzerin
+## Entscheidungen
 
-1. **Reihenfolge N0 bis N6** statt AP3 bis AP10 freigeben.
-2. **Öffentlicher Start am 7. Januar 2027**, geschlossener Pilot ab Mitte November.
-3. **Pilot-Schwerpunkt Laufen und Bouldern**, Krafttraining ohne eigene Werbung.
-4. **Tor 1** nach zehn Gesprächen akzeptieren.
+| Nr. | Entscheidung | Datum |
+| --- | --- | --- |
+| E5 | Reihenfolge **N0 bis N6** statt AP3 bis AP10 | 5. Oktober 2026 |
+| E6 | **Öffentlicher Start am 7. Januar 2027**, geschlossener Pilot ab Mitte November | 5. Oktober 2026 |
+| E7 | Pilot-Schwerpunkt **Laufen, Bouldern und Volleyball**. Krafttraining ohne eigene Werbung | 5. Oktober 2026 |
+| E8 | **Tor 1** nach zehn Gesprächen, wie oben beschrieben | 5. Oktober 2026 (Vorschlag übernommen) |
 
-Nach der Freigabe werden `08-umsetzungsplan.md` (Verweis auf 09) und `docs/ROADMAP.md` (Schritte 20 bis 26) angepasst.
+**Warum Volleyball und nicht Padel oder Squash.** Gewünscht war eine Ballsportart. Volleyball passt am besten zum Kern der App: offene Spielrunden mit 8 bis 20 Leuten, die sich jede Woche zur selben Zeit treffen, drinnen im Winter und als Beachvolleyball im Sommer. Das sind genau die wiederkehrenden Events mit Zusage, für die N1 und N2 gebaut werden. Padel und Squash spielen meist zwei bis vier Leute auf einem gebuchten Platz, und die Buchung läuft über die Anlage (bei Padel oft Playtomic). Dort ersetzt OHealth weniger WhatsApp-Aufwand. Beide lassen sich trotzdem eintragen und planen. Squash kommt dafür mit N0 in den Katalog. Melden sich im Pilot Padel-Gruppen mit festen offenen Runden, kommen sie ohne Umbau dazu.
