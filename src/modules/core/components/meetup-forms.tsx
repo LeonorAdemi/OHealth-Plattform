@@ -11,6 +11,7 @@ import type { FormState } from "@/lib/result";
 
 import {
   cancelMeetupSeries,
+  confirmAttendance,
   createMeetup,
   deleteMeetup,
   joinMeetup,
@@ -588,5 +589,48 @@ export function PublicMeetupAuthLinks({ meetupId, next }: { meetupId: string; ne
         </Link>
       </p>
     </div>
+  );
+}
+
+/**
+ * „Warst du dabei?“ mit „Ja, war dabei“ und „Nein“. Beide als Umriss, weil auf „Heute“ der eine
+ * gefüllte Button „Aktivität eintragen“ ist. Nach der Antwort zeigt die Seite den neuen Stand.
+ */
+export function AttendanceQuestion({ meetupId, title }: { meetupId: string; title: string }) {
+  const [state, action, pending] = useActionState(confirmAttendance, initial);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          name="antwort"
+          value="ja"
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          aria-label={`Ja, ich war bei ${title} dabei`}
+        >
+          Ja, war dabei
+        </Button>
+        <Button
+          type="submit"
+          name="antwort"
+          value="nein"
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          aria-label={`Nein, ich war bei ${title} nicht dabei`}
+        >
+          Nein
+        </Button>
+      </div>
+      <ErrorText error={state.error} />
+      {state.message && (
+        <p role="status" className="text-sm">
+          {state.message}
+        </p>
+      )}
+    </form>
   );
 }

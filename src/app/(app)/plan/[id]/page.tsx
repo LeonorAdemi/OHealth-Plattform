@@ -8,6 +8,7 @@ import { requestOrigin } from "@/lib/request-origin";
 import { cn } from "@/lib/utils";
 import { InviteShare } from "@/modules/core/components/invite-share";
 import {
+  AttendanceQuestion,
   DeleteMeetup,
   MeetupToggle,
   RemoveFromCommunity,
@@ -22,10 +23,19 @@ import {
   describeWeekly,
   isMeetupFull,
   meetupDetailRows,
+  meetupEndsAt,
   meetupTimeRange,
   publicEventPath,
+  canAnswerAttendance,
 } from "@/modules/core/logic";
-import { getChatSummaries, getMeetup, getMyCommunities, getPublicMeetup } from "@/modules/core/queries";
+import {
+  getAttendanceNames,
+  getChatSummaries,
+  getMeetup,
+  getMyAttendance,
+  getMyCommunities,
+  getPublicMeetup,
+} from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
 
@@ -46,13 +56,18 @@ export default async function PlanPage({
   const [{ id }, { zugesagt }] = await Promise.all([params, searchParams]);
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const [meetup, communities, chats, publicMeetup] = await Promise.all([
+  const [meetup, communities, chats, publicMeetup, attendance, attendanceNames] = await Promise.all([
     getMeetup(id),
     getMyCommunities(),
     getChatSummaries(),
     getPublicMeetup(id),
+    getMyAttendance(id),
+    getAttendanceNames(id),
   ]);
   if (!meetup) notFound();
+  const now = new Date();
+  const ended = meetupEndsAt(meetup.startsAt, meetup.durationMinutes) <= now;
+  const canAnswer = meetup.isJoined && canAnswerAttendance(meetup.startsAt, meetup.durationMinutes, now);
   // Öffentlicher Link nur für kommende Events in öffentlichen Communities (prüft die Datenbank)
   const publicUrl = publicMeetup ? `${await requestOrigin()}${publicEventPath(id)}` : null;
 
@@ -179,6 +194,56 @@ export default async function PlanPage({
           />
         )}
       </div>
+
+      {meetup.isJoined && ended && (attendance || canAnswer) && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="teilnahme">
+          <h2 id="teilnahme" className="text-xl font-semibold">
+            {attendance?.attended ? "Du warst dabei" : attendance ? "Du warst nicht dabei" : "Warst du dabei?"}
+          </h2>
+          {attendance?.attended ? (
+            <p className="mt-2">
+              Als Trainingstag gezählt.{" "}
+              {attendance.workoutId && (
+                <Link href={`/workouts/${attendance.workoutId}`} className="underline underline-offset-4">
+                  Aktivität ansehen oder ergänzen
+                </Link>
+              )}
+            </p>
+          ) : (
+            <p className="text-muted-foreground mt-1 text-sm">Wer dabei war, bekommt das Training als Trainingstag.</p>
+          )}
+          {canAnswer && !attendance?.attended && (
+            <div className="mt-3">
+              <AttendanceQuestion meetupId={meetup.id} title={meetup.title} />
+            </div>
+          )}
+        </section>
+      )}
+
+      {meetup.isMine && ended && attendanceNames.some((a) => a.attended !== null && !a.isMe) && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="war-dabei">
+          <h2 id="war-dabei" className="text-xl font-semibold">
+            War dabei
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <span className="num">{attendanceNames.filter((a) => a.attended).length}</span> bestätigt
+            {attendanceNames.some((a) => a.attended === null) && (
+              <>
+                , <span className="num">{attendanceNames.filter((a) => a.attended === null).length}</span> ohne Antwort
+              </>
+            )}
+          </p>
+          <ul className="mt-2" aria-label="War dabei">
+            {attendanceNames
+              .filter((a) => a.attended)
+              .map((a) => (
+                <li key={a.userId} className={cn("flex min-h-14 items-center border-b", a.isMe && "text-brand")}>
+                  {a.isMe ? "Du" : a.name}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       {hasCompany && (
         <section className="mt-10 max-w-2xl" aria-labelledby="chat">

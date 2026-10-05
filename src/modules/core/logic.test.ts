@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canAnswerAttendance,
+  meetupEndsAt,
   campaignTag,
   publicEventPath,
   describeMeetupDetails,
@@ -207,6 +209,7 @@ describe("Mitteilungen", () => {
     );
     expect(describeNotification({ ...base, kind: "cancelled" })).toBe("Ben hat „Lauf“ abgesagt");
     expect(describeNotification({ ...base, kind: "changed" })).toBe("Ben hat Zeit oder Treffpunkt von „Lauf“ geändert");
+    expect(describeNotification({ ...base, kind: "attendance" })).toBe("Warst du bei „Lauf“ dabei?");
     expect(describeNotification({ ...base, kind: "reminder" })).toBe("„Lauf“ beginnt in etwa einer Stunde");
   });
 
@@ -515,5 +518,21 @@ describe("Öffentlicher Event-Link und Herkunft", () => {
     expect(campaignTag("x".repeat(41))).toBeNull();
     expect(campaignTag(["a", "b"])).toBeNull();
     expect(campaignTag(undefined)).toBeNull();
+  });
+});
+
+describe("Warst du dabei?", () => {
+  const start = "2026-10-06T16:30:00Z";
+
+  it("rechnet das Ende aus Beginn und Dauer, ohne Dauer eine Stunde", () => {
+    expect(meetupEndsAt(start, 90).toISOString()).toBe("2026-10-06T18:00:00.000Z");
+    expect(meetupEndsAt(start, null).toISOString()).toBe("2026-10-06T17:30:00.000Z");
+  });
+
+  it("fragt erst nach dem Ende und höchstens 14 Tage lang", () => {
+    expect(canAnswerAttendance(start, 60, new Date("2026-10-06T17:00:00Z"))).toBe(false);
+    expect(canAnswerAttendance(start, 60, new Date("2026-10-06T17:30:00Z"))).toBe(true);
+    expect(canAnswerAttendance(start, 60, new Date("2026-10-20T17:00:00Z"))).toBe(true);
+    expect(canAnswerAttendance(start, 60, new Date("2026-10-20T18:00:00Z"))).toBe(false);
   });
 });

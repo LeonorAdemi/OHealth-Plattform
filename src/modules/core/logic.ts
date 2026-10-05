@@ -335,7 +335,8 @@ export type NotificationKind =
   | "new_follower"
   | "follow_accepted"
   | "message_request"
-  | "changed";
+  | "changed"
+  | "attendance";
 
 const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_training",
@@ -350,6 +351,7 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "follow_accepted",
   "message_request",
   "changed",
+  "attendance",
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
@@ -374,6 +376,8 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return `${n.actorName} hat „${n.title}“ abgesagt`;
     case "changed":
       return `${n.actorName} hat Zeit oder Treffpunkt von „${n.title}“ geändert`;
+    case "attendance":
+      return `Warst du bei „${n.title}“ dabei?`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
     case "community_message":
@@ -750,4 +754,19 @@ export function meetupFormValues(m: {
     max: m.maxParticipants ? String(m.maxParticipants) : "",
     note: m.note ?? "",
   };
+}
+
+// ---------- „Warst du dabei?“ ----------
+
+const ATTENDANCE_DAYS = 14;
+
+/** Ende eines Events: Beginn plus Dauer, ohne Dauer eine Stunde (wie private.meetup_ends_at). */
+export function meetupEndsAt(startsAt: string, durationMinutes: number | null): Date {
+  return new Date(Date.parse(startsAt) + (durationMinutes ?? 60) * 60_000);
+}
+
+/** Ob man jetzt bestätigen kann, dabei gewesen zu sein: nach dem Ende, höchstens 14 Tage danach. */
+export function canAnswerAttendance(startsAt: string, durationMinutes: number | null, now: Date): boolean {
+  const ends = meetupEndsAt(startsAt, durationMinutes).getTime();
+  return ends <= now.getTime() && ends >= now.getTime() - ATTENDANCE_DAYS * 24 * 60 * 60_000;
 }

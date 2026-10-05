@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { AttendanceQuestion } from "@/modules/core/components/meetup-forms";
+import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
 import { berlinDateTimeParts, berlinWeek, describeMeetupCount, formatMeetupWhen } from "@/modules/core/logic";
-import { getMeetups } from "@/modules/core/queries";
+import { getMeetups, getOpenAttendance } from "@/modules/core/queries";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
@@ -21,18 +23,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const now = new Date();
   const week = berlinWeek(now, offset);
-  const [trainingDays, recent, planned, done] = await Promise.all([
+  const [trainingDays, recent, planned, done, openAttendance] = await Promise.all([
     getMyTrainingDays(now),
     getRecentWorkouts(5),
     getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
     getMyWorkoutsBetween(week.from, week.to),
+    getOpenAttendance(),
   ]);
   const days = weekGrid(trainingDays, now);
   const count = days.filter(Boolean).length;
 
   const items: Record<string, PlanItem[]> = {};
   const add = (date: string, item: PlanItem) => (items[date] ??= []).push(item);
-  for (const m of planned) {
+  // Ein bestätigtes Training steht als erledigte Aktivität im Plan, nicht noch einmal als geplant.
+  const confirmed = new Set(done.map((w) => w.meetupId).filter(Boolean));
+  for (const m of planned.filter((p) => !confirmed.has(p.id))) {
     const meta = m.isMine
       ? m.shareCount === 0
         ? "Privat"
@@ -74,6 +79,31 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </div>
 
       <ResumeTraining className="mt-8" />
+
+      {openAttendance.length > 0 && (
+        <section className="mt-8 max-w-2xl" aria-labelledby="dabei-frage">
+          <h2 id="dabei-frage" className="text-xl font-semibold">
+            Warst du dabei?
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">Wer dabei war, bekommt das Training als Trainingstag.</p>
+          <ul className="mt-2">
+            {openAttendance.map((a) => (
+              <li key={a.meetupId} className="flex min-h-16 items-start gap-4 border-b py-3">
+                <MeetupDate startsAt={a.startsAt} />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Link href={`/plan/${a.meetupId}`} className="block hover:underline hover:underline-offset-4">
+                    <span className="block font-medium break-words">{a.title}</span>
+                    <span className="text-muted-foreground block text-sm">
+                      {[a.sportName, formatMeetupWhen(a.startsAt)].filter(Boolean).join(" · ")}
+                    </span>
+                  </Link>
+                  <AttendanceQuestion meetupId={a.meetupId} title={a.title} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-8 max-w-2xl">
         <WeekPlan

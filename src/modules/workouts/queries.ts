@@ -93,7 +93,7 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, title, performed_at, duration_minutes, distance_m, sports(name), workout_sets(count)")
+    .select("id, title, performed_at, duration_minutes, distance_m, meetup_id, sports(name), workout_sets(count)")
     .eq("user_id", userId)
     .gte("performed_at", from.toISOString())
     .lt("performed_at", to.toISOString())
@@ -108,6 +108,7 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
     sportName: w.sports?.name ?? "Aktivität",
     durationMinutes: w.duration_minutes,
     distanceM: w.distance_m,
+    meetupId: w.meetup_id,
     setCount: w.workout_sets[0]?.count ?? 0,
   }));
 }

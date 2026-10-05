@@ -97,6 +97,7 @@ select is(
   + (select count(*)::int from public.meetups where created_by = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_series where created_by = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from private.signup_sources where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.meetup_attendance where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a')

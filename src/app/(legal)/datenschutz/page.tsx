@@ -178,6 +178,13 @@ export default function PrivacyPage() {
         kann ein Training von ihrer Pinnwand nehmen.
       </p>
       <p>
+        Nach einem Training fragen wir alle, die zugesagt haben, ob sie dabei
+        waren. Sagst du ja, entsteht daraus eine Aktivität mit Sportart und
+        Dauer des Trainings in deinem Verlauf. Wer das Training geplant hat,
+        sieht, wer bestätigt hat und wer nicht dabei war; andere sehen deine
+        Antwort nicht.
+      </p>
+      <p>
         Ist ein Training in einer öffentlichen Community geteilt, gibt es einen
         Link dazu, den Mitglieder weitergeben können. Über diesen Link sieht
         jede Person, auch ohne Konto, Titel, Zeit, Treffpunkt, Sportart, Dauer,

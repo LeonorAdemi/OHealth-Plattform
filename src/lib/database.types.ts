@@ -411,6 +411,66 @@ export type Database = {
           },
         ]
       }
+      meetup_attendance: {
+        Row: {
+          answered_at: string
+          attended: boolean
+          meetup_id: string
+          user_id: string
+          workout_id: string | null
+        }
+        Insert: {
+          answered_at?: string
+          attended: boolean
+          meetup_id: string
+          user_id: string
+          workout_id?: string | null
+        }
+        Update: {
+          answered_at?: string
+          attended?: boolean
+          meetup_id?: string
+          user_id?: string
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_attendance_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_attendance_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "v_exercise_last_sessions"
+            referencedColumns: ["workout_id"]
+          },
+          {
+            foreignKeyName: "meetup_attendance_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "v_exercise_sessions"
+            referencedColumns: ["workout_id"]
+          },
+          {
+            foreignKeyName: "meetup_attendance_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetup_messages: {
         Row: {
           body: string
@@ -1159,6 +1219,7 @@ export type Database = {
           feeling: number | null
           finished_at: string | null
           id: string
+          meetup_id: string | null
           notes: string | null
           performed_at: string
           source: string
@@ -1176,6 +1237,7 @@ export type Database = {
           feeling?: number | null
           finished_at?: string | null
           id?: string
+          meetup_id?: string | null
           notes?: string | null
           performed_at?: string
           source?: string
@@ -1193,6 +1255,7 @@ export type Database = {
           feeling?: number | null
           finished_at?: string | null
           id?: string
+          meetup_id?: string | null
           notes?: string | null
           performed_at?: string
           source?: string
@@ -1203,6 +1266,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workouts_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workouts_sport_id_fkey"
             columns: ["sport_id"]
@@ -1408,6 +1478,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      confirm_attendance: {
+        Args: { p_attended: boolean; p_meetup_id: string }
+        Returns: string
+      }
       copy_template: {
         Args: { p_new_id: string; p_source_id: string }
         Returns: string
@@ -1460,6 +1534,14 @@ export type Database = {
         Returns: string
       }
       mark_chat_read: { Args: { cid: string }; Returns: undefined }
+      meetup_attendance_names: {
+        Args: { mid: string }
+        Returns: {
+          attended: boolean
+          display_name: string
+          user_id: string
+        }[]
+      }
       meetup_chat: {
         Args: { max_rows?: number; mid: string }
         Returns: {
@@ -1553,6 +1635,16 @@ export type Database = {
           follows_back: boolean
           since: string
           user_id: string
+        }[]
+      }
+      my_open_attendance: {
+        Args: never
+        Returns: {
+          duration_minutes: number
+          meetup_id: string
+          sport_name: string
+          starts_at: string
+          title: string
         }[]
       }
       open_direct_chat: { Args: { other: string }; Returns: string }
