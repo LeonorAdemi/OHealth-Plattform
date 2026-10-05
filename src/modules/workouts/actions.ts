@@ -7,6 +7,8 @@ import { z } from "zod";
 import type { FormState, Result } from "@/lib/result";
 import { createClient } from "@/lib/supabase/server";
 
+import { activityErrorMessage } from "./logic";
+
 const setSchema = z
   .object({
     exercise_id: z.uuid(),
@@ -140,10 +142,7 @@ export async function saveActivity(input: unknown): Promise<Result<{ id: string 
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("log_activity", activityParams(parsed.data));
-  if (error || !data) {
-    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
-    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
-  }
+  if (error || !data) return { ok: false, error: activityErrorMessage(error) };
 
   revalidateWorkoutViews();
   return { ok: true, data: { id: data } };
@@ -158,10 +157,9 @@ export async function updateActivity(input: unknown): Promise<Result<{ id: strin
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_activity", activityParams(parsed.data));
-  if (error || !data) {
-    if (error?.code === "23514") return { ok: false, error: "Diese Angaben passen nicht zur Sportart." };
-    return { ok: false, error: "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut." };
-  }
+  // Ohne Fehler und ohne ID: Die Aktivität gehört jemand anderem oder ist schon gelöscht.
+  if (!error && !data) return { ok: false, error: "Diese Aktivität gibt es nicht mehr." };
+  if (error || !data) return { ok: false, error: activityErrorMessage(error) };
 
   revalidateWorkoutViews(data);
   return { ok: true, data: { id: data } };

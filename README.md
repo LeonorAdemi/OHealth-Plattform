@@ -79,7 +79,7 @@ Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_best
 
 - `docs/DESIGN.md`: verbindliche Gestaltungsregeln
 - `docs/ENGINEERING.md`: verbindliche Regeln für Architektur, Performance, Sicherheit und Tests
-- `docs/UEBERGABE.md`: Gesamtstand zum Weiterarbeiten in einem neuen Chat
+- `docs/strategie/`: Strategie (Option C), Umsetzungsplan und Strategie-Review mit den Arbeitspaketen N0 bis N6
 - `docs/ROADMAP.md`: Reihenfolge und Stand der Weiterentwicklung
 - `docs/LEGAL.md`: Stand der Rechtstexte und was vor echten Nutzern zu klären ist
 - `CLAUDE.md`: Hinweise für KI-Assistenten, die im Repo arbeiten

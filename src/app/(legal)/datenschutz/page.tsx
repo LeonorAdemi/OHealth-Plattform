@@ -246,7 +246,8 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          Die App darf dein Profil mit Namen, deine Aktivitäten mit allen Sätzen,
+          Die App darf dein Profil mit Namen, deine Aktivitäten mit allen Angaben
+          (Sportart, Titel, Dauer, Distanz, Höhenmeter, Anstrengung, Notiz und Sätze),
           deine Trainingstage, deine Bestwerte und deine Vorlagen lesen.
         </li>
         <li>

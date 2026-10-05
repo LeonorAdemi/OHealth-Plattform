@@ -5,7 +5,9 @@ import type { ExerciseMeasure } from "@/lib/domain";
 
 import {
   APP_TIME_ZONE,
+  FEELING_LABEL,
   dayKey,
+  formatActivityDuration,
   formatDistance,
   formatDuration,
   formatNumber,
@@ -87,6 +89,11 @@ export type AgentExerciseInput = {
 export type AgentWorkout = {
   performedAt: string;
   title: string | null;
+  sportName: string;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM: number | null;
+  feeling: number | null;
   sets: (StoredSet & { muscleGroup: string | null })[];
 };
 
@@ -118,14 +125,27 @@ export function firstDayOfWindow(now: Date, weeks: number): string {
   return new Date(monday - (weeks - 1) * 7 * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Workouts mit Sätzen je Übung, neueste zuerst, nur ab dem ersten Tag des Zeitraums. */
+function distanceText(meters: number) {
+  const { value, unit } = formatDistance(meters);
+  return plain(`${value} ${unit}`);
+}
+
+/**
+ * Aktivitäten mit Sportart und Angaben, bei Krafttraining mit Sätzen je Übung, neueste zuerst,
+ * nur ab dem ersten Tag des Zeitraums. Fehlende Angaben werden weggelassen.
+ */
 export function describeWorkouts(workouts: readonly AgentWorkout[], fromDay: string) {
   return workouts
     .filter((w) => dayKey(new Date(w.performedAt)) >= fromDay)
     .sort((a, b) => b.performedAt.localeCompare(a.performedAt))
     .map((w) => ({
       datum: dateFormat.format(new Date(w.performedAt)),
+      sportart: w.sportName,
       titel: w.title,
+      ...(w.durationMinutes ? { dauer: plain(formatActivityDuration(w.durationMinutes)) } : {}),
+      ...(w.distanceM ? { distanz: distanceText(w.distanceM) } : {}),
+      ...(w.elevationM !== null ? { hoehenmeter: w.elevationM } : {}),
+      ...(w.feeling ? { anstrengung: FEELING_LABEL[w.feeling] } : {}),
       uebungen: groupSetsIntoBlocks(w.sets).map((block) => ({
         name: block.exerciseName,
         muskelgruppe: w.sets.find((s) => s.exerciseId === block.exerciseId)?.muscleGroup ?? null,

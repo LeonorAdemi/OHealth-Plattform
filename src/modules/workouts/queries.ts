@@ -352,7 +352,7 @@ export function createAgentDataSource(supabase: AgentClient, userId: string): Ag
         .from("workouts")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId);
-      if (error) throw new Error("Workouts konnten nicht gezählt werden.");
+      if (error) throw new Error("Aktivitäten konnten nicht gezählt werden.");
       return count ?? 0;
     },
 
@@ -360,18 +360,23 @@ export function createAgentDataSource(supabase: AgentClient, userId: string): Ag
       const { data, error } = await supabase
         .from("workouts")
         .select(
-          "performed_at, title, workout_sets(reps, duration_seconds, distance_m, weight_kg, position, exercises(id, name, measure, muscle_group))",
+          "performed_at, title, duration_minutes, distance_m, elevation_m, feeling, sports(name), workout_sets(reps, duration_seconds, distance_m, weight_kg, position, exercises(id, name, measure, muscle_group))",
         )
         .eq("user_id", userId)
         .gte("performed_at", since.toISOString())
         .order("performed_at", { ascending: false })
         .order("position", { referencedTable: "workout_sets" })
         .limit(limit);
-      if (error) throw new Error("Workouts konnten nicht geladen werden.");
+      if (error) throw new Error("Aktivitäten konnten nicht geladen werden.");
 
       return data.map((w) => ({
         performedAt: w.performed_at,
         title: w.title,
+        sportName: w.sports?.name ?? "Aktivität",
+        durationMinutes: w.duration_minutes,
+        distanceM: w.distance_m,
+        elevationM: w.elevation_m,
+        feeling: w.feeling,
         sets: w.workout_sets.flatMap((row) =>
           row.exercises
             ? [

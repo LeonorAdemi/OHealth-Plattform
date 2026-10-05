@@ -2,6 +2,8 @@
 
 Stand: 5. Oktober 2026. Setzt die Empfehlung aus [07](07-empfehlung-und-fahrplan.md) um.
 
+> **Reihenfolge und Zeitplan ersetzt durch [09 Strategie-Review](09-strategie-review.md)** (freigegeben am 5. Oktober 2026): Arbeitspakete N0 bis N6, öffentlicher Start am 7. Januar 2027, Pilot mit Laufen, Bouldern und Volleyball. Datenmodell, Leitplanken und die Inhalte der Arbeitspakete hier gelten weiter, soweit 09 nichts anderes sagt.
+
 ## Beschlossen
 
 | Nr. | Entscheidung | Datum |
