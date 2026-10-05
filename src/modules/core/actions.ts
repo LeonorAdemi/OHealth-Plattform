@@ -156,6 +156,10 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
   redirect(`/community/${data.id}`);
 }
 
+const BANNED = "Du wurdest aus dieser Community entfernt und kannst ihr gerade nicht wieder beitreten.";
+/** Sperre nach dem Entfernen (Trigger check_group_ban) */
+const isBanned = (error: { message: string } | null) => Boolean(error?.message.includes("gerade nicht beitreten"));
+
 /** Tritt einer öffentlichen Community bei. Private Communities gehen nur über den Link. */
 export async function joinPublicCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = z.uuid().safeParse(formData.get("id"));
@@ -167,6 +171,7 @@ export async function joinPublicCommunity(_prev: FormState, formData: FormData):
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
   const { error } = await supabase.from("group_members").insert({ group_id: id.data, user_id: userId });
+  if (isBanned(error)) return { error: BANNED };
   // 23505: schon Mitglied, das ist kein Fehler.
   if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
 
@@ -181,6 +186,7 @@ export async function joinWithCode(_prev: FormState, formData: FormData): Promis
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (isBanned(error)) return { error: BANNED };
   if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
 
   revalidatePath("/community");
@@ -547,6 +553,7 @@ export async function joinPublicMeetup(_prev: FormState, formData: FormData): Pr
     if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
     if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
     if (error.message.includes("Nicht angemeldet")) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+    if (isBanned(error)) return { error: BANNED };
     if (error.code === "42501") return { error: "Zu diesem Training kannst du über den Link nicht zusagen." };
     return { error: MEETUP_FAILED };
   }
@@ -1073,6 +1080,7 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (isBanned(error)) return { error: BANNED };
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
   // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
   await supabase.rpc("record_signup_source", {
