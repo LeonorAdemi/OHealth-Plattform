@@ -13,11 +13,7 @@ import {
   getUnreadNotificationCount,
 } from "@/modules/core/queries";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const [profile, unread, unreadChats, termsVersion] = await Promise.all([
     getProfile(),
     getUnreadNotificationCount(),

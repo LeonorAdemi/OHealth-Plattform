@@ -30,9 +30,7 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value),
-        );
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
@@ -44,15 +42,12 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims);
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => path === p || path.startsWith(`${p}/`),
-  );
+  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
   if (!signedIn && !isPublic) {
     // Das eigentliche Ziel merken, damit z. B. ein Einladungslink die Anmeldung übersteht.
     const wanted = path + request.nextUrl.search;
-    const target =
-      wanted === "/" ? "/login" : `/login?next=${encodeURIComponent(wanted)}`;
+    const target = wanted === "/" ? "/login" : `/login?next=${encodeURIComponent(wanted)}`;
     return redirectKeepingCookies(request, response, target);
   }
   if (signedIn && (path === "/login" || path === "/registrieren")) {
@@ -63,11 +58,7 @@ export async function updateSession(request: NextRequest) {
   return response;
 }
 
-function redirectKeepingCookies(
-  request: NextRequest,
-  from: NextResponse,
-  target: string,
-) {
+function redirectKeepingCookies(request: NextRequest, from: NextResponse, target: string) {
   const redirect = NextResponse.redirect(new URL(target, request.url));
   from.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
   return redirect;

@@ -37,10 +37,7 @@ export default function LegalLayout({
         <Link href="/datenschutz" className="underline underline-offset-4">
           Datenschutz
         </Link>
-        <Link
-          href="/nutzungsbedingungen"
-          className="underline underline-offset-4"
-        >
+        <Link href="/nutzungsbedingungen" className="underline underline-offset-4">
           Nutzungsbedingungen
         </Link>
       </nav>

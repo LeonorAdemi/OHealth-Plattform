@@ -73,38 +73,25 @@ export default async function PlanPage({
         meetup.isMine ? getAttendanceNames(id) : [],
       ])
     : [null, []];
-  const canAnswer =
-    meetup.isJoined &&
-    canAnswerAttendance(meetup.startsAt, meetup.durationMinutes, now);
+  const canAnswer = meetup.isJoined && canAnswerAttendance(meetup.startsAt, meetup.durationMinutes, now);
   // „Ja“ ohne Aktivität (selbst gelöscht) gilt wieder als offen
-  const counted =
-    attendance?.attended === true && attendance.workoutId !== null;
+  const counted = attendance?.attended === true && attendance.workoutId !== null;
   const othersAnswers = attendanceNames.filter((a) => !a.isMe);
   // Öffentlicher Link nur für kommende Events in öffentlichen Communities (prüft die Datenbank)
-  const publicUrl = publicMeetup
-    ? `${await requestOrigin()}${publicEventPath(id)}`
-    : null;
+  const publicUrl = publicMeetup ? `${await requestOrigin()}${publicEventPath(id)}` : null;
 
   const isPast = new Date(meetup.startsAt) <= new Date();
   const full = isMeetupFull(meetup.count, meetup.maxParticipants);
   const sharedIn = communities.filter((c) => meetup.sharedWith.includes(c.id));
-  const managed = meetup.isMine
-    ? []
-    : sharedIn.filter((c) => c.role === "admin" || c.role === "coach");
+  const managed = meetup.isMine ? [] : sharedIn.filter((c) => c.role === "admin" || c.role === "coach");
   const hasCompany = meetup.shareCount > 0 || meetup.count > 1;
   const chat = chats.byMeetup[id];
 
   return (
     <>
-      <MarkMeetupRead
-        meetupId={meetup.id}
-        version={`${meetup.count}-${chat?.preview ?? ""}`}
-      />
+      <MarkMeetupRead meetupId={meetup.id} version={`${meetup.count}-${chat?.preview ?? ""}`} />
       <p className="text-sm">
-        <Link
-          href="/"
-          className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4"
-        >
+        <Link href="/" className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4">
           Heute
         </Link>
       </p>
@@ -114,19 +101,11 @@ export default async function PlanPage({
           <MeetupDate startsAt={meetup.startsAt} />
         </span>
         <div className="min-w-0">
-          <h1 className="text-titel font-semibold break-words">
-            {meetup.title}
-          </h1>
+          <h1 className="text-titel font-semibold break-words">{meetup.title}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {longDate.format(new Date(meetup.startsAt))},{" "}
-            {meetupTimeRange(meetup.startsAt, meetup.durationMinutes)}&nbsp;Uhr
-            · {meetup.isMine ? "von dir" : `von ${meetup.creatorName}`}
+            {longDate.format(new Date(meetup.startsAt))}, {meetupTimeRange(meetup.startsAt, meetup.durationMinutes)}&nbsp;Uhr · {meetup.isMine ? "von dir" : `von ${meetup.creatorName}`}
           </p>
-          {meetup.seriesId && (
-            <p className="text-muted-foreground mt-1 text-sm">
-              {describeWeekly(meetup.startsAt)}
-            </p>
-          )}
+          {meetup.seriesId && <p className="text-muted-foreground mt-1 text-sm">{describeWeekly(meetup.startsAt)}</p>}
         </div>
       </div>
 
@@ -134,18 +113,11 @@ export default async function PlanPage({
         <div role="status" className="mt-6 max-w-2xl border-y py-4">
           <p className="font-medium">Zusage gespeichert.</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            <a
-              href={`/plan/${meetup.id}/kalender`}
-              className="text-foreground underline underline-offset-4"
-            >
+            <a href={`/plan/${meetup.id}/kalender`} className="text-foreground underline underline-offset-4">
               In den Kalender eintragen
             </a>
-            . Für eine Erinnerung vorher: OHealth zum Home-Bildschirm hinzufügen
-            und unter{" "}
-            <Link
-              href="/profil/einstellungen"
-              className="text-foreground underline underline-offset-4"
-            >
+            . Für eine Erinnerung vorher: OHealth zum Home-Bildschirm hinzufügen und unter{" "}
+            <Link href="/profil/einstellungen" className="text-foreground underline underline-offset-4">
               Einstellungen
             </Link>{" "}
             die Mitteilungen einschalten.
@@ -155,92 +127,56 @@ export default async function PlanPage({
 
       <dl className="mt-6 max-w-2xl">
         {meetupDetailRows(meetup).map((row) => (
-          <div
-            key={row.label}
-            className="flex min-h-14 items-center gap-4 border-b py-3"
-          >
-            <dt className="text-muted-foreground w-28 shrink-0 text-sm">
-              {row.label}
-            </dt>
+          <div key={row.label} className="flex min-h-14 items-center gap-4 border-b py-3">
+            <dt className="text-muted-foreground w-28 shrink-0 text-sm">{row.label}</dt>
             <dd className="num min-w-0 break-words">{row.value}</dd>
           </div>
         ))}
         {meetup.place && (
           <div className="flex min-h-14 items-center gap-4 border-b py-3">
-            <dt className="text-muted-foreground w-28 shrink-0 text-sm">
-              Treffpunkt
-            </dt>
+            <dt className="text-muted-foreground w-28 shrink-0 text-sm">Treffpunkt</dt>
             <dd className="min-w-0 break-words">{meetup.place}</dd>
           </div>
         )}
         {meetup.note && (
           <div className="flex min-h-14 items-center gap-4 border-b py-3">
-            <dt className="text-muted-foreground w-28 shrink-0 text-sm">
-              Notiz
-            </dt>
+            <dt className="text-muted-foreground w-28 shrink-0 text-sm">Notiz</dt>
             <dd className="min-w-0 break-words">{meetup.note}</dd>
           </div>
         )}
         <div className="flex min-h-14 items-center gap-4 border-b py-3">
-          <dt className="text-muted-foreground w-28 shrink-0 text-sm">
-            Geteilt
-          </dt>
+          <dt className="text-muted-foreground w-28 shrink-0 text-sm">Geteilt</dt>
           <dd className="min-w-0 break-words">
-            {meetup.shareCount === 0
-              ? "Privat, nur für dich"
-              : sharedIn.map((c) => c.name).join(", ") ||
-                "In einer deiner Communities"}
-            {publicUrl && (
-              <span className="text-muted-foreground block text-sm">
-                Über den Link für alle sichtbar, ohne Namen
-              </span>
-            )}
+            {meetup.shareCount === 0 ? "Privat, nur für dich" : sharedIn.map((c) => c.name).join(", ") || "In einer deiner Communities"}
+            {publicUrl && <span className="text-muted-foreground block text-sm">Über den Link für alle sichtbar, ohne Namen</span>}
           </dd>
         </div>
         {hasCompany && (
           <div className="flex min-h-14 items-center gap-4 border-b py-3">
-            <dt className="text-muted-foreground w-28 shrink-0 text-sm">
-              Zusagen
-            </dt>
-            <dd className="num">
-              {describeMeetupCount(meetup.count, meetup.maxParticipants)}
-            </dd>
+            <dt className="text-muted-foreground w-28 shrink-0 text-sm">Zusagen</dt>
+            <dd className="num">{describeMeetupCount(meetup.count, meetup.maxParticipants)}</dd>
           </div>
         )}
       </dl>
 
       <div className="mt-6 max-w-2xl space-y-3">
         {isPast ? (
-          <p className="text-muted-foreground">
-            Dieses Training liegt in der Vergangenheit.
-          </p>
+          <p className="text-muted-foreground">Dieses Training liegt in der Vergangenheit.</p>
         ) : meetup.isMine ? (
           meetup.templateId && (
             <Button asChild className="w-full md:w-auto">
-              <Link href={`/vorlagen/${meetup.templateId}`}>
-                Training starten
-              </Link>
+              <Link href={`/vorlagen/${meetup.templateId}`}>Training starten</Link>
             </Button>
           )
         ) : meetup.isJoined ? (
           <>
             <p>Du bist dabei.</p>
-            <MeetupToggle
-              meetupId={meetup.id}
-              joined
-              title={meetup.title}
-              primary
-            />
+            <MeetupToggle meetupId={meetup.id} joined title={meetup.title} primary />
           </>
         ) : full ? (
           <p className="text-muted-foreground">Dieses Training ist voll.</p>
         ) : (
-          <MeetupToggle
-            meetupId={meetup.id}
-            joined={false}
-            title={meetup.title}
-            primary
-          />
+          <MeetupToggle meetupId={meetup.id} joined={false} title={meetup.title} primary />
         )}
         {meetup.isMine && !isPast && (
           <Button asChild variant="outline" className="w-full md:w-auto">
@@ -271,26 +207,17 @@ export default async function PlanPage({
       {meetup.isJoined && ended && (attendance || canAnswer) && (
         <section className="mt-10 max-w-2xl" aria-labelledby="teilnahme">
           <h2 id="teilnahme" className="text-xl font-semibold">
-            {counted
-              ? "Du warst dabei"
-              : attendance?.attended === false
-                ? "Du warst nicht dabei"
-                : "Warst du dabei?"}
+            {counted ? "Du warst dabei" : attendance?.attended === false ? "Du warst nicht dabei" : "Warst du dabei?"}
           </h2>
           {counted ? (
             <p className="mt-2">
               Als Trainingstag gezählt.{" "}
-              <Link
-                href={`/workouts/${attendance.workoutId}`}
-                className="underline underline-offset-4"
-              >
+              <Link href={`/workouts/${attendance.workoutId}`} className="underline underline-offset-4">
                 Aktivität ansehen oder ergänzen
               </Link>
             </p>
           ) : (
-            <p className="text-muted-foreground mt-1 text-sm">
-              Wer dabei war, bekommt das Training als Trainingstag.
-            </p>
+            <p className="text-muted-foreground mt-1 text-sm">Wer dabei war, bekommt das Training als Trainingstag.</p>
           )}
           {canAnswer && !counted && (
             <div className="mt-3">
@@ -304,45 +231,30 @@ export default async function PlanPage({
         </section>
       )}
 
-      {meetup.isMine &&
-        ended &&
-        othersAnswers.some((a) => a.attended !== null) && (
-          <section className="mt-10 max-w-2xl" aria-labelledby="war-dabei">
-            <h2 id="war-dabei" className="text-xl font-semibold">
-              War dabei
-            </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              <span className="num">
-                {attendanceNames.filter((a) => a.attended).length}
-              </span>{" "}
-              bestätigt
-              {othersAnswers.some((a) => a.attended === null) && (
-                <>
-                  ,{" "}
-                  <span className="num">
-                    {othersAnswers.filter((a) => a.attended === null).length}
-                  </span>{" "}
-                  ohne Antwort
-                </>
-              )}
-            </p>
-            <ul className="mt-2" aria-label="War dabei">
-              {attendanceNames
-                .filter((a) => a.attended)
-                .map((a) => (
-                  <li
-                    key={a.userId}
-                    className={cn(
-                      "flex min-h-14 items-center border-b",
-                      a.isMe && "text-brand",
-                    )}
-                  >
-                    {a.isMe ? "Du" : a.name}
-                  </li>
-                ))}
-            </ul>
-          </section>
-        )}
+      {meetup.isMine && ended && othersAnswers.some((a) => a.attended !== null) && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="war-dabei">
+          <h2 id="war-dabei" className="text-xl font-semibold">
+            War dabei
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <span className="num">{attendanceNames.filter((a) => a.attended).length}</span> bestätigt
+            {othersAnswers.some((a) => a.attended === null) && (
+              <>
+                , <span className="num">{othersAnswers.filter((a) => a.attended === null).length}</span> ohne Antwort
+              </>
+            )}
+          </p>
+          <ul className="mt-2" aria-label="War dabei">
+            {attendanceNames
+              .filter((a) => a.attended)
+              .map((a) => (
+                <li key={a.userId} className={cn("flex min-h-14 items-center border-b", a.isMe && "text-brand")}>
+                  {a.isMe ? "Du" : a.name}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       {hasCompany && (
         <section className="mt-10 max-w-2xl" aria-labelledby="chat">
@@ -358,13 +270,9 @@ export default async function PlanPage({
               />
             </div>
           ) : meetup.isJoined ? (
-            <p className="text-muted-foreground mt-2">
-              Der Chat startet, sobald jemand zusagt.
-            </p>
+            <p className="text-muted-foreground mt-2">Der Chat startet, sobald jemand zusagt.</p>
           ) : (
-            <p className="text-muted-foreground mt-2">
-              Sag zu, dann kannst du mit den anderen schreiben.
-            </p>
+            <p className="text-muted-foreground mt-2">Sag zu, dann kannst du mit den anderen schreiben.</p>
           )}
         </section>
       )}
@@ -376,20 +284,11 @@ export default async function PlanPage({
           </h2>
           <ul className="mt-2" aria-label="Dabei">
             {meetup.participants.map((p) => (
-              <li
-                key={p.userId}
-                className={cn(
-                  "flex min-h-14 items-center border-b",
-                  p.isMe && "text-brand",
-                )}
-              >
+              <li key={p.userId} className={cn("flex min-h-14 items-center border-b", p.isMe && "text-brand")}>
                 {p.isMe ? (
                   "Du"
                 ) : (
-                  <Link
-                    href={`/person/${p.userId}`}
-                    className="hover:underline hover:underline-offset-4"
-                  >
+                  <Link href={`/person/${p.userId}`} className="hover:underline hover:underline-offset-4">
                     {p.name}
                   </Link>
                 )}
@@ -405,16 +304,11 @@ export default async function PlanPage({
             Teilen mit
           </h2>
           <p className="text-muted-foreground mt-1 mb-2 text-sm">
-            Ohne Häkchen bleibt das Training privat. Wer schon zugesagt hat,
-            bleibt dabei.
+            Ohne Häkchen bleibt das Training privat. Wer schon zugesagt hat, bleibt dabei.
           </p>
           <ShareSettings
             meetupId={meetup.id}
-            communities={communities.map((c) => ({
-              id: c.id,
-              name: c.name,
-              kindLabel: COMMUNITY_KIND_LABEL[c.kind],
-            }))}
+            communities={communities.map((c) => ({ id: c.id, name: c.name, kindLabel: COMMUNITY_KIND_LABEL[c.kind] }))}
             selected={meetup.sharedWith}
           />
         </section>
@@ -422,19 +316,10 @@ export default async function PlanPage({
 
       <section className="mt-12 max-w-2xl space-y-2" aria-label="Verwalten">
         {managed.map((c) => (
-          <RemoveFromCommunity
-            key={c.id}
-            meetupId={meetup.id}
-            groupId={c.id}
-            name={c.name}
-          />
+          <RemoveFromCommunity key={c.id} meetupId={meetup.id} groupId={c.id} name={c.name} />
         ))}
         {meetup.isMine ? (
-          <DeleteMeetup
-            meetupId={meetup.id}
-            shared={hasCompany}
-            inSeries={meetup.seriesId !== null && !isPast}
-          />
+          <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null && !isPast} />
         ) : (
           <ReportForm target="meetup" id={meetup.id} label="Training melden" />
         )}
