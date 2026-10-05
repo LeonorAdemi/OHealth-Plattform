@@ -164,8 +164,8 @@ export function MeetupForm({
   recentSportIds,
   defaultSportId,
   templates,
-  communities,
-  preselected,
+  communities = [],
+  preselected = [],
   defaultDate,
   defaultTime,
   minDate,
@@ -175,8 +175,9 @@ export function MeetupForm({
   recentSportIds: readonly string[];
   defaultSportId: string | null;
   templates: readonly { id: string; name: string }[];
-  communities: readonly CommunityOption[];
-  preselected: readonly string[];
+  /** Nur beim Planen: geteilt wird beim Bearbeiten auf der Seite des Trainings */
+  communities?: readonly CommunityOption[];
+  preselected?: readonly string[];
   defaultDate: string;
   defaultTime: string;
   minDate: string;
@@ -498,9 +499,11 @@ export function DeleteMeetup({ meetupId, shared, inSeries }: { meetupId: string;
         </fieldset>
       )}
       <p>
-        {shared
-          ? "Das Training verschwindet für alle, auch für die, die schon zugesagt haben, samt Chat."
-          : "Das Training verschwindet aus deinem Plan."}
+        {scope === "series"
+          ? "Dieser und alle folgenden Termine verschwinden für alle, samt Chat. Wer zugesagt hat, erfährt es."
+          : shared
+            ? "Das Training verschwindet für alle, auch für die, die schon zugesagt haben, samt Chat."
+            : "Das Training verschwindet aus deinem Plan."}
       </p>
       <ErrorText error={error} />
       <div className="flex gap-3">

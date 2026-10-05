@@ -201,10 +201,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           {managed.map((c) => (
             <RemoveFromCommunity key={c.id} meetupId={meetup.id} groupId={c.id} name={c.name} />
           ))}
-          {meetup.isMine && !isPast && (
-            <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null} />
+          {meetup.isMine && (
+            <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null && !isPast} />
           )}
-          {meetup.isMine && isPast && <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={false} />}
         </section>
       )}
     </>

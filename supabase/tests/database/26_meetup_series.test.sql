@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(40);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
@@ -85,7 +85,17 @@ select is(
 -- ---------- Ben sagt zu, darf aber nicht ändern ----------
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';
 insert into public.meetup_participants (meetup_id, user_id)
-values ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b');
+select id, '00000000-0000-0000-0000-00000000000b' from public.meetups where title = 'Isarlauf';
+
+-- Einschleusen in eine fremde Reihe
+select throws_ok(
+  $$ insert into public.meetups (title, starts_at, sport_id, series_id)
+     select 'Fremd', now() + interval '20 days', 'laufen', series_id from public.meetups
+     where id = '60000000-0000-0000-0000-000000000002' $$,
+  '42501', null, 'Ben: legt keinen Termin in Annas Reihe an');
+select is_empty($$ select 1 from public.meetup_series $$, 'Ben: sieht Annas Reihe nicht');
+select is(
+  public.cancel_meetup_series('60000000-0000-0000-0000-000000000002'), 0, 'Ben: sagt Annas Reihe nicht ab');
 select is(
   public.update_meetup(p_id => '60000000-0000-0000-0000-000000000002', p_scope => 'single', p_title => 'Gekapert',
                        p_starts_at => (select start from t), p_sport_id => 'laufen', p_duration_minutes => 60),
@@ -108,7 +118,39 @@ select is(
    where user_id = '00000000-0000-0000-0000-00000000000b' and kind = 'changed'
      and meetup_id = '60000000-0000-0000-0000-000000000002'),
   1, 'Ben hat zugesagt und erfährt vom neuen Treffpunkt');
+delete from public.notifications where kind = 'changed';
 set local role authenticated;
+
+select lives_ok(
+  $$ select public.update_meetup(p_id => '60000000-0000-0000-0000-000000000002', p_scope => 'single',
+       p_title => 'Isarlauf am Morgen', p_starts_at => (select start from t), p_sport_id => 'laufen',
+       p_duration_minutes => 60, p_place => 'Wittelsbacherbrücke', p_max_participants => 20,
+       p_distance_m => 10000, p_pace_seconds_per_km => 360, p_level => 'einsteiger') $$,
+  'Anna: ändert nur den Titel');
+select is((select count(*)::int from public.notifications where kind = 'changed'), 0,
+  'Eine reine Änderung des Titels meldet sich nicht');
+update public.meetups set title = 'Isarlauf' where id = '60000000-0000-0000-0000-000000000002';
+select throws_ok(
+  $$ select public.update_meetup(p_id => '60000000-0000-0000-0000-000000000002', p_scope => 'single',
+       p_title => 'Isarlauf', p_starts_at => now() - interval '1 hour', p_sport_id => 'laufen',
+       p_duration_minutes => 60) $$,
+  '42501', null, 'Anna: verlegt kein Training in die Vergangenheit');
+select throws_ok(
+  $$ select public.update_meetup(p_id => '60000000-0000-0000-0000-000000000002', p_scope => null,
+       p_title => 'Isarlauf', p_starts_at => (select start from t), p_sport_id => 'laufen',
+       p_duration_minutes => 60) $$,
+  '22023', null, 'Ohne Angabe, was geändert wird, ändert sich nichts');
+select throws_ok(
+  $$ update public.meetup_series set next_starts_at = '-infinity' $$,
+  '42501', null, 'Anna: setzt den nächsten Termin ihrer Reihe nicht auf ein unendliches Datum');
+reset role;
+select throws_ok(
+  $$ update public.meetup_series set next_starts_at = '-infinity' $$,
+  '23514', null, 'Auch ohne Zugriffsregeln: Der nächste Termin einer Reihe ist immer ein echtes Datum');
+set local role authenticated;
+select throws_ok(
+  $$ update public.meetup_series set next_starts_at = now() - interval '10 years' $$,
+  '42501', null, 'Der nächste Termin einer Reihe liegt nicht weit in der Vergangenheit');
 
 select lives_ok(
   $$ select public.update_meetup(
@@ -119,6 +161,11 @@ select lives_ok(
        p_sport_id => 'laufen', p_duration_minutes => 75, p_place => 'Brücke', p_max_participants => 20,
        p_distance_m => 10000, p_pace_seconds_per_km => 360, p_level => 'gemischt') $$,
   'Anna: ändert Uhrzeit und Dauer ab dem dritten Termin für die ganze Reihe');
+reset role;
+select is((select count(*)::int from public.notifications
+           where user_id = '00000000-0000-0000-0000-00000000000b' and kind = 'changed'),
+  1, 'Ben ist bei allen Terminen dabei und bekommt für die geänderte Reihe eine Mitteilung, nicht sechs');
+set local role authenticated;
 select results_eq(
   $$ select to_char(starts_at at time zone 'Europe/Berlin', 'HH24:MI'), duration_minutes
      from public.meetups where title = 'Isarlauf' order by starts_at $$,
@@ -165,11 +212,20 @@ select is(
   (select count(*)::int from public.meetups where title = 'Isarlauf')
   + (select count(*)::int from public.meetup_series where ended_at is null and created_by = '00000000-0000-0000-0000-00000000000a'),
   2, 'Die ersten beiden Termine bleiben, die Reihe ist beendet');
+select is((select count(*)::int from public.notifications
+           where user_id = '00000000-0000-0000-0000-00000000000b' and kind = 'cancelled'),
+  1, 'Ben bekommt für die abgesagte Reihe eine Mitteilung, nicht sechs');
 set local role authenticated;
 
 -- ---------- KI ----------
 set local request.jwt.claims to
   '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated", "client_id": "claude"}';
+select is(
+  public.update_meetup(p_id => '60000000-0000-0000-0000-000000000001', p_scope => 'single', p_title => 'KI',
+                       p_starts_at => (select start from t), p_sport_id => 'laufen', p_duration_minutes => 60),
+  null, 'KI: ändert keine Events');
+select is(public.cancel_meetup_series('60000000-0000-0000-0000-000000000002'), 0, 'KI: sagt keine Reihe ab');
+select is_empty($$ select 1 from public.meetup_series $$, 'KI: sieht keine Reihen');
 select throws_ok(
   $$ select public.plan_meetup(p_id => gen_random_uuid(), p_title => 'KI', p_starts_at => (select start from t),
                                p_sport_id => 'laufen', p_duration_minutes => 60, p_share_ids => '{}',

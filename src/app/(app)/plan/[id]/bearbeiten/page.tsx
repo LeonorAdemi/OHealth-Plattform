@@ -45,8 +45,6 @@ export default async function EditPlanPage({ params }: { params: Promise<{ id: s
           recentSportIds={recentSportIds}
           defaultSportId={meetup.sportId}
           templates={templates.map((t) => ({ id: t.id, name: t.name }))}
-          communities={[]}
-          preselected={[]}
           defaultDate={start.date}
           defaultTime={start.time}
           minDate={today}

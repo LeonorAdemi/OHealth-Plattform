@@ -334,14 +334,17 @@ async function readMeetupForm(formData: FormData) {
   } as const;
 }
 
-/** Fehler der Datenbank beim Planen oder Ändern als Satz für das Formular. */
-function meetupWriteError(error: { code?: string; message?: string }): string {
+/**
+ * Fehler der Datenbank beim Planen oder Ändern als Satz für das Formular. denied: was eine
+ * verweigerte Zugriffsregel (42501) bei dieser Aktion bedeutet.
+ */
+function meetupWriteError(error: { code?: string; message?: string }, denied: string): string {
   const known = meetupErrorMessage(error);
   if (known) return known;
   if (error.message?.includes("Höchstens 60")) {
-    return "Du hast schon 60 geplante Trainings. Warte, bis eins vorbei ist, oder sag eine Reihe ab.";
+    return "Mehr als 60 geplante Trainings gehen nicht. Sag eine Reihe oder ein Training ab.";
   }
-  if (error.code === "42501") return "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?";
+  if (error.code === "42501") return denied;
   return MEETUP_FAILED;
 }
 
@@ -362,7 +365,10 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
     p_share_ids: input.shareWith,
     p_weekly: formData.get("weekly") === "on",
   });
-  if (error || !data) return { error: error ? meetupWriteError(error) : MEETUP_FAILED };
+  if (error || !data) {
+    const denied = "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?";
+    return { error: error ? meetupWriteError(error, denied) : MEETUP_FAILED };
+  }
 
   revalidatePath("/", "layout");
   redirect(`/plan/${data}`);
@@ -384,7 +390,7 @@ export async function updateMeetup(_prev: FormState, formData: FormData): Promis
     p_id: id.data,
     p_scope: scope.data,
   });
-  if (error) return { error: meetupWriteError(error) };
+  if (error) return { error: meetupWriteError(error, "Ändern lässt sich nur ein eigenes, kommendes Training.") };
   if (!data) return { error: "Dieses Training gibt es nicht mehr oder es hat schon begonnen." };
 
   revalidatePath("/", "layout");
@@ -509,7 +515,9 @@ export async function cancelMeetupSeries(_prev: FormState, formData: FormData): 
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("cancel_meetup_series", { p_id: id.data });
-  if (error || !data) return { error: "Die Reihe konnte nicht abgesagt werden." };
+  if (error || !data) {
+    return { error: "Die Reihe konnte nicht abgesagt werden. Lade die Seite neu und versuch es erneut." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/");

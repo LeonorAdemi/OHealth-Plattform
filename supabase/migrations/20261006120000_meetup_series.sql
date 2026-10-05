@@ -18,15 +18,20 @@
 -- - Grenze: höchstens 60 statt 30 kommende Events je Person, weil eine Reihe allein acht belegt.
 -- - meetup_feed liefert series_id. Pinnwand und Übersicht der Communities zeigen je Reihe nur den
 --   nächsten Termin, der eigene Wochenplan und die Seite eines Termins zeigen jeden.
+-- - Ein Event kommt nur in eine eigene Reihe (Regel meetups_insert), der Job zählt und kopiert nur
+--   Termine der Person, der die Reihe gehört. next_starts_at muss endlich sein und darf höchstens
+--   ein Jahr in der Zukunft liegen; der Job springt in einem Schritt auf die nächste Woche.
+-- - Ändert oder sagt jemand eine ganze Reihe ab, bekommt jede Person mit Zusage dafür eine
+--   Mitteilung, nicht eine je Termin.
 -- Alle öffentlichen Funktionen laufen mit den Rechten der Person (security invoker); die Regeln
--- auf meetups und meetup_shares gelten unverändert, eine KI darf nichts davon.
+-- auf meetups und meetup_shares gelten, eine KI darf nichts davon.
 
 -- ---------- Reihen ----------
 
 create table public.meetup_series (
   id             uuid primary key default gen_random_uuid(),
   created_by     uuid not null default auth.uid() references public.profiles (id) on delete cascade,
-  next_starts_at timestamptz not null,
+  next_starts_at timestamptz not null check (isfinite(next_starts_at)),
   ended_at       timestamptz,
   created_at     timestamptz not null default now()
 );
@@ -34,17 +39,23 @@ create table public.meetup_series (
 comment on table public.meetup_series is 'Wöchentliche Reihe von Events. next_starts_at: nächster Termin, den der Job anlegt.';
 
 create index meetup_series_created_by_idx on public.meetup_series (created_by);
-create index meetup_series_active_idx on public.meetup_series (id) where ended_at is null;
 
 alter table public.meetup_series enable row level security;
 
 create policy meetup_series_select on public.meetup_series for select to authenticated
   using (created_by = (select auth.uid()));
+-- Der nächste Termin liegt höchstens ein Jahr voraus, damit der Job nicht ins Leere rechnet.
 create policy meetup_series_insert on public.meetup_series for insert to authenticated
-  with check (created_by = (select auth.uid()) and ended_at is null);
+  with check (
+    created_by = (select auth.uid()) and ended_at is null
+    and next_starts_at > now() and next_starts_at < now() + interval '1 year'
+  );
 create policy meetup_series_update on public.meetup_series for update to authenticated
   using (created_by = (select auth.uid()))
-  with check (created_by = (select auth.uid()));
+  with check (
+    created_by = (select auth.uid())
+    and next_starts_at > now() - interval '1 day' and next_starts_at < now() + interval '1 year'
+  );
 
 create policy agent_meetup_series_none on public.meetup_series
   as restrictive for all to authenticated
@@ -55,6 +66,29 @@ alter table public.meetups
   add column series_id uuid references public.meetup_series (id) on delete set null;
 
 create index meetups_series_idx on public.meetups (series_id, starts_at) where series_id is not null;
+
+-- ---------- Anlegen: nur in eigene Reihen ----------
+
+alter policy meetups_insert on public.meetups
+  with check (
+    created_by = (select auth.uid())
+    and group_id is null
+    and starts_at > now()
+    and (
+      template_id is null
+      or exists (
+        select 1 from public.workout_templates t
+        where t.id = template_id and t.user_id = (select auth.uid())
+      )
+    )
+    and (
+      series_id is null
+      or exists (
+        select 1 from public.meetup_series s
+        where s.id = series_id and s.created_by = (select auth.uid())
+      )
+    )
+  );
 
 -- ---------- Ändern: Regel und Schutz ----------
 
@@ -190,7 +224,7 @@ declare
   m        public.meetups%rowtype;
   new_time time;
 begin
-  if p_scope not in ('single', 'series') then
+  if p_scope is null or p_scope not in ('single', 'series') then
     raise exception 'Unbekannter Umfang' using errcode = '22023';
   end if;
   select * into m from public.meetups where id = p_id and created_by = (select auth.uid());
@@ -209,6 +243,8 @@ begin
   end if;
 
   -- Ganze Reihe ab diesem Termin: Jeder Termin behält seinen Tag, Uhrzeit und Angaben ändern sich.
+  -- Die Reihe wird zuerst gesperrt, damit der Job nicht gleichzeitig Termine mit alten Angaben anlegt.
+  perform 1 from public.meetup_series where id = m.series_id for update;
   if (p_starts_at at time zone 'Europe/Berlin')::date <> (m.starts_at at time zone 'Europe/Berlin')::date then
     raise exception 'Den Tag änderst du nur für einen einzelnen Termin' using errcode = '23514';
   end if;
@@ -280,19 +316,24 @@ declare
   created integer := 0;
 begin
   for s in select * from public.meetup_series where ended_at is null for update skip locked loop
-    select * into last from public.meetups where series_id = s.id order by starts_at desc limit 1;
+    -- Angaben vom letzten eigenen Termin der Reihe
+    select * into last from public.meetups
+    where series_id = s.id and created_by = s.created_by
+    order by starts_at desc limit 1;
     if last.id is null then
       update public.meetup_series set ended_at = now() where id = s.id;
       continue;
     end if;
 
+    -- Liegt der nächste Termin in der Vergangenheit, in einem Schritt auf die nächste Woche springen
     next_at := s.next_starts_at;
-    while next_at <= now() loop
-      next_at := private.weeks_later(next_at, 1);
-    end loop;
+    if next_at <= now() then
+      next_at := private.weeks_later(next_at, ceil(extract(epoch from now() - next_at) / 604800)::integer + 1);
+    end if;
 
     loop
-      exit when (select count(*) from public.meetups where series_id = s.id and starts_at > now()) >= 8;
+      exit when (select count(*) from public.meetups
+                 where series_id = s.id and created_by = s.created_by and starts_at > now()) >= 8;
       begin
         mid := gen_random_uuid();
         insert into public.meetups (id, created_by, title, starts_at, place, max_participants, note, template_id,
@@ -301,16 +342,22 @@ begin
         values (mid, s.created_by, last.title, next_at, last.place, last.max_participants, last.note,
                 last.template_id, last.sport_id, last.duration_minutes, last.distance_m, last.elevation_m,
                 last.pace_seconds_per_km, last.speed_kmh, last.level, s.id);
-        -- Nur Communities, in denen die Person noch Mitglied ist
+        -- Geteilt mit allen Communities, in denen die Reihe zuletzt stand und die Person noch Mitglied ist
         insert into public.meetup_shares (meetup_id, group_id)
-        select mid, sh.group_id from public.meetup_shares sh
-        where sh.meetup_id = last.id
+        select distinct mid, sh.group_id
+        from public.meetup_shares sh
+        join public.meetups x on x.id = sh.meetup_id
+        where x.series_id = s.id and x.created_by = s.created_by and x.starts_at > now() - interval '14 days'
           and exists (select 1 from public.group_members gm
                       where gm.group_id = sh.group_id and gm.user_id = s.created_by);
-      exception when others then
-        -- Etwa die Grenze von 60 Events erreicht: Dieser Termin bleibt offen und kommt beim nächsten
-        -- Lauf dran, andere Reihen laufen weiter.
-        exit;
+      exception
+        when raise_exception then
+          -- Etwa die Grenze von 60 Events: Dieser Termin bleibt offen und kommt beim nächsten Lauf dran.
+          raise warning 'Reihe % nicht fortgeschrieben: %', s.id, sqlerrm;
+          exit;
+        when others then
+          raise warning 'Reihe % unerwartet nicht fortgeschrieben: % (%)', s.id, sqlerrm, sqlstate;
+          exit;
       end;
       next_at := private.weeks_later(next_at, 1);
       created := created + 1;
@@ -383,7 +430,13 @@ begin
   select mp.user_id, 'changed', new.id, new.created_by, private.display_name_of(new.created_by), left(new.title, 120)
   from public.meetup_participants mp
   where mp.meetup_id = new.id and mp.user_id <> new.created_by
-    and private.wants_notification(mp.user_id, 'cancelled');
+    and private.wants_notification(mp.user_id, 'cancelled')
+    -- Eine Änderung der ganzen Reihe meldet sich einmal je Person (now() ist der Zeitpunkt der Transaktion)
+    and not (new.series_id is not null and exists (
+      select 1 from public.notifications n
+      join public.meetups x on x.id = n.meetup_id
+      where n.user_id = mp.user_id and n.kind = 'changed' and n.created_at = now()
+        and x.series_id = new.series_id));
   return new;
 end;
 $$;
@@ -462,3 +515,25 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke execute on function public.meetup_feed(text, uuid, uuid, timestamptz, timestamptz, integer) from public, anon;
 grant execute on function public.meetup_feed(text, uuid, uuid, timestamptz, timestamptz, integer) to authenticated;
+
+-- ---------- Absagen einer Reihe: eine Mitteilung je Person ----------
+
+create or replace function private.notify_cancelled()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if old.starts_at < now() then
+    return old;
+  end if;
+  insert into public.notifications (user_id, kind, actor_id, actor_name, title)
+  select mp.user_id, 'cancelled', old.created_by, private.display_name_of(old.created_by), left(old.title, 120)
+  from public.meetup_participants mp
+  where mp.meetup_id = old.id and mp.user_id <> old.created_by
+    and private.wants_notification(mp.user_id, 'cancelled')
+    -- Mehrere Termine derselben Reihe in einem Zug abgesagt: nur eine Mitteilung
+    and not (old.series_id is not null and exists (
+      select 1 from public.notifications n
+      where n.user_id = mp.user_id and n.kind = 'cancelled' and n.created_at = now()
+        and n.actor_id = old.created_by and n.title = left(old.title, 120)));
+  return old;
+end;
+$$;
