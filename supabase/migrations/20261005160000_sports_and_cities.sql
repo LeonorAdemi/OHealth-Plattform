@@ -9,9 +9,16 @@
 --   und Herkunft. Die Tabelle behält ihren Namen, damit ein Rollback des Codes weiter funktioniert.
 -- - groups und profiles bekommen Bezüge auf Katalog und Stadt. Die freien Textfelder bleiben zur
 --   Anzeige; ein Trigger ordnet sie dem Katalog zu, wenn der Text eindeutig passt.
--- - Bestehende Workouts werden zugeordnet: Workouts, die nur aus einer Ausdauer-Übung mit
---   passender Sportart bestehen (z. B. „Laufen“), bekommen diese Sportart, alle anderen
---   „Krafttraining“. Die Regel steht in private.infer_activity_sport und ist dadurch testbar.
+-- - Bestehende Workouts werden zugeordnet (private.legacy_activity_values, im Test 22 geprüft):
+--   Sportart: besteht ein Workout nur aus einer einzigen Ausdauer-Übung, deren Name eindeutig zu
+--   einer Sportart passt (z. B. „Laufen“), diese Sportart, sonst „Krafttraining“.
+--   Dauer: aus Start und Ende, wenn plausibel (bis 6 Stunden); bei Ausdauer sonst aus der Summe der
+--   Satzdauern; sonst leer. Lieber leer als ein erfundener Wert.
+--   Distanz: nur bei Sportarten mit Distanz und nur bis 1000 km; bei Krafttraining bleibt sie in den
+--   Sätzen.
+-- - sport_id hat vorerst den Standard „krafttraining“, damit alter Code (log_workout,
+--   update_workout) nach einem Rollback weiterläuft. Der Standard entfällt in einer späteren
+--   Migration, sobald kein Rollback auf den Stand vor AP2 mehr nötig ist.
 
 -- ---------- Sportarten ----------
 
@@ -101,6 +108,9 @@ alter table public.sports enable row level security;
 alter table public.cities enable row level security;
 create policy sports_select on public.sports for select to authenticated using (true);
 create policy cities_select on public.cities for select to authenticated using (true);
+-- Zusätzlich zu RLS: Schreibrechte gar nicht erst vergeben (RLS sperrt etwa TRUNCATE nicht).
+revoke insert, update, delete, truncate on public.sports, public.cities from anon, authenticated;
+-- Katalog und Städte enthalten keine Nutzerdaten; auch KI-Tokens dürfen sie lesen.
 
 -- ---------- Aktivität (Tabelle workouts) ----------
 
@@ -115,7 +125,8 @@ alter table public.workouts
 comment on column public.workouts.sport_id is 'Sportart der Aktivität. Jede Aktivität zählt als Trainingstag.';
 comment on column public.workouts.feeling is 'Wie anstrengend, 1 (locker) bis 5 (am Limit). Optional.';
 
-create index workouts_user_sport_idx on public.workouts (user_id, sport_id, performed_at desc);
+-- Für den Fremdschlüssel auf den Katalog. Ein Index für Auswertungen je Sportart kommt mit der
+-- Abfrage, die ihn braucht (AP4).
 create index workouts_sport_idx on public.workouts (sport_id);
 
 -- ---------- Bezüge an Communities und Profilen ----------
@@ -131,45 +142,66 @@ create index profiles_city_idx on public.profiles (city_id) where city_id is not
 
 -- ---------- Zuordnung von Text zu Katalog ----------
 
--- Sportart zu einem freien Text: Name oder Suchbegriff, ohne Groß- und Kleinschreibung. Sonst null.
+-- Sportart zu einem freien Text: Name oder Suchbegriff, ohne Groß- und Kleinschreibung. Nur bei
+-- genau einem Treffer, sonst null. Katalog und Städte sind lesbar, daher ohne erhöhte Rechte.
 create function private.sport_for_text(t text)
-returns text language sql stable security definer set search_path = '' as $$
-  select s.id from public.sports s
-  where lower(btrim(t)) = lower(s.name)
-     or lower(btrim(t)) = any (select lower(a) from unnest(s.aliases) a)
-  order by s.position
-  limit 1;
+returns text language sql stable set search_path = '' as $$
+  select min(s.id) from public.sports s
+  where nullif(btrim(t), '') is not null
+    and (lower(btrim(t)) = lower(s.name) or lower(btrim(t)) = any (select lower(a) from unnest(s.aliases) a))
+  having count(*) = 1;
 $$;
 
 create function private.city_for_text(t text)
-returns text language sql stable security definer set search_path = '' as $$
-  select c.id from public.cities c
-  where lower(btrim(t)) = lower(c.name)
-     or lower(btrim(t)) = any (select lower(a) from unnest(c.aliases) a)
-  limit 1;
+returns text language sql stable set search_path = '' as $$
+  select min(c.id) from public.cities c
+  where nullif(btrim(t), '') is not null
+    and (lower(btrim(t)) = lower(c.name) or lower(btrim(t)) = any (select lower(a) from unnest(c.aliases) a))
+  having count(*) = 1;
 $$;
 
--- Sportart eines bestehenden Workouts: Besteht es nur aus einer Ausdauer-Übung, deren Name zu
--- einer Sportart passt (z. B. „Laufen“), diese Sportart; sonst Krafttraining.
-create function private.infer_activity_sport(wid uuid)
-returns text language sql stable security definer set search_path = '' as $$
-  select coalesce(
-    (select private.sport_for_text(min(e.name))
-     from public.workout_sets s
-     join public.exercises e on e.id = s.exercise_id
-     where s.workout_id = wid
-     having count(distinct s.exercise_id) = 1 and bool_and(e.category = 'cardio')),
-    'krafttraining');
+-- Werte für ein bestehendes Workout (nur für die Zuordnung unten und den Test, ohne Grant).
+create function private.legacy_activity_values(wid uuid)
+returns table (sport_id text, duration_minutes integer, distance_m numeric)
+language sql stable set search_path = '' as $$
+  with w as (
+    select * from public.workouts where id = wid
+  ), agg as (
+    select count(distinct s.exercise_id) as exercises,
+           bool_and(e.category = 'cardio') as all_cardio,
+           min(e.name) as name,
+           sum(s.duration_seconds) as seconds,
+           sum(s.distance_m) as meters
+    from public.workout_sets s
+    join public.exercises e on e.id = s.exercise_id
+    where s.workout_id = wid
+  ), sport as (
+    select coalesce(
+      (select private.sport_for_text(agg.name) from agg where agg.exercises = 1 and agg.all_cardio),
+      'krafttraining') as id
+  )
+  select sport.id,
+         coalesce(
+           (select round(extract(epoch from (w.finished_at - w.started_at)) / 60)::int from w
+            where w.finished_at > w.started_at and w.finished_at - w.started_at <= interval '6 hours'
+              and w.finished_at - w.started_at >= interval '1 minute'),
+           (select least(round(agg.seconds / 60.0), 1440)::int from agg
+            where sport.id <> 'krafttraining' and agg.seconds >= 60)),
+         (select agg.meters from agg, public.sports sp
+          where sp.id = sport.id and sp.has_distance and agg.meters > 0 and agg.meters <= 1000000)
+  from sport;
 $$;
 
 revoke execute on function private.sport_for_text(text), private.city_for_text(text),
-  private.infer_activity_sport(uuid) from public, anon;
+  private.legacy_activity_values(uuid) from public, anon, authenticated;
+-- Die Trigger unten laufen mit den Rechten der Person und brauchen die beiden Zuordnungen.
 grant execute on function private.sport_for_text(text), private.city_for_text(text) to authenticated;
 
 -- Der Bezug folgt dem freien Text (Communities: Sportart und Stadt; Profile: Stadt), außer die App
--- setzt ihn im selben Schritt ausdrücklich selbst.
+-- setzt ihn im selben Schritt ausdrücklich selbst. Vorerst führt der Text; sobald die Oberfläche
+-- den Katalog direkt nutzt (AP5), führt der Bezug und diese Trigger entfallen.
 create function private.link_group_catalog()
-returns trigger language plpgsql security definer set search_path = '' as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'INSERT' then
     new.sport_id := coalesce(new.sport_id, private.sport_for_text(new.sport));
@@ -190,7 +222,7 @@ create trigger link_group_catalog before insert or update of sport, city on publ
   for each row execute function private.link_group_catalog();
 
 create function private.link_profile_city()
-returns trigger language plpgsql security definer set search_path = '' as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'INSERT' then
     new.city_id := coalesce(new.city_id, private.city_for_text(new.city));
@@ -208,20 +240,15 @@ revoke execute on function private.link_group_catalog(), private.link_profile_ci
 from public, anon, authenticated;
 
 -- ---------- Bestehende Daten zuordnen ----------
+-- Ein einziger Durchlauf, der nur Zeilen schreibt, bei denen sich etwas ändert.
 
 update public.workouts w
-set sport_id = private.infer_activity_sport(w.id),
-    duration_minutes = coalesce(
-      case when w.started_at is not null and w.finished_at > w.started_at
-           then least(greatest(round(extract(epoch from (w.finished_at - w.started_at)) / 60), 1), 1440)::int end,
-      (select least(greatest(round(sum(s.duration_seconds) / 60.0), 1), 1440)::int
-       from public.workout_sets s where s.workout_id = w.id and s.duration_seconds is not null)),
-    distance_m = (select nullif(sum(s.distance_m), 0) from public.workout_sets s where s.workout_id = w.id);
+set sport_id = v.sport_id, duration_minutes = v.duration_minutes, distance_m = v.distance_m
+from public.workouts src
+cross join lateral private.legacy_activity_values(src.id) v
+where w.id = src.id
+  and (v.sport_id <> 'krafttraining' or v.duration_minutes is not null or v.distance_m is not null);
 
--- Distanz gehört nur zu Sportarten mit Distanz; bei Krafttraining bleibt sie in den Sätzen.
-update public.workouts w set distance_m = null
-from public.sports sp where sp.id = w.sport_id and not sp.has_distance and w.distance_m is not null;
-
-update public.groups set sport_id = private.sport_for_text(sport) where sport is not null and sport_id is null;
-update public.groups set city_id = private.city_for_text(city) where city is not null and city_id is null;
+update public.groups set sport_id = private.sport_for_text(sport), city_id = private.city_for_text(city)
+where sport is not null or city is not null;
 update public.profiles set city_id = private.city_for_text(city) where city is not null;

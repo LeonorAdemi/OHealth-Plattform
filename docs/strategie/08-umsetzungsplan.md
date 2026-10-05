@@ -75,12 +75,12 @@ Anfangs ist nur München `live`. Weitere Städte (Berlin, Hamburg, Wien, Zürich
 | | `distance_m`, `elevation_m` | Für Ausdauer und Outdoor |
 | | `feeling` (1–5) | Wie anstrengend, optional |
 | | `meetup_id` | Aktivität aus einem Event („Warst du dabei?"), höchstens einmal je Person und Event |
-| | `source` | `manuell`, `event`, später `import` |
+| | `source` | `manual`, `event`, später `import` |
 | `meetups` (Event) | `sport_id`, `duration_minutes` | Sportart und geplante Dauer. Daraus folgen Ende und Frage nach dem Event |
 | | `series_id` | Wiederkehrendes Event |
 | `meetup_participants` | `status` (`dabei`, `warteliste`) | Warteliste bei voller Teilnehmerzahl |
 | `groups` (Community) | `sport_id`, `city_id` | Statt freiem Text, für Entdecken und Filter. Der Text bleibt zur Anzeige erhalten |
-| `profiles` | `city_id`, `sport_ids` | Für Einstieg und Vorschläge. Die freien Felder bleiben erhalten |
+| `profiles` | `city_id` (AP1), Sportarten aus dem Katalog (AP5) | Für Einstieg und Vorschläge. Die freien Felder bleiben erhalten |
 | `profiles` | `onboarded_at` | Ob der Einstieg abgeschlossen ist |
 
 ### Was gleich bleibt
@@ -103,10 +103,10 @@ Größe: S = ein Arbeitstag, M = zwei bis drei Tage, L = vier bis fünf Tage (An
 
 - Migration `sports_and_cities`: Tabellen `sports` und `cities` samt erster Auswahl. Neue Spalten an `workouts`, `groups`, `profiles`.
 - Bestehende Daten zuordnen:
-  - Workouts nur mit Ausdauer-Übungen bekommen die passende Sportart („Laufen" → `laufen`), alle anderen `krafttraining`. Die Dauer kommt aus Start und Ende oder aus der Summe der Satzdauern.
+  - Workouts aus genau einer Ausdauer-Übung mit eindeutig passender Sportart bekommen diese Sportart („Laufen" → `laufen`), alle anderen `krafttraining`. Die Dauer kommt aus Start und Ende (bis 6 Stunden) oder bei Ausdauer aus der Summe der Satzdauern, sonst bleibt sie leer. Distanz nur bei Sportarten mit Distanz und bis 1000 km.
   - Communities mit Freitext „Laufen" oder Stadt „München" werden dem Katalog zugeordnet, wo es eindeutig ist.
 - RLS: Katalog und Städte für alle Angemeldeten lesbar, nicht schreibbar.
-- Doku: `DESIGN.md` (Sportarten-Icons, Begriff „Aktivität"), `ENGINEERING.md` (Städte als Daten).
+- Doku: `ENGINEERING.md` (Sportarten und Städte als Daten). `DESIGN.md` (Begriff „Aktivität", Auswahl der Sportart) folgt mit der Oberfläche in AP2.
 - **Fertig, wenn:** Datenbanktest belegt, dass jedes alte Workout eine Sportart hat und keine Sätze verloren gehen. Katalog und Städte sind lesbar, aber nicht änderbar.
 
 ### AP2 Aktivität eintragen, jede Sportart (L)

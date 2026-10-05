@@ -137,7 +137,7 @@ export async function getMyCommunity(id: string) {
   return mine.find((c) => c.id === id) ?? null;
 }
 
-// ---------- Sportarten und Städte ----------
+// ---------- Sportarten ----------
 
 /** Katalog der Sportarten, in fester Reihenfolge. Je Anfrage nur einmal geladen. */
 export const getSports = cache(async () => {
@@ -160,16 +160,6 @@ export const getSports = cache(async () => {
 });
 
 export type Sport = Awaited<ReturnType<typeof getSports>>[number];
-
-/** Städte: live zuerst, dann geplante, jeweils nach Name. */
-export const getCities = cache(async () => {
-  const { supabase } = await requireUser();
-  const { data, error } = await supabase.from("cities").select("id, name, country, status").order("name").limit(200);
-  if (error) throw new Error("Städte konnten nicht geladen werden.");
-  return data
-    .map((c) => ({ id: c.id, name: c.name, country: c.country, isLive: c.status === "live" }))
-    .sort((a, b) => Number(b.isLive) - Number(a.isLive) || a.name.localeCompare(b.name, "de"));
-});
 
 // ---------- Chats ----------
 
