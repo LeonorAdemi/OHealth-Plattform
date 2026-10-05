@@ -183,6 +183,12 @@ Der Chat eines Trainings oder einer Community folgt bewusst dem Muster bekannter
 - Uhrzeit klein in der Blase, bei eigenen Nachrichten mit Uhr (wird gesendet) oder Häkchen (gesendet).
 - Tagestrenner („Heute“, „Gestern“, „Do, 1. Okt.“) als kleine Fläche in Nebel, mittig.
 - Eingabe unten fest, rundes Feld und runder Senden-Button in Eisen. Am Rechner sendet Enter.
+- Ein Tipp auf eine Nachricht zeigt darunter die möglichen Aktionen als Textlinks: „Nachricht löschen“ (eigene, oder als Verwaltung) und „Melden“ (fremde). „Melden“ klappt die Arten als Umriss-Buttons auf, ein Tipp sendet.
+- Ausgeblendete Nachrichten bleiben als Blase stehen, kursiv und gedämpft: „Ausgeblendet nach Meldungen“.
+
+### Melden
+
+Melden steht immer unten auf der Seite als gedämpfter Textlink („Training melden“, „Name melden“, „Community melden“) und klappt auf: Art als `ChoiceChip`, ein freiwilliger Satz, „Meldung senden“ als Umriss-Button. Nach dem Senden bleibt nur die Bestätigung stehen. Entfernen eines Mitglieds fragt einmal nach („Wirklich entfernen“, „Abbrechen“).
 
 ## 10. Sprache
 

@@ -40,6 +40,18 @@ export async function getProfile() {
   return data;
 }
 
+/** Fassung der Nutzungsbedingungen, der ich zugestimmt habe, oder null. */
+export const getAcceptedTermsVersion = cache(async () => {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("terms_acceptances")
+    .select("version")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error("Die Zustimmung konnte nicht geladen werden.");
+  return data?.version ?? null;
+});
+
 /**
  * Profil einer anderen Person. Sichtbar nur mit gemeinsamer Freundesgruppe, Community oder
  * Coaching-Beziehung (Regel profiles_select), sonst null.
@@ -57,7 +69,10 @@ export async function getPersonProfile(personId: string) {
 }
 
 /** Profil für einen KI-Zugriff über MCP. Der Client trägt das Token der KI. */
-export async function getProfileForAgent(supabase: AgentClient, userId: string) {
+export async function getProfileForAgent(
+  supabase: AgentClient,
+  userId: string,
+) {
   const { data, error } = await supabase
     .from("profiles")
     .select("display_name, created_at")
@@ -65,7 +80,9 @@ export async function getProfileForAgent(supabase: AgentClient, userId: string) 
     .maybeSingle();
 
   if (error) throw new Error("Profil konnte nicht geladen werden.");
-  return data ? { displayName: data.display_name, memberSince: data.created_at } : null;
+  return data
+    ? { displayName: data.display_name, memberSince: data.created_at }
+    : null;
 }
 
 /**
@@ -141,7 +158,11 @@ export const getMyCommunities = cache(async () => {
 /** Sportart einer Community aus dem Katalog, zum Vorbelegen beim Planen. null ohne Zuordnung. */
 export async function getCommunitySportId(groupId: string) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.from("groups").select("sport_id").eq("id", groupId).maybeSingle();
+  const { data, error } = await supabase
+    .from("groups")
+    .select("sport_id")
+    .eq("id", groupId)
+    .maybeSingle();
   if (error) throw new Error("Die Community konnte nicht geladen werden.");
   return data?.sport_id ?? null;
 }
@@ -159,7 +180,9 @@ export const getSports = cache(async () => {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("sports")
-    .select("id, name, category, has_distance, has_elevation, has_sets, pace_unit, aliases")
+    .select(
+      "id, name, category, has_distance, has_elevation, has_sets, pace_unit, aliases",
+    )
     .order("position")
     .limit(200);
   if (error) throw new Error("Sportarten konnten nicht geladen werden.");
@@ -195,11 +218,19 @@ export async function getMyChats(limit = 50) {
     groupId: c.group_id,
     otherUserId: c.other_user_id,
     otherAvatarUrl: c.other_avatar_url,
-    request: c.request_state === "incoming" || c.request_state === "outgoing" ? c.request_state : null,
+    request:
+      c.request_state === "incoming" || c.request_state === "outgoing"
+        ? c.request_state
+        : null,
     title: c.title,
     startsAt: c.starts_at,
     last: c.last_at
-      ? { body: c.last_body, name: c.last_display_name, isMe: c.last_user_id === userId, at: c.last_at }
+      ? {
+          body: c.last_body,
+          name: c.last_display_name,
+          isMe: c.last_user_id === userId,
+          at: c.last_at,
+        }
       : null,
     unread: c.unread,
   }));
@@ -217,7 +248,9 @@ export const getChatSummaries = cache(async () => {
     const summary = {
       id: c.id,
       unread: c.unread,
-      preview: c.last ? `${c.last.isMe ? "Du" : c.last.name}: ${c.last.body}` : null,
+      preview: c.last
+        ? `${c.last.isMe ? "Du" : c.last.name}: ${c.last.body}`
+        : null,
     };
     if (c.meetupId) byMeetup[c.meetupId] = summary;
     if (c.groupId) byGroup[c.groupId] = summary;
@@ -225,7 +258,11 @@ export const getChatSummaries = cache(async () => {
   return { byMeetup, byGroup };
 });
 
-export type ChatSummary = { id: string; unread: number; preview: string | null };
+export type ChatSummary = {
+  id: string;
+  unread: number;
+  preview: string | null;
+};
 
 /** Zahl der Chats mit ungelesenen Nachrichten (für den Tab). */
 export async function getUnreadChatCount() {
@@ -240,12 +277,15 @@ export async function getChat(chatId: string) {
   const [chat, messages] = await Promise.all([
     supabase
       .from("chats")
-      .select("id, kind, meetup_id, group_id, user_low, user_high, requested_by, accepted_at")
+      .select(
+        "id, kind, meetup_id, group_id, user_low, user_high, requested_by, accepted_at",
+      )
       .eq("id", chatId)
       .maybeSingle(),
     supabase.rpc("chat_messages_page", { cid: chatId }),
   ]);
-  if (chat.error || messages.error) throw new Error("Der Chat konnte nicht geladen werden.");
+  if (chat.error || messages.error)
+    throw new Error("Der Chat konnte nicht geladen werden.");
   if (!chat.data) return null;
   return {
     id: chat.data.id,
@@ -253,7 +293,8 @@ export async function getChat(chatId: string) {
     meetupId: chat.data.meetup_id,
     groupId: chat.data.group_id,
     // Im Privatchat die andere Person
-    otherUserId: chat.data.user_low === userId ? chat.data.user_high : chat.data.user_low,
+    otherUserId:
+      chat.data.user_low === userId ? chat.data.user_high : chat.data.user_low,
     // Nachrichtenanfrage: an mich (incoming) oder von mir, noch nicht angenommen (outgoing)
     request:
       chat.data.kind === "direct" && !chat.data.accepted_at
@@ -265,7 +306,9 @@ export async function getChat(chatId: string) {
       id: m.id,
       userId: m.user_id,
       name: m.display_name,
-      body: m.body,
+      // Nach drei Meldungen ausgeblendet: ohne Text (chat_messages_page)
+      body: m.body ?? "",
+      hidden: m.hidden,
       createdAt: m.created_at,
       isMe: m.user_id === userId,
     })),
@@ -318,15 +361,26 @@ export async function getFollowState(personId: string): Promise<FollowState> {
     supabase
       .from("follows")
       .select("follower_id, status")
-      .or(`and(follower_id.eq.${userId},followee_id.eq.${personId}),and(follower_id.eq.${personId},followee_id.eq.${userId})`)
+      .or(
+        `and(follower_id.eq.${userId},followee_id.eq.${personId}),and(follower_id.eq.${personId},followee_id.eq.${userId})`,
+      )
       .limit(2),
-    supabase.from("blocks").select("blocked_id").eq("blocked_id", personId).maybeSingle(),
+    supabase
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocked_id", personId)
+      .maybeSingle(),
   ]);
-  if (follows.error || block.error) throw new Error("Folgen konnte nicht geladen werden.");
+  if (follows.error || block.error)
+    throw new Error("Folgen konnte nicht geladen werden.");
   const mine = follows.data.find((f) => f.follower_id === userId);
   const theirs = follows.data.find((f) => f.follower_id === personId);
   return {
-    following: mine ? (mine.status === "accepted" ? "accepted" : "pending") : "none",
+    following: mine
+      ? mine.status === "accepted"
+        ? "accepted"
+        : "pending"
+      : "none",
     followsMe: theirs?.status === "accepted",
     requestedMe: theirs?.status === "pending",
     blocked: Boolean(block.data),
@@ -339,7 +393,13 @@ const profileStatsSchema = z.object({
   can_see: z.boolean(),
   days: z.array(z.string()).optional(),
   bests: z
-    .array(z.object({ exercise: z.string(), e1rm: z.number(), max_weight: z.number().nullable() }))
+    .array(
+      z.object({
+        exercise: z.string(),
+        e1rm: z.number(),
+        max_weight: z.number().nullable(),
+      }),
+    )
     .optional(),
   events: z
     .array(
@@ -354,14 +414,23 @@ const profileStatsSchema = z.object({
     )
     .optional(),
   communities: z
-    .array(z.object({ id: z.string(), name: z.string(), invite_code: z.string(), is_member: z.boolean() }))
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        invite_code: z.string(),
+        is_member: z.boolean(),
+      }),
+    )
     .optional(),
 });
 
 /** Kacheln eines Profils. Ohne Recht auf die Inhalte nur Follower- und Folgt-Zahl. */
 export async function getProfileStats(personId: string) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("profile_stats", { target: personId });
+  const { data, error } = await supabase.rpc("profile_stats", {
+    target: personId,
+  });
   if (error) throw new Error("Das Profil konnte nicht geladen werden.");
   const parsed = profileStatsSchema.safeParse(data);
   if (!parsed.success) return null;
@@ -371,13 +440,21 @@ export async function getProfileStats(personId: string) {
     following: p.following,
     canSee: p.can_see,
     days: p.days ?? [],
-    bests: (p.bests ?? []).map((b) => ({ exercise: b.exercise, e1rm: b.e1rm, maxWeight: b.max_weight })),
+    bests: (p.bests ?? []).map((b) => ({
+      exercise: b.exercise,
+      e1rm: b.e1rm,
+      maxWeight: b.max_weight,
+    })),
     events: (p.events ?? []).map((e) => ({
       id: e.id,
       title: e.title,
       startsAt: e.starts_at,
       place: e.place,
-      href: e.visible ? `/plan/${e.id}` : e.invite_code ? `/beitreten/${e.invite_code}` : null,
+      href: e.visible
+        ? `/plan/${e.id}`
+        : e.invite_code
+          ? `/beitreten/${e.invite_code}`
+          : null,
     })),
     communities: (p.communities ?? []).map((c) => ({
       id: c.id,
@@ -390,7 +467,10 @@ export async function getProfileStats(personId: string) {
 /** Menschen finden: mit Suchbegriff nach Namen, sonst Vorschläge aus den eigenen Communities. */
 export async function searchPeople(search: string, limit = 20) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("people_search", { search: search || undefined, max_rows: limit });
+  const { data, error } = await supabase.rpc("people_search", {
+    search: search || undefined,
+    max_rows: limit,
+  });
   if (error) throw new Error("Die Suche hat nicht geklappt.");
   return data.map((p) => ({
     userId: p.user_id,
@@ -399,7 +479,12 @@ export async function searchPeople(search: string, limit = 20) {
     isPrivate: p.is_private,
     city: p.city,
     sports: p.sports,
-    following: p.follow_status === "accepted" ? ("accepted" as const) : p.follow_status === "pending" ? ("pending" as const) : ("none" as const),
+    following:
+      p.follow_status === "accepted"
+        ? ("accepted" as const)
+        : p.follow_status === "pending"
+          ? ("pending" as const)
+          : ("none" as const),
     followsMe: p.follows_me,
   }));
 }
@@ -407,7 +492,10 @@ export async function searchPeople(search: string, limit = 20) {
 /** Öffentliche Communities, passend zur Suche. Ohne Suchbegriff die größten zuerst. */
 export async function searchCommunities(search: string, limit = 20) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("community_search", { search, max_rows: limit });
+  const { data, error } = await supabase.rpc("community_search", {
+    search,
+    max_rows: limit,
+  });
 
   if (error) throw new Error("Die Suche hat nicht geklappt.");
   return data.map((row) => ({
@@ -427,7 +515,9 @@ export async function searchCommunities(search: string, limit = 20) {
  */
 export async function getCommunityPreview(code: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("community_link_preview", { code });
+  const { data, error } = await supabase.rpc("community_link_preview", {
+    code,
+  });
 
   if (error) throw new Error("Die Einladung konnte nicht geladen werden.");
   const row = data[0];
@@ -451,7 +541,9 @@ export async function getCommunityPreview(code: string) {
  */
 export async function getPublicMeetup(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("public_meetup_preview", { mid: id });
+  const { data, error } = await supabase.rpc("public_meetup_preview", {
+    mid: id,
+  });
   if (error) throw new Error("Das Training konnte nicht geladen werden.");
   const row = data[0];
   if (!row) return null;
@@ -507,7 +599,9 @@ export async function getMyAttendance(meetupId: string) {
 /** Wer dabei war, nur für die planende Person (meetup_attendance_names); sonst leer. */
 export async function getAttendanceNames(meetupId: string) {
   const { supabase, userId } = await requireUser();
-  const { data, error } = await supabase.rpc("meetup_attendance_names", { mid: meetupId });
+  const { data, error } = await supabase.rpc("meetup_attendance_names", {
+    mid: meetupId,
+  });
   if (error) throw new Error("Die Teilnahme konnte nicht geladen werden.");
   return data.map((row) => ({
     userId: row.user_id,
@@ -581,7 +675,12 @@ export type Meetup = ReturnType<typeof toMeetup>;
  */
 export async function getMeetups(
   scope: Exclude<FeedScope, "single">,
-  { groupId, from, to, limit = 50 }: { groupId?: string; from: Date; to?: Date; limit?: number },
+  {
+    groupId,
+    from,
+    to,
+    limit = 50,
+  }: { groupId?: string; from: Date; to?: Date; limit?: number },
 ) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("meetup_feed", {
@@ -613,18 +712,31 @@ export async function getMeetup(meetupId: string) {
 
   const [people, shares, chatRow] = await Promise.all([
     supabase.rpc("meetup_participant_names", { mid: meetupId }),
-    supabase.from("meetup_shares").select("group_id").eq("meetup_id", meetupId).limit(100),
+    supabase
+      .from("meetup_shares")
+      .select("group_id")
+      .eq("meetup_id", meetupId)
+      .limit(100),
     // Den Chat gibt es, sobald jemand außer der planenden Person zusagt; sehen nur, wer dabei ist (RLS).
     meetup.isJoined
-      ? supabase.from("chats").select("id").eq("meetup_id", meetupId).maybeSingle()
+      ? supabase
+          .from("chats")
+          .select("id")
+          .eq("meetup_id", meetupId)
+          .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
-  if (people.error || shares.error || chatRow.error) throw new Error("Das Training konnte nicht geladen werden.");
+  if (people.error || shares.error || chatRow.error)
+    throw new Error("Das Training konnte nicht geladen werden.");
   const chatId = chatRow.data?.id ?? null;
 
   return {
     ...meetup,
-    participants: people.data.map((p) => ({ userId: p.user_id, name: p.display_name, isMe: p.user_id === userId })),
+    participants: people.data.map((p) => ({
+      userId: p.user_id,
+      name: p.display_name,
+      isMe: p.user_id === userId,
+    })),
     sharedWith: shares.data.map((s) => s.group_id),
     chatId,
   };
@@ -637,7 +749,9 @@ export async function getNotifications(limit = 50) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notifications")
-    .select("id, kind, meetup_id, group_id, actor_id, actor_name, title, count, created_at, read_at")
+    .select(
+      "id, kind, meetup_id, group_id, actor_id, actor_name, title, count, created_at, read_at",
+    )
     // Chat-Nachrichten zählt der Tab „Chats“; als Mitteilung dienen sie nur noch dem Push.
     .not("kind", "in", `(${CHAT_NOTIFICATION_KINDS.join(",")})`)
     .order("created_at", { ascending: false })
@@ -686,7 +800,9 @@ export async function getNotificationPrefs() {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("notification_prefs")
-    .select("new_training_private, new_training_public, joined, message, cancelled, reminder, community_message, friends, direct_message")
+    .select(
+      "new_training_private, new_training_public, joined, message, cancelled, reminder, community_message, friends, direct_message",
+    )
     .maybeSingle();
   if (error) throw new Error("Einstellungen konnten nicht geladen werden.");
   if (!data) return NOTIFICATION_DEFAULTS;
@@ -717,7 +833,9 @@ const pushPayloadSchema = z.object({
   latest: z.string().nullable(),
   vapid_public_key: z.string().nullable(),
   vapid_private_key: z.string().nullable(),
-  subscriptions: z.array(z.object({ endpoint: z.string(), p256dh: z.string(), auth: z.string() })),
+  subscriptions: z.array(
+    z.object({ endpoint: z.string(), p256dh: z.string(), auth: z.string() }),
+  ),
 });
 
 /**
@@ -725,7 +843,10 @@ const pushPayloadSchema = z.object({
  * null, wenn es nichts (mehr) zu senden gibt.
  */
 export async function getPushPayload(notificationId: string, secret: string) {
-  const { data, error } = await createAnonClient().rpc("push_payload", { nid: notificationId, secret });
+  const { data, error } = await createAnonClient().rpc("push_payload", {
+    nid: notificationId,
+    secret,
+  });
   if (error?.code === "42501") return "denied" as const;
   if (error) throw new Error("Push-Inhalt konnte nicht geladen werden.");
   if (!data) return null;
@@ -741,7 +862,10 @@ export async function getPushPayload(notificationId: string, secret: string) {
     chatId: p.chat_id ?? null,
     actorId: p.actor_id ?? null,
     latest: p.latest,
-    vapid: p.vapid_public_key && p.vapid_private_key ? { publicKey: p.vapid_public_key, privateKey: p.vapid_private_key } : null,
+    vapid:
+      p.vapid_public_key && p.vapid_private_key
+        ? { publicKey: p.vapid_public_key, privateKey: p.vapid_private_key }
+        : null,
     subscriptions: p.subscriptions,
   };
 }
@@ -757,11 +881,13 @@ export async function forgetPushSubscription(endpoint: string, secret: string) {
  */
 export async function getAgentAuthorization(authorizationId: string) {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+  const { data, error } =
+    await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
   if (error || !data) return null;
 
   // Bereits bestätigt: direkt zurück zur KI-App.
-  if ("redirect_url" in data) return { kind: "redirect" as const, url: data.redirect_url };
+  if ("redirect_url" in data)
+    return { kind: "redirect" as const, url: data.redirect_url };
 
   return {
     kind: "consent" as const,

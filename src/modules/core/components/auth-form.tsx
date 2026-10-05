@@ -11,6 +11,7 @@ import type { FormState } from "@/lib/result";
 import { signIn, signUp } from "../actions";
 import { withNext } from "../logic";
 import { SocialLogin } from "./social-login";
+import { TermsCheckbox } from "./terms-consent";
 
 const initial: FormState = {};
 
@@ -25,7 +26,10 @@ export function AuthForm({
   initialError?: string;
 }) {
   const isRegister = mode === "register";
-  const [state, action, pending] = useActionState(isRegister ? signUp : signIn, initial);
+  const [state, action, pending] = useActionState(
+    isRegister ? signUp : signIn,
+    initial,
+  );
   const error = state.error ?? (state.message ? undefined : initialError);
 
   return (
@@ -50,7 +54,13 @@ export function AuthForm({
 
         <div className="space-y-2">
           <Label htmlFor="email">E-Mail</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+          />
         </div>
 
         <div className="space-y-2">
@@ -75,6 +85,8 @@ export function AuthForm({
           )}
         </div>
 
+        {isRegister && <TermsCheckbox />}
+
         {error && (
           <p role="alert" className="text-destructive text-sm">
             {error}
@@ -93,7 +105,10 @@ export function AuthForm({
         {isRegister && (
           <p className="text-muted-foreground text-sm">
             Wie wir mit deinen Daten umgehen, steht in der{" "}
-            <Link href="/datenschutz" className="text-foreground underline underline-offset-4">
+            <Link
+              href="/datenschutz"
+              className="text-foreground underline underline-offset-4"
+            >
               Datenschutzerklärung
             </Link>
             .

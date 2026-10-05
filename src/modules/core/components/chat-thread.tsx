@@ -2,19 +2,34 @@
 
 import { ArrowUp, Check, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useLayoutEffect, useOptimistic, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useOptimistic,
+  useRef,
+  useState,
+} from "react";
 
 import type { FormState } from "@/lib/result";
 import { cn } from "@/lib/utils";
 
-import { deleteChatMessage, sendChatMessage } from "../actions";
-import { chatTime, layoutChat } from "../logic";
+import { deleteChatMessage, report, sendChatMessage } from "../actions";
+import {
+  chatTime,
+  layoutChat,
+  REPORT_CATEGORIES,
+  REPORT_CATEGORY_LABEL,
+  type ReportCategory,
+} from "../logic";
 
 export type ChatMessage = {
   id: string;
   userId: string;
   name: string;
   body: string;
+  /** Nach Meldungen ausgeblendet, ohne Text */
+  hidden?: boolean;
   createdAt: string;
   isMe: boolean;
 };
@@ -27,6 +42,7 @@ const initial: FormState = {};
  * Chat im Messenger-Stil: eigene Nachrichten rechts in Eisen, andere links in Nebel, Tagestrenner,
  * Folgen derselben Person zusammengefasst. Gesendete Nachrichten erscheinen sofort (mit Uhr, bis
  * der Server sie bestätigt). Neue Nachrichten holt die Seite alle vier Sekunden, solange sie sichtbar ist.
+ * Ein Tipp auf eine Nachricht zeigt Löschen (eigene, oder als Verwaltung) und Melden (fremde).
  */
 export function ChatThread({
   chatId,
@@ -46,8 +62,9 @@ export function ChatThread({
   canModerate?: boolean;
 }) {
   const router = useRouter();
-  const [optimistic, addOptimistic] = useOptimistic<Shown[], Shown>([...messages], (state, m) =>
-    state.some((x) => x.id === m.id) ? state : [...state, m],
+  const [optimistic, addOptimistic] = useOptimistic<Shown[], Shown>(
+    [...messages],
+    (state, m) => (state.some((x) => x.id === m.id) ? state : [...state, m]),
   );
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -67,7 +84,9 @@ export function ChatThread({
   // Merken, ob man unten ist; nur dann bei neuen Nachrichten mitscrollen
   useEffect(() => {
     const onScroll = () => {
-      nearBottom.current = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
+      nearBottom.current =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 160;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -98,7 +117,15 @@ export function ChatThread({
     setError(null);
     nearBottom.current = true;
     startTransition(async () => {
-      addOptimistic({ id, userId: myUserId, name: "", body, createdAt: new Date().toISOString(), isMe: true, pending: true });
+      addOptimistic({
+        id,
+        userId: myUserId,
+        name: "",
+        body,
+        createdAt: new Date().toISOString(),
+        isMe: true,
+        pending: true,
+      });
       const result = await sendChatMessage(initial, formData);
       if (result.error) {
         setError(result.error);
@@ -110,7 +137,11 @@ export function ChatThread({
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     // Am Rechner sendet Enter, Umschalt+Enter macht eine neue Zeile. Am Handy macht Enter eine neue Zeile.
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
       if (!window.matchMedia("(pointer: coarse)").matches) {
         event.preventDefault();
         send();
@@ -124,11 +155,15 @@ export function ChatThread({
     <div className="flex flex-1 flex-col">
       <div className="flex-1 pb-4" aria-live="polite">
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-12 text-center text-sm">{emptyHint}</p>
+          <p className="text-muted-foreground py-12 text-center text-sm">
+            {emptyHint}
+          </p>
         ) : (
           <ol aria-label="Nachrichten" className="space-y-0.5">
             {rows.map(({ message: m, dayLabel, firstInGroup, lastInGroup }) => {
               const deletable = m.isMe || canModerate;
+              const reportable = !m.isMe && !m.hidden;
+              const actionable = deletable || reportable;
               return (
                 <li key={m.id} className={cn(firstInGroup && "pt-2")}>
                   {dayLabel && (
@@ -138,45 +173,86 @@ export function ChatThread({
                       </span>
                     </p>
                   )}
-                  <div className={cn("flex", m.isMe ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "flex",
+                      m.isMe ? "justify-end" : "justify-start",
+                    )}
+                  >
                     <div className="max-w-[80%] md:max-w-[65%]">
                       <button
                         type="button"
-                        disabled={!deletable || m.pending}
-                        onClick={() => setSelected(selected === m.id ? null : m.id)}
-                        aria-expanded={deletable ? selected === m.id : undefined}
+                        disabled={!actionable || m.pending}
+                        onClick={() =>
+                          setSelected(selected === m.id ? null : m.id)
+                        }
+                        aria-expanded={
+                          actionable ? selected === m.id : undefined
+                        }
                         className={cn(
                           "block w-full rounded-2xl px-3 py-2 text-left disabled:cursor-default",
-                          m.isMe ? "bg-foreground text-primary-foreground" : "bg-muted text-foreground",
-                          lastInGroup && (m.isMe ? "rounded-br-md" : "rounded-bl-md"),
+                          m.isMe
+                            ? "bg-foreground text-primary-foreground"
+                            : "bg-muted text-foreground",
+                          lastInGroup &&
+                            (m.isMe ? "rounded-br-md" : "rounded-bl-md"),
                         )}
                       >
                         {!m.isMe && firstInGroup && (
-                          <span className="mb-0.5 block text-xs font-semibold">{m.name}</span>
+                          <span className="mb-0.5 block text-xs font-semibold">
+                            {m.name}
+                          </span>
                         )}
-                        <span className="break-words whitespace-pre-line">{m.body}</span>
+                        {m.hidden ? (
+                          <span className="italic opacity-70">
+                            Ausgeblendet nach Meldungen
+                          </span>
+                        ) : (
+                          <span className="break-words whitespace-pre-line">
+                            {m.body}
+                          </span>
+                        )}
                         <span
                           className={cn(
                             "num float-right mt-1.5 ml-3 inline-flex items-center gap-1 text-[11px] leading-none",
-                            m.isMe ? "text-primary-foreground/70" : "text-muted-foreground",
+                            m.isMe
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground",
                           )}
                         >
                           {chatTime(m.createdAt)}
                           {m.isMe &&
                             (m.pending ? (
-                              <Clock size={12} strokeWidth={1.5} aria-label="wird gesendet" />
+                              <Clock
+                                size={12}
+                                strokeWidth={1.5}
+                                aria-label="wird gesendet"
+                              />
                             ) : (
-                              <Check size={12} strokeWidth={1.5} aria-label="gesendet" />
+                              <Check
+                                size={12}
+                                strokeWidth={1.5}
+                                aria-label="gesendet"
+                              />
                             ))}
                         </span>
                       </button>
-                      {deletable && selected === m.id && !m.pending && (
-                        <DeleteMessage
-                          id={m.id}
-                          chatId={chatId}
-                          align={m.isMe ? "end" : "start"}
-                          onDone={() => setSelected(null)}
-                        />
+                      {selected === m.id && !m.pending && (
+                        <div
+                          className={cn(
+                            "flex flex-wrap gap-x-4",
+                            m.isMe ? "justify-end" : "justify-start",
+                          )}
+                        >
+                          {deletable && (
+                            <DeleteMessage
+                              id={m.id}
+                              chatId={chatId}
+                              onDone={() => setSelected(null)}
+                            />
+                          )}
+                          {reportable && <ReportMessage id={m.id} />}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -235,17 +311,15 @@ export function ChatThread({
 function DeleteMessage({
   id,
   chatId,
-  align,
   onDone,
 }: {
   id: string;
   chatId: string;
-  align: "start" | "end";
   onDone: () => void;
 }) {
   const [pending, setPending] = useState(false);
   return (
-    <p className={cn("flex", align === "end" ? "justify-end" : "justify-start")}>
+    <p>
       <button
         type="button"
         disabled={pending}
@@ -264,5 +338,72 @@ function DeleteMessage({
         Nachricht löschen
       </button>
     </p>
+  );
+}
+
+/** Melden mit einem Tipp auf die Art. Nach drei Meldungen verschiedener Personen ist die Nachricht ausgeblendet. */
+function ReportMessage({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<FormState | null>(null);
+
+  if (result?.message) {
+    return (
+      <p
+        role="status"
+        className="text-muted-foreground inline-flex min-h-11 items-center text-sm"
+      >
+        Gemeldet. Danke.
+      </p>
+    );
+  }
+  if (!open) {
+    return (
+      <p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        >
+          Melden
+        </button>
+      </p>
+    );
+  }
+
+  function send(category: ReportCategory) {
+    setPending(true);
+    const formData = new FormData();
+    formData.set("target", "message");
+    formData.set("id", id);
+    formData.set("category", category);
+    startTransition(async () => {
+      setResult(await report(initial, formData));
+      setPending(false);
+    });
+  }
+
+  return (
+    <div className="w-full py-1" role="group" aria-label="Nachricht melden als">
+      <p className="text-muted-foreground text-sm">Melden als</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        {REPORT_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            disabled={pending}
+            onClick={() => send(c)}
+            className="border-input hover:bg-accent focus-visible:outline-ring inline-flex min-h-11 items-center rounded-lg border px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-9"
+          >
+            {REPORT_CATEGORY_LABEL[c]}
+          </button>
+        ))}
+      </div>
+      {result?.error && (
+        <p role="alert" className="text-destructive mt-1 text-sm">
+          {result.error}
+        </p>
+      )}
+    </div>
   );
 }

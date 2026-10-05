@@ -13,9 +13,13 @@ import {
   joinPublicCommunity,
   joinWithCode,
   leaveCommunity,
-  reportCommunity,
 } from "../actions";
-import { COMMUNITY_KIND_HINT, SPORT_SUGGESTIONS, type CommunityKind } from "../logic";
+import { ReportForm } from "./report-form";
+import {
+  COMMUNITY_KIND_HINT,
+  SPORT_SUGGESTIONS,
+  type CommunityKind,
+} from "../logic";
 
 const initial: FormState = {};
 
@@ -53,7 +57,9 @@ export function CreateCommunityForm() {
       />
       <span>
         <span className="block">{label}</span>
-        <span className="text-muted-foreground block text-sm">{COMMUNITY_KIND_HINT[value]}</span>
+        <span className="text-muted-foreground block text-sm">
+          {COMMUNITY_KIND_HINT[value]}
+        </span>
       </span>
     </label>
   );
@@ -62,7 +68,13 @@ export function CreateCommunityForm() {
     <form action={action} className="max-w-xl space-y-6">
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" maxLength={60} placeholder="Lauftreff Isar" required />
+        <Input
+          id="name"
+          name="name"
+          maxLength={60}
+          placeholder="Lauftreff Isar"
+          required
+        />
       </div>
 
       <fieldset className="space-y-1">
@@ -80,7 +92,13 @@ export function CreateCommunityForm() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="sport">Sportart (optional)</Label>
-          <Input id="sport" name="sport" maxLength={40} list="sport-suggestions" placeholder="Laufen" />
+          <Input
+            id="sport"
+            name="sport"
+            maxLength={40}
+            list="sport-suggestions"
+            placeholder="Laufen"
+          />
           <datalist id="sport-suggestions">
             {SPORT_SUGGESTIONS.map((sport) => (
               <option key={sport} value={sport} />
@@ -98,7 +116,12 @@ export function CreateCommunityForm() {
 
       <div className="space-y-2">
         <Label htmlFor="description">Beschreibung (optional)</Label>
-        <Input id="description" name="description" maxLength={200} placeholder="Samstags locker an der Isar" />
+        <Input
+          id="description"
+          name="description"
+          maxLength={200}
+          placeholder="Samstags locker an der Isar"
+        />
       </div>
 
       <Feedback state={state} />
@@ -117,7 +140,13 @@ export function JoinWithCodeForm() {
     <form action={action} className="max-w-sm space-y-2">
       <Label htmlFor="code">Einladungscode</Label>
       <div className="flex gap-3">
-        <Input id="code" name="code" autoComplete="off" autoCapitalize="none" required />
+        <Input
+          id="code"
+          name="code"
+          autoComplete="off"
+          autoCapitalize="none"
+          required
+        />
         <Button type="submit" variant="outline" disabled={pending}>
           Beitreten
         </Button>
@@ -134,7 +163,13 @@ export function JoinPublicButton({ id, name }: { id: string; name: string }) {
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" variant="outline" size="sm" disabled={pending} aria-label={`${name} beitreten`}>
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        aria-label={`${name} beitreten`}
+      >
         Beitreten
       </Button>
       <Feedback state={state} />
@@ -179,13 +214,23 @@ export function AcceptCommunityInvite({
 }
 
 // Verlassen in zwei Schritten: erst nachfragen, dann verlassen.
-export function LeaveCommunity({ id, managesAlone }: { id: string; managesAlone: boolean }) {
+export function LeaveCommunity({
+  id,
+  managesAlone,
+}: {
+  id: string;
+  managesAlone: boolean;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [state, action, pending] = useActionState(leaveCommunity, initial);
 
   if (!confirming) {
     return (
-      <Button variant="ghost" className="-ml-4" onClick={() => setConfirming(true)}>
+      <Button
+        variant="ghost"
+        className="-ml-4"
+        onClick={() => setConfirming(true)}
+      >
         Community verlassen
       </Button>
     );
@@ -204,7 +249,12 @@ export function LeaveCommunity({ id, managesAlone }: { id: string; managesAlone:
         <Button type="submit" variant="destructive" disabled={pending}>
           Verlassen
         </Button>
-        <Button type="button" variant="outline" disabled={pending} onClick={() => setConfirming(false)}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={pending}
+          onClick={() => setConfirming(false)}
+        >
           Abbrechen
         </Button>
       </div>
@@ -212,32 +262,7 @@ export function LeaveCommunity({ id, managesAlone }: { id: string; managesAlone:
   );
 }
 
-/** Community melden, zum Beispiel wegen eines unpassenden Namens. */
+/** Meldet eine Community, zum Beispiel wegen eines unpassenden Namens. Der Betreiber prüft. */
 export function ReportCommunity({ id }: { id: string }) {
-  const [state, action, pending] = useActionState(reportCommunity, initial);
-
-  if (state.message) {
-    return (
-      <p role="status" className="text-sm">
-        {state.message}
-      </p>
-    );
-  }
-
-  return (
-    <details>
-      <summary className="text-muted-foreground min-h-11 cursor-pointer py-2 text-sm underline underline-offset-4">
-        Community melden
-      </summary>
-      <form action={action} className="mt-2 max-w-xl space-y-2">
-        <input type="hidden" name="id" value={id} />
-        <Label htmlFor="reason">Was passt nicht?</Label>
-        <Input id="reason" name="reason" maxLength={500} required />
-        <Feedback state={state} />
-        <Button type="submit" variant="outline" disabled={pending}>
-          Meldung senden
-        </Button>
-      </form>
-    </details>
-  );
+  return <ReportForm target="community" id={id} label="Community melden" />;
 }

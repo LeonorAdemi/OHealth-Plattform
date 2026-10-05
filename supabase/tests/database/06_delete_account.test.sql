@@ -60,6 +60,10 @@ insert into private.signup_sources (user_id, source) values ('00000000-0000-0000
 -- Anna hat geantwortet, ob sie dabei war (als Betreiber, ohne Zeitprüfung).
 insert into public.meetup_attendance (meetup_id, user_id, attended) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', false);
+-- Anna hat den Nutzungsbedingungen zugestimmt und wurde aus der Crew einmal entfernt.
+insert into public.terms_acceptances (user_id, version) values ('00000000-0000-0000-0000-00000000000a', '2026-10-06');
+insert into public.group_bans (group_id, user_id, until)
+values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', now() - interval '1 day');
 -- Anna hat eine wöchentliche Reihe.
 insert into public.meetup_series (id, created_by, next_starts_at) values
   ('70000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', now() + interval '8 weeks');
@@ -101,6 +105,8 @@ select is(
   + (select count(*)::int from public.meetup_series where created_by = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from private.signup_sources where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_attendance where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.terms_acceptances where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.group_bans where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a')

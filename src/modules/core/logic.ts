@@ -39,9 +39,40 @@ export function communityKind(type: string): CommunityKind {
   return "private";
 }
 
-export function groupTypeFor(kind: CommunityKind): "community" | "friends" | "coaching" {
-  return kind === "public" ? "community" : kind === "coaching" ? "coaching" : "friends";
+export function groupTypeFor(
+  kind: CommunityKind,
+): "community" | "friends" | "coaching" {
+  return kind === "public"
+    ? "community"
+    : kind === "coaching"
+      ? "coaching"
+      : "friends";
 }
+
+/** Arten einer Meldung (reports.category), in der Reihenfolge der Auswahl */
+export const REPORT_CATEGORIES = [
+  "harassment",
+  "spam",
+  "inappropriate",
+  "other",
+] as const;
+export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
+
+export const REPORT_CATEGORY_LABEL: Record<ReportCategory, string> = {
+  harassment: "Belästigung",
+  spam: "Spam",
+  inappropriate: "Unangemessen",
+  other: "Sonstiges",
+};
+
+/** Was gemeldet wird: eine Nachricht, ein Event, eine Person oder eine Community */
+export const REPORT_TARGETS = [
+  "message",
+  "meetup",
+  "person",
+  "community",
+] as const;
+export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
 export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
   public: "Öffentlich",
@@ -51,16 +82,22 @@ export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
 
 /** Was Mitglieder voneinander sehen, je nach Art. Steht beim Erstellen und in der Community. */
 export const COMMUNITY_KIND_HINT: Record<CommunityKind, string> = {
-  public: "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Aktivitäten.",
-  private: "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Aktivitäten.",
-  coaching: "Beitritt nur über den Link. Der Coach sieht die Aktivitäten aller Mitglieder, sie sehen einander nicht.",
+  public:
+    "Jeder kann sie finden und beitreten. Mitglieder sehen Rangliste und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private:
+    "Beitritt nur über den Link. Alle Mitglieder sehen gegenseitig ihre Aktivitäten.",
+  coaching:
+    "Beitritt nur über den Link. Der Coach sieht die Aktivitäten aller Mitglieder, sie sehen einander nicht.",
 };
 
 /** Was ein Beitritt bedeutet, aus Sicht der eingeladenen Person. Steht vor dem Beitritt. */
 export const COMMUNITY_JOIN_HINT: Record<CommunityKind, string> = {
-  public: "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Aktivitäten.",
-  private: "Wenn du beitrittst, sehen die Mitglieder deine Aktivitäten und du ihre.",
-  coaching: "Wenn du beitrittst, sieht der Coach deine Aktivitäten. Die anderen Mitglieder sehen sie nicht.",
+  public:
+    "Wenn du beitrittst, sehen die Mitglieder dein Profil, deine Trainingstage und Bestwerte, aber keine einzelnen Aktivitäten.",
+  private:
+    "Wenn du beitrittst, sehen die Mitglieder deine Aktivitäten und du ihre.",
+  coaching:
+    "Wenn du beitrittst, sieht der Coach deine Aktivitäten. Die anderen Mitglieder sehen sie nicht.",
 };
 
 /** Vorschläge für die Sportart. Frei eintippen geht trotzdem. */
@@ -78,14 +115,25 @@ export const SPORT_SUGGESTIONS = [
 ] as const;
 
 /** Kurzbeschreibung für Listen und Link-Vorschauen: "Laufen · München · 12 Mitglieder". */
-export function describeCommunity(c: { sport: string | null; city: string | null; memberCount: number }): string {
+export function describeCommunity(c: {
+  sport: string | null;
+  city: string | null;
+  memberCount: number;
+}): string {
   const members = `${c.memberCount}\u00a0${c.memberCount === 1 ? "Mitglied" : "Mitglieder"}`;
   return [c.sport, c.city, members].filter(Boolean).join(" · ");
 }
 
 // ---------- Sportarten ----------
 
-export type SportCategory = "ausdauer" | "outdoor" | "kraft" | "klettern" | "ballsport" | "koerper" | "sonstiges";
+export type SportCategory =
+  | "ausdauer"
+  | "outdoor"
+  | "kraft"
+  | "klettern"
+  | "ballsport"
+  | "koerper"
+  | "sonstiges";
 
 /** Überschriften der Bereiche im Katalog, in der Reihenfolge der Anzeige. */
 export const SPORT_CATEGORY_LABEL: Record<SportCategory, string> = {
@@ -103,7 +151,10 @@ export function toSportCategory(value: string): SportCategory {
 }
 
 /** Sucht im Katalog nach Name oder Suchbegriff, ohne Groß- und Kleinschreibung und Umlaute zu unterscheiden. */
-export function matchesSport(sport: { name: string; aliases: readonly string[] }, query: string): boolean {
+export function matchesSport(
+  sport: { name: string; aliases: readonly string[] },
+  query: string,
+): boolean {
   const fold = (t: string) =>
     t
       .toLocaleLowerCase("de-DE")
@@ -141,12 +192,18 @@ export function normalizeSports(values: readonly string[]): string[] {
 }
 
 /** Zeile unter dem Namen: "München · Laufen, Yoga". Leer, wenn nichts angegeben ist. */
-export function describeProfile(p: { city: string | null; sports: readonly string[] }): string {
+export function describeProfile(p: {
+  city: string | null;
+  sports: readonly string[];
+}): string {
   return [p.city, p.sports.join(", ")].filter(Boolean).join(" · ");
 }
 
 /** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */
-export function joinAfterAuthPath(code: string, campaign: string | null = null): string {
+export function joinAfterAuthPath(
+  code: string,
+  campaign: string | null = null,
+): string {
   const base = `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
   return campaign ? `${base}&quelle=${campaign}` : base;
 }
@@ -155,8 +212,12 @@ export function joinAfterAuthPath(code: string, campaign: string | null = null):
  * Kennung aus ?quelle= in einem geteilten Link, etwa „sticker-boulderwelt“. Nur Kleinbuchstaben,
  * Ziffern und Bindestriche, höchstens 40 Zeichen; alles andere zählt als keine Kennung.
  */
-export function campaignTag(value: string | string[] | undefined): string | null {
-  return typeof value === "string" && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
+export function campaignTag(
+  value: string | string[] | undefined,
+): string | null {
+  return typeof value === "string" && /^[a-z0-9-]{1,40}$/.test(value)
+    ? value
+    : null;
 }
 
 /**
@@ -166,7 +227,10 @@ export function campaignTag(value: string | string[] | undefined): string | null
 export const JOIN_INTENT_COOKIE = "ohealth_zusage";
 
 /** Öffentlicher Link zu einem Event. Mit zusagen: nach Anmeldung oder Registrierung gleich zusagen. */
-export function publicEventPath(id: string, options: { zusagen?: boolean; campaign?: string | null } = {}): string {
+export function publicEventPath(
+  id: string,
+  options: { zusagen?: boolean; campaign?: string | null } = {},
+): string {
   const params = new URLSearchParams();
   if (options.zusagen) params.set("zusagen", "1");
   if (options.campaign) params.set("quelle", options.campaign);
@@ -189,8 +253,15 @@ function berlinOffsetMinutes(at: Date): number {
     hour: "2-digit",
     minute: "2-digit",
   }).formatToParts(at);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour"),
+    get("minute"),
+  );
   return Math.round((asUtc - Math.floor(at.getTime() / 60000) * 60000) / 60000);
 }
 
@@ -224,10 +295,18 @@ export function berlinDateTimeParts(at: Date): { date: string; time: string } {
     minute: "2-digit",
   }).formatToParts(at);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
 }
 
-export type PlanDay = { date: string; weekday: string; label: string; isToday: boolean };
+export type PlanDay = {
+  date: string;
+  weekday: string;
+  label: string;
+  isToday: boolean;
+};
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
 
@@ -235,7 +314,10 @@ const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
  * Kalenderwoche in deutscher Zeit, Montag bis Sonntag. offset verschiebt um ganze Wochen.
  * from und to begrenzen die Woche als Zeitpunkte (to ist der folgende Montag, 0 Uhr).
  */
-export function berlinWeek(now: Date, offset = 0): { days: PlanDay[]; from: Date; to: Date } {
+export function berlinWeek(
+  now: Date,
+  offset = 0,
+): { days: PlanDay[]; from: Date; to: Date } {
   const today = berlinDateTimeParts(now).date;
   const [y, m, d] = today.split("-").map(Number);
   const todayUtc = Date.UTC(y, m - 1, d);
@@ -246,7 +328,12 @@ export function berlinWeek(now: Date, offset = 0): { days: PlanDay[]; from: Date
   const days = WEEKDAYS.map((weekday, i) => {
     const date = iso(monday + i * 86400000);
     const [, mm, dd] = date.split("-").map(Number);
-    return { date, weekday, label: `${weekday} ${dd}.${mm}.`, isToday: date === today };
+    return {
+      date,
+      weekday,
+      label: `${weekday} ${dd}.${mm}.`,
+      isToday: date === today,
+    };
   });
   return {
     days,
@@ -255,15 +342,34 @@ export function berlinWeek(now: Date, offset = 0): { days: PlanDay[]; from: Date
   };
 }
 
-const dayNumber = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric" });
-const monthShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, month: "short" });
-const weekdayShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short" });
-const timeShort = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "numeric", minute: "2-digit" });
+const dayNumber = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  day: "numeric",
+});
+const monthShort = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  month: "short",
+});
+const weekdayShort = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  weekday: "short",
+});
+const timeShort = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 /** Datumsblock in der Liste: Tag groß, Monat klein, z. B. { day: "11", month: "Okt" }. */
-export function meetupDateBlock(startsAt: string): { day: string; month: string } {
+export function meetupDateBlock(startsAt: string): {
+  day: string;
+  month: string;
+} {
   const date = new Date(startsAt);
-  return { day: dayNumber.format(date).replace(".", ""), month: monthShort.format(date).replace(".", "") };
+  return {
+    day: dayNumber.format(date).replace(".", ""),
+    month: monthShort.format(date).replace(".", ""),
+  };
 }
 
 /** Wochentag und Uhrzeit, z. B. "Sa 9:00". */
@@ -290,8 +396,16 @@ export function buildMeetupIcs(meetup: {
   place: string | null;
   url: string;
 }): string {
-  const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const escape = (text: string) => text.replace(/\\/g, "\\\\").replace(/[;,]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+  const stamp = (date: Date) =>
+    date
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
+  const escape = (text: string) =>
+    text
+      .replace(/\\/g, "\\\\")
+      .replace(/[;,]/g, (c) => `\\${c}`)
+      .replace(/\n/g, "\\n");
   const start = new Date(meetup.startsAt);
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
   return [
@@ -314,7 +428,10 @@ export function buildMeetupIcs(meetup: {
 }
 
 /** Die ersten n einer Rangliste, dazu die eigene Zeile, falls sie weiter hinten steht. */
-export function topWithMe<T extends { isMe: boolean }>(rows: readonly T[], n: number): { row: T; rank: number }[] {
+export function topWithMe<T extends { isMe: boolean }>(
+  rows: readonly T[],
+  n: number,
+): { row: T; rank: number }[] {
   const ranked = rows.map((row, i) => ({ row, rank: i + 1 }));
   const top = ranked.slice(0, n);
   const me = ranked.find((r) => r.row.isMe);
@@ -355,14 +472,24 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
-export const CHAT_NOTIFICATION_KINDS = ["message", "community_message", "direct_message", "message_request"] as const;
+export const CHAT_NOTIFICATION_KINDS = [
+  "message",
+  "community_message",
+  "direct_message",
+  "message_request",
+] as const;
 
 export function toNotificationKind(value: string): NotificationKind {
   return NOTIFICATION_KINDS.find((k) => k === value) ?? "new_training";
 }
 
 /** Ein Satz je Mitteilung, sachlich wie im Rest der App. */
-export function describeNotification(n: { kind: NotificationKind; actorName: string; title: string; count: number }): string {
+export function describeNotification(n: {
+  kind: NotificationKind;
+  actorName: string;
+  title: string;
+  count: number;
+}): string {
   switch (n.kind) {
     case "new_training":
       return `${n.actorName} plant „${n.title}“`;
@@ -393,7 +520,9 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
     case "message_request":
       return `${n.actorName} möchte dir schreiben`;
     case "direct_message":
-      return n.count > 1 ? `${n.count} neue Nachrichten von ${n.actorName}` : `${n.actorName} hat dir geschrieben`;
+      return n.count > 1
+        ? `${n.count} neue Nachrichten von ${n.actorName}`
+        : `${n.actorName} hat dir geschrieben`;
   }
 }
 
@@ -421,7 +550,8 @@ export function pushContent(p: {
       ? `/chats/${p.chatId}`
       : p.kind === "follow_request"
         ? "/verbindungen?tab=anfragen"
-        : (p.kind === "new_follower" || p.kind === "follow_accepted") && p.actorId
+        : (p.kind === "new_follower" || p.kind === "follow_accepted") &&
+            p.actorId
           ? `/person/${p.actorId}`
           : p.meetupId
             ? p.kind === "message"
@@ -430,7 +560,8 @@ export function pushContent(p: {
             : "/mitteilungen";
   if (isChat && p.latest) {
     // Im Privatchat steht der Name schon im Titel, wie in Messengern
-    const text = p.kind === "direct_message" ? p.latest : `${p.actorName}: ${p.latest}`;
+    const text =
+      p.kind === "direct_message" ? p.latest : `${p.actorName}: ${p.latest}`;
     return {
       title: p.title,
       body: p.count > 1 ? `${text} (${p.count} neue)` : text,
@@ -438,7 +569,12 @@ export function pushContent(p: {
       tag: `chat-${p.chatId ?? p.meetupId}`,
     };
   }
-  return { title: "OHealth", body: describeNotification(p), url, tag: `${p.kind}-${p.meetupId ?? p.title}` };
+  return {
+    title: "OHealth",
+    body: describeNotification(p),
+    url,
+    tag: `${p.kind}-${p.meetupId ?? p.title}`,
+  };
 }
 
 /** Wann, relativ zu jetzt: "gerade eben", "vor 5 Min.", "vor 3 Std.", sonst Datum. */
@@ -448,9 +584,11 @@ export function formatAgo(at: string, now: Date): string {
   if (minutes < 60) return `vor ${minutes}\u00a0Min.`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `vor ${hours}\u00a0Std.`;
-  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "short" }).format(
-    new Date(at),
-  );
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: APP_TIME_ZONE,
+    day: "numeric",
+    month: "short",
+  }).format(new Date(at));
 }
 
 /** Zähler an der Glocke: ab 10 nur noch "9+". */
@@ -469,19 +607,28 @@ type ChatMessage = { id: string; userId: string; createdAt: string };
 export function chatDayLabel(at: string, now: Date): string {
   const day = berlinDateTimeParts(new Date(at)).date;
   const today = berlinDateTimeParts(now).date;
-  const yesterday = berlinDateTimeParts(new Date(now.getTime() - 86400000)).date;
+  const yesterday = berlinDateTimeParts(
+    new Date(now.getTime() - 86400000),
+  ).date;
   if (day === today) return "Heute";
   if (day === yesterday) return "Gestern";
-  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "short", day: "numeric", month: "short" })
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: APP_TIME_ZONE,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })
     .format(new Date(at))
     .replace(/^(\w+)\./, "$1");
 }
 
 /** Uhrzeit einer Nachricht, z. B. "18:05". */
 export function chatTime(at: string): string {
-  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(
-    new Date(at),
-  );
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(at));
 }
 
 /** Zeitpunkt der letzten Nachricht in der Chat-Liste: heute die Uhrzeit, gestern "Gestern", sonst das Datum. */
@@ -489,9 +636,11 @@ export function chatListTime(at: string, now: Date): string {
   const label = chatDayLabel(at, now);
   if (label === "Heute") return chatTime(at);
   if (label === "Gestern") return label;
-  return new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, day: "numeric", month: "numeric" }).format(
-    new Date(at),
-  );
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: APP_TIME_ZONE,
+    day: "numeric",
+    month: "numeric",
+  }).format(new Date(at));
 }
 
 /**
@@ -501,12 +650,22 @@ export function chatListTime(at: string, now: Date): string {
 export function layoutChat<T extends ChatMessage>(
   messages: readonly T[],
   now: Date,
-): { message: T; dayLabel: string | null; firstInGroup: boolean; lastInGroup: boolean }[] {
+): {
+  message: T;
+  dayLabel: string | null;
+  firstInGroup: boolean;
+  lastInGroup: boolean;
+}[] {
   const GAP_MS = 5 * 60 * 1000;
   const dayOf = (m: T) => berlinDateTimeParts(new Date(m.createdAt)).date;
   const continues = (a: T | undefined, b: T | undefined) =>
-    !!a && !!b && a.userId === b.userId && dayOf(a) === dayOf(b) &&
-    Math.abs(new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) <= GAP_MS;
+    !!a &&
+    !!b &&
+    a.userId === b.userId &&
+    dayOf(a) === dayOf(b) &&
+    Math.abs(
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    ) <= GAP_MS;
 
   return messages.map((message, i) => {
     const prev = messages[i - 1];
@@ -539,8 +698,12 @@ export function parseDecimal(input: string): number | null {
 }
 
 /** Distanz als "800 m" oder "5,2 km". */
-export function formatDistance(meters: number): { value: string; unit: string } {
-  if (meters < 1000) return { value: formatNumber(Math.round(meters)), unit: "m" };
+export function formatDistance(meters: number): {
+  value: string;
+  unit: string;
+} {
+  if (meters < 1000)
+    return { value: formatNumber(Math.round(meters)), unit: "m" };
   return { value: formatNumber(meters / 1000, 1), unit: "km" };
 }
 
@@ -551,10 +714,14 @@ export function formatActivityDuration(minutes: number): string {
 }
 
 /** Stunden und Minuten aus dem Formular zu Minuten. Ungültig oder 0 -> null. */
-export function parseDurationMinutes(hours: string, minutes: string): number | null {
+export function parseDurationMinutes(
+  hours: string,
+  minutes: string,
+): number | null {
   const h = hours.trim() === "" ? 0 : Number(hours);
   const m = minutes.trim() === "" ? 0 : Number(minutes);
-  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59)
+    return null;
   const total = h * 60 + m;
   return total >= 1 && total <= 1440 ? total : null;
 }
@@ -572,7 +739,11 @@ export function parseDistanceKm(input: string): number | null {
 export type MeetupLevel = "einsteiger" | "gemischt" | "fortgeschritten";
 export type PaceUnit = "min_km" | "kmh";
 
-export const MEETUP_LEVELS: readonly MeetupLevel[] = ["einsteiger", "gemischt", "fortgeschritten"];
+export const MEETUP_LEVELS: readonly MeetupLevel[] = [
+  "einsteiger",
+  "gemischt",
+  "fortgeschritten",
+];
 
 export const MEETUP_LEVEL_LABEL: Record<MeetupLevel, string> = {
   einsteiger: "Einsteiger willkommen",
@@ -601,7 +772,8 @@ export function parsePace(input: string): number | null {
   const match = /^(\d{1,2})(?:[:.,](\d{2}))?$/.exec(trimmed);
   if (!match) return Number.NaN;
   const seconds = Number(match[1]) * 60 + Number(match[2] ?? 0);
-  if (Number(match[2] ?? 0) > 59 || seconds < 60 || seconds > 3600) return Number.NaN;
+  if (Number(match[2] ?? 0) > 59 || seconds < 60 || seconds > 3600)
+    return Number.NaN;
   return seconds;
 }
 
@@ -659,38 +831,64 @@ export function describeMeetupDetails(m: {
  * Meldung für einen Fehler beim Planen eines Events. Die Prüfung der Datenbank (Migration
  * meetup_sports) meldet auf Deutsch, was nicht zur Sportart passt; diese Texte werden übernommen.
  */
-export function meetupErrorMessage(error: { code?: string; message?: string } | null): string | null {
+export function meetupErrorMessage(
+  error: { code?: string; message?: string } | null,
+): string | null {
   const message = error?.message ?? "";
-  if (error?.code === "23514" && /^(Zu .+ gibt es|Ohne Sportart gibt es|Den Tag änderst du)/.test(message)) {
+  if (
+    error?.code === "23514" &&
+    /^(Zu .+ gibt es|Ohne Sportart gibt es|Den Tag änderst du)/.test(message)
+  ) {
     return `${message}.`;
   }
-  if (error?.code === "23503" && message.startsWith("Die Sportart")) return "Wähl eine Sportart aus der Liste.";
+  if (error?.code === "23503" && message.startsWith("Die Sportart"))
+    return "Wähl eine Sportart aus der Liste.";
   return null;
 }
 
 /** Uhrzeit von Beginn bis Ende in deutscher Zeit: "18:30–19:30". Ohne Dauer nur der Beginn. */
-export function meetupTimeRange(startsAt: string, durationMinutes: number | null): string {
+export function meetupTimeRange(
+  startsAt: string,
+  durationMinutes: number | null,
+): string {
   const start = berlinDateTimeParts(new Date(startsAt)).time;
   if (!durationMinutes) return start;
-  const end = berlinDateTimeParts(new Date(Date.parse(startsAt) + durationMinutes * 60_000)).time;
+  const end = berlinDateTimeParts(
+    new Date(Date.parse(startsAt) + durationMinutes * 60_000),
+  ).time;
   return `${start}\u2013${end}`;
 }
 
 /** Angaben eines Events als Zeilen für die Detailseite. Fehlende Angaben fallen weg. */
-export function meetupDetailRows(m: Parameters<typeof describeMeetupDetails>[0]): { label: string; value: string }[] {
+export function meetupDetailRows(
+  m: Parameters<typeof describeMeetupDetails>[0],
+): { label: string; value: string }[] {
   const distance = m.distanceM ? formatDistance(m.distanceM) : null;
   const rows: [string, string | null][] = [
     ["Sportart", m.sportName],
-    ["Dauer", m.durationMinutes ? formatActivityDuration(m.durationMinutes) : null],
+    [
+      "Dauer",
+      m.durationMinutes ? formatActivityDuration(m.durationMinutes) : null,
+    ],
     ["Distanz", distance ? `${distance.value} ${distance.unit}` : null],
     ["Höhenmeter", m.elevationM ? `${formatNumber(m.elevationM)} Hm` : null],
-    ["Tempo", m.paceSecondsPerKm ? formatPace(m.paceSecondsPerKm) : m.speedKmh ? formatSpeed(m.speedKmh) : null],
+    [
+      "Tempo",
+      m.paceSecondsPerKm
+        ? formatPace(m.paceSecondsPerKm)
+        : m.speedKmh
+          ? formatSpeed(m.speedKmh)
+          : null,
+    ],
     ["Niveau", m.level ? MEETUP_LEVEL_LABEL[m.level] : null],
   ];
   return rows.flatMap(([label, value]) => (value ? [{ label, value }] : []));
 }
 
-const weeklyFormat = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "long" });
+const weeklyFormat = new Intl.DateTimeFormat("de-DE", {
+  timeZone: APP_TIME_ZONE,
+  weekday: "long",
+});
 
 /** Rhythmus einer Reihe aus einem ihrer Termine: "Jeden Dienstag, 18:30 Uhr". */
 export function describeWeekly(startsAt: string): string {
@@ -761,12 +959,22 @@ export function meetupFormValues(m: {
 const ATTENDANCE_DAYS = 14;
 
 /** Ende eines Events: Beginn plus Dauer, ohne Dauer eine Stunde (wie private.meetup_ends_at). */
-export function meetupEndsAt(startsAt: string, durationMinutes: number | null): Date {
+export function meetupEndsAt(
+  startsAt: string,
+  durationMinutes: number | null,
+): Date {
   return new Date(Date.parse(startsAt) + (durationMinutes ?? 60) * 60_000);
 }
 
 /** Ob man jetzt bestätigen kann, dabei gewesen zu sein: nach dem Ende, höchstens 14 Tage danach. */
-export function canAnswerAttendance(startsAt: string, durationMinutes: number | null, now: Date): boolean {
+export function canAnswerAttendance(
+  startsAt: string,
+  durationMinutes: number | null,
+  now: Date,
+): boolean {
   const ends = meetupEndsAt(startsAt, durationMinutes).getTime();
-  return ends <= now.getTime() && ends >= now.getTime() - ATTENDANCE_DAYS * 24 * 60 * 60_000;
+  return (
+    ends <= now.getTime() &&
+    ends >= now.getTime() - ATTENDANCE_DAYS * 24 * 60 * 60_000
+  );
 }
