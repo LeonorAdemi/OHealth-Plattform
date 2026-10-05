@@ -3,12 +3,12 @@ import Link from "next/link";
 
 import { getSports } from "@/modules/core/queries";
 import { ActivityForm } from "@/modules/workouts/components/activity-form";
-import { getMyRecentSportIds } from "@/modules/workouts/queries";
+import { getMyRecentSportIds, getMyTemplates } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Aktivität eintragen" };
 
 export default async function NewActivityPage() {
-  const [sports, recentSportIds] = await Promise.all([getSports(), getMyRecentSportIds()]);
+  const [sports, recentSportIds, templates] = await Promise.all([getSports(), getMyRecentSportIds(), getMyTemplates()]);
 
   return (
     <>
@@ -19,7 +19,11 @@ export default async function NewActivityPage() {
       </p>
       <h1 className="text-titel mt-2 font-semibold">Aktivität eintragen</h1>
       <div className="mt-6">
-        <ActivityForm sports={sports} recentSportIds={recentSportIds} />
+        <ActivityForm
+          sports={sports}
+          recentSportIds={recentSportIds}
+          templates={templates.map((t) => ({ id: t.id, name: t.name, exerciseCount: t.exerciseCount }))}
+        />
       </div>
     </>
   );

@@ -310,7 +310,8 @@ export type NotificationKind =
   | "follow_request"
   | "new_follower"
   | "follow_accepted"
-  | "message_request";
+  | "message_request"
+  | "changed";
 
 const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_training",
@@ -324,6 +325,7 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_follower",
   "follow_accepted",
   "message_request",
+  "changed",
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
@@ -346,6 +348,8 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
         : `${n.actorName} hat zu „${n.title}“ geschrieben`;
     case "cancelled":
       return `${n.actorName} hat „${n.title}“ abgesagt`;
+    case "changed":
+      return `${n.actorName} hat Zeit oder Treffpunkt von „${n.title}“ geändert`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
     case "community_message":
@@ -487,4 +491,239 @@ export function layoutChat<T extends ChatMessage>(
       lastInGroup: !continues(message, next),
     };
   });
+}
+
+// ---------- Zahlen, Dauer und Distanz (für Aktivitäten und Events) ----------
+
+/** Zahl in deutscher Schreibweise, z. B. 82.5 -> "82,5". */
+export function formatNumber(value: number, fractionDigits = 0): string {
+  return new Intl.NumberFormat("de-DE", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+/** Liest Eingaben mit Komma oder Punkt: "82,5" -> 82.5. Ungültig -> null. */
+export function parseDecimal(input: string): number | null {
+  const cleaned = input.trim().replace(",", ".");
+  if (cleaned === "" || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  return Number(cleaned);
+}
+
+/** Distanz als "800 m" oder "5,2 km". */
+export function formatDistance(meters: number): { value: string; unit: string } {
+  if (meters < 1000) return { value: formatNumber(Math.round(meters)), unit: "m" };
+  return { value: formatNumber(meters / 1000, 1), unit: "km" };
+}
+
+/** Dauer in Minuten in Worten: "52 min", "1 h 05 min". */
+export function formatActivityDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}\u00a0min`;
+  return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
+}
+
+/** Stunden und Minuten aus dem Formular zu Minuten. Ungültig oder 0 -> null. */
+export function parseDurationMinutes(hours: string, minutes: string): number | null {
+  const h = hours.trim() === "" ? 0 : Number(hours);
+  const m = minutes.trim() === "" ? 0 : Number(minutes);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
+  const total = h * 60 + m;
+  return total >= 1 && total <= 1440 ? total : null;
+}
+
+/** Kilometer mit Komma oder Punkt zu Metern: "8,2" -> 8200. Leer -> null, ungültig -> NaN. */
+export function parseDistanceKm(input: string): number | null {
+  if (input.trim() === "") return null;
+  const km = parseDecimal(input);
+  if (km === null || km <= 0 || km > 1000) return Number.NaN;
+  return Math.round(km * 1000 * 10) / 10;
+}
+
+// ---------- Events je Sportart ----------
+
+export type MeetupLevel = "einsteiger" | "gemischt" | "fortgeschritten";
+export type PaceUnit = "min_km" | "kmh";
+
+export const MEETUP_LEVELS: readonly MeetupLevel[] = ["einsteiger", "gemischt", "fortgeschritten"];
+
+export const MEETUP_LEVEL_LABEL: Record<MeetupLevel, string> = {
+  einsteiger: "Einsteiger willkommen",
+  gemischt: "Gemischtes Niveau",
+  fortgeschritten: "Fortgeschritten",
+};
+
+export function toMeetupLevel(value: string | null): MeetupLevel | null {
+  return MEETUP_LEVELS.find((l) => l === value) ?? null;
+}
+
+export function toPaceUnit(value: string | null): PaceUnit | null {
+  return value === "min_km" || value === "kmh" ? value : null;
+}
+
+/** Tempo in Sekunden je km als "6:00 min/km". */
+export function formatPace(secondsPerKm: number): string {
+  const minutes = Math.floor(secondsPerKm / 60);
+  return `${minutes}:${String(secondsPerKm % 60).padStart(2, "0")} min/km`;
+}
+
+/** "6:00", "6.30" oder "6" (Minuten je km) zu Sekunden. Leer -> null, ungültig oder außerhalb 1 bis 60 min -> NaN. */
+export function parsePace(input: string): number | null {
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
+  const match = /^(\d{1,2})(?:[:.,](\d{2}))?$/.exec(trimmed);
+  if (!match) return Number.NaN;
+  const seconds = Number(match[1]) * 60 + Number(match[2] ?? 0);
+  if (Number(match[2] ?? 0) > 59 || seconds < 60 || seconds > 3600) return Number.NaN;
+  return seconds;
+}
+
+/** Höhenmeter als ganze Zahl: "450" -> 450. Leer -> null, sonst ungültig oder über 20.000 -> NaN. */
+export function parseElevation(input: string): number | null {
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
+  if (!/^\d{1,5}$/.test(trimmed) || Number(trimmed) > 20000) return Number.NaN;
+  return Number(trimmed);
+}
+
+/** Geschwindigkeit als "27,5 km/h", ganze Zahlen ohne Nachkommastelle. */
+export function formatSpeed(kmh: number): string {
+  return `${formatNumber(kmh, Number.isInteger(kmh) ? 0 : 1)} km/h`;
+}
+
+/** "27,5" zu 27.5 (eine Nachkommastelle). Leer -> null, ungültig oder außerhalb 1 bis 99,9 -> NaN. */
+export function parseSpeed(input: string): number | null {
+  if (input.trim() === "") return null;
+  const value = parseDecimal(input);
+  if (value === null || value < 1 || value > 99.9) return Number.NaN;
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * Kurzbeschreibung eines Events: "Laufen · 60 min · 10 km · 6:00 min/km · Einsteiger willkommen".
+ * Fehlende Angaben fallen weg; ohne Sportart (alte Events) beginnt sie mit der Dauer. Heißt das Event
+ * wie seine Sportart, steht sie nicht noch einmal da.
+ */
+export function describeMeetupDetails(m: {
+  title?: string;
+  sportName: string | null;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM: number | null;
+  paceSecondsPerKm: number | null;
+  speedKmh: number | null;
+  level: MeetupLevel | null;
+}): string {
+  const distance = m.distanceM ? formatDistance(m.distanceM) : null;
+  return [
+    m.sportName !== m.title ? m.sportName : null,
+    m.durationMinutes ? formatActivityDuration(m.durationMinutes) : null,
+    distance ? `${distance.value} ${distance.unit}` : null,
+    m.elevationM ? `${formatNumber(m.elevationM)} Hm` : null,
+    m.paceSecondsPerKm ? formatPace(m.paceSecondsPerKm) : null,
+    m.speedKmh ? formatSpeed(m.speedKmh) : null,
+    m.level ? MEETUP_LEVEL_LABEL[m.level] : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * Meldung für einen Fehler beim Planen eines Events. Die Prüfung der Datenbank (Migration
+ * meetup_sports) meldet auf Deutsch, was nicht zur Sportart passt; diese Texte werden übernommen.
+ */
+export function meetupErrorMessage(error: { code?: string; message?: string } | null): string | null {
+  const message = error?.message ?? "";
+  if (error?.code === "23514" && /^(Zu .+ gibt es|Ohne Sportart gibt es|Den Tag änderst du)/.test(message)) {
+    return `${message}.`;
+  }
+  if (error?.code === "23503" && message.startsWith("Die Sportart")) return "Wähl eine Sportart aus der Liste.";
+  return null;
+}
+
+/** Uhrzeit von Beginn bis Ende in deutscher Zeit: "18:30–19:30". Ohne Dauer nur der Beginn. */
+export function meetupTimeRange(startsAt: string, durationMinutes: number | null): string {
+  const start = berlinDateTimeParts(new Date(startsAt)).time;
+  if (!durationMinutes) return start;
+  const end = berlinDateTimeParts(new Date(Date.parse(startsAt) + durationMinutes * 60_000)).time;
+  return `${start}\u2013${end}`;
+}
+
+/** Angaben eines Events als Zeilen für die Detailseite. Fehlende Angaben fallen weg. */
+export function meetupDetailRows(m: Parameters<typeof describeMeetupDetails>[0]): { label: string; value: string }[] {
+  const distance = m.distanceM ? formatDistance(m.distanceM) : null;
+  const rows: [string, string | null][] = [
+    ["Sportart", m.sportName],
+    ["Dauer", m.durationMinutes ? formatActivityDuration(m.durationMinutes) : null],
+    ["Distanz", distance ? `${distance.value} ${distance.unit}` : null],
+    ["Höhenmeter", m.elevationM ? `${formatNumber(m.elevationM)} Hm` : null],
+    ["Tempo", m.paceSecondsPerKm ? formatPace(m.paceSecondsPerKm) : m.speedKmh ? formatSpeed(m.speedKmh) : null],
+    ["Niveau", m.level ? MEETUP_LEVEL_LABEL[m.level] : null],
+  ];
+  return rows.flatMap(([label, value]) => (value ? [{ label, value }] : []));
+}
+
+const weeklyFormat = new Intl.DateTimeFormat("de-DE", { timeZone: APP_TIME_ZONE, weekday: "long" });
+
+/** Rhythmus einer Reihe aus einem ihrer Termine: "Jeden Dienstag, 18:30 Uhr". */
+export function describeWeekly(startsAt: string): string {
+  const date = new Date(startsAt);
+  return `Jeden ${weeklyFormat.format(date)}, ${berlinDateTimeParts(date).time}\u00a0Uhr`;
+}
+
+/** Vorbelegung des Formulars „Training bearbeiten“, alle Angaben als Text wie im Formular. */
+export type MeetupFormValues = {
+  id: string;
+  seriesId: string | null;
+  sportId: string | null;
+  templateId: string | null;
+  title: string;
+  hours: string;
+  minutes: string;
+  distance: string;
+  elevation: string;
+  pace: string;
+  speed: string;
+  level: MeetupLevel | null;
+  place: string;
+  max: string;
+  note: string;
+};
+
+const toInput = (value: number) => String(value).replace(".", ",");
+
+export function meetupFormValues(m: {
+  id: string;
+  seriesId: string | null;
+  sportId: string | null;
+  templateId: string | null;
+  title: string;
+  durationMinutes: number | null;
+  distanceM: number | null;
+  elevationM: number | null;
+  paceSecondsPerKm: number | null;
+  speedKmh: number | null;
+  level: MeetupLevel | null;
+  place: string | null;
+  maxParticipants: number | null;
+  note: string | null;
+}): MeetupFormValues {
+  return {
+    id: m.id,
+    seriesId: m.seriesId,
+    sportId: m.sportId,
+    templateId: m.templateId,
+    title: m.title,
+    hours: m.durationMinutes ? String(Math.floor(m.durationMinutes / 60)) : "1",
+    minutes: m.durationMinutes ? String(m.durationMinutes % 60) : "0",
+    distance: m.distanceM ? toInput(m.distanceM / 1000) : "",
+    elevation: m.elevationM !== null ? String(m.elevationM) : "",
+    pace: m.paceSecondsPerKm
+      ? `${Math.floor(m.paceSecondsPerKm / 60)}:${String(m.paceSecondsPerKm % 60).padStart(2, "0")}`
+      : "",
+    speed: m.speedKmh ? toInput(m.speedKmh) : "",
+    level: m.level,
+    place: m.place ?? "",
+    max: m.maxParticipants ? String(m.maxParticipants) : "",
+    note: m.note ?? "",
+  };
 }

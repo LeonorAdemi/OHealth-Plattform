@@ -181,11 +181,11 @@ select is_empty($$ select 1 from public.meetups where id = '60000000-0000-0000-0
 
 -- ---------- Grenze ----------
 insert into public.meetups (title, starts_at)
-select 'T' || n, now() + (n || ' days')::interval from generate_series(1, 28) n;
+select 'T' || n, now() + (n || ' days')::interval from generate_series(1, 58) n;
 select throws_ok(
-  $$ insert into public.meetups (title, starts_at) values ('Zu viel', now() + interval '40 days') $$,
-  null, 'Höchstens 30 geplante Trainings je Person',
-  'Ben: höchstens 30 geplante Trainings');
+  $$ insert into public.meetups (title, starts_at) values ('Zu viel', now() + interval '70 days') $$,
+  null, 'Höchstens 60 geplante Trainings je Person',
+  'Ben: höchstens 60 geplante Trainings (Migration meetup_series, eine Reihe belegt acht)');
 
 -- ---------- Vergangene Trainings ----------
 reset role;

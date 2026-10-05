@@ -9,7 +9,20 @@ import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
 
-import { berlinLocalToDate, CHAT_NOTIFICATION_KINDS, groupTypeFor, MAX_BIO, normalizeSports } from "./logic";
+import {
+  berlinLocalToDate,
+  CHAT_NOTIFICATION_KINDS,
+  groupTypeFor,
+  MAX_BIO,
+  MEETUP_LEVELS,
+  meetupErrorMessage,
+  normalizeSports,
+  parseDistanceKm,
+  parseDurationMinutes,
+  parseElevation,
+  parsePace,
+  parseSpeed,
+} from "./logic";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -215,7 +228,32 @@ const meetupSchema = z.object({
   ]),
   note: z.string().trim().max(300, "Höchstens 300 Zeichen für die Notiz."),
   shareWith: z.array(z.uuid()).max(20),
+  sportId: z.string().regex(/^[a-z0-9_]{2,30}$/, "Wähl eine Sportart."),
+  hours: z.string(),
+  minutes: z.string(),
+  distance: z.string(),
+  elevation: z.string(),
+  pace: z.string(),
+  speed: z.string(),
+  level: z.union([z.literal(""), z.enum(MEETUP_LEVELS)]),
 });
+
+/** Dauer, Distanz und Tempo aus den Textfeldern. Fehler als Satz für das Formular. */
+function meetupMeasures(d: z.infer<typeof meetupSchema>) {
+  const durationMinutes = parseDurationMinutes(d.hours, d.minutes);
+  if (durationMinutes === null) return { error: "Gib eine Dauer zwischen 1 Minute und 24 Stunden ein." } as const;
+  const distanceM = parseDistanceKm(d.distance);
+  if (Number.isNaN(distanceM)) return { error: "Gib die Distanz in Kilometern ein, zum Beispiel 8,5." } as const;
+  const elevationM = parseElevation(d.elevation);
+  if (Number.isNaN(elevationM)) return { error: "Gib die Höhenmeter als ganze Zahl bis 20.000 ein." } as const;
+  const paceSecondsPerKm = parsePace(d.pace);
+  if (Number.isNaN(paceSecondsPerKm)) {
+    return { error: "Gib das Tempo als Minuten und Sekunden je Kilometer ein, zum Beispiel 6:00 oder 5.30." } as const;
+  }
+  const speedKmh = parseSpeed(d.speed);
+  if (Number.isNaN(speedKmh)) return { error: "Gib das Tempo in km/h ein, zum Beispiel 25." } as const;
+  return { durationMinutes, distanceM, elevationM, paceSecondsPerKm, speedKmh } as const;
+}
 
 const MEETUP_FAILED = "Das hat nicht geklappt. Prüf deine Verbindung und versuch es erneut.";
 
@@ -223,11 +261,8 @@ function shareIds(formData: FormData) {
   return [...new Set(formData.getAll("shareWith").map(String))];
 }
 
-/**
- * Plant ein Training. Ohne Teilen bleibt es privat, sonst erscheint es auf der Pinnwand der
- * gewählten Communities. Wer plant, ist automatisch dabei (Trigger).
- */
-export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+/** Eingaben des Formulars „Training planen“ bzw. „bearbeiten“ geprüft und umgerechnet. */
+async function readMeetupForm(formData: FormData) {
   const parsed = meetupSchema.safeParse({
     title: formData.get("title") ?? "",
     templateId: formData.get("templateId") ?? "",
@@ -237,19 +272,29 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
     max: formData.get("max") ?? "",
     note: formData.get("note") ?? "",
     shareWith: shareIds(formData),
+    sportId: formData.get("sportId") ?? "",
+    hours: formData.get("hours") ?? "",
+    minutes: formData.get("minutes") ?? "",
+    distance: formData.get("distance") ?? "",
+    elevation: formData.get("elevation") ?? "",
+    pace: formData.get("pace") ?? "",
+    speed: formData.get("speed") ?? "",
+    level: formData.get("level") ?? "",
   });
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  if (!parsed.success) return { error: firstIssue(parsed.error) } as const;
+  const measures = meetupMeasures(parsed.data);
+  if ("error" in measures) return { error: measures.error } as const;
 
   const startsAt = berlinLocalToDate(parsed.data.date, parsed.data.time);
-  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." };
-  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." };
+  if (!startsAt) return { error: "Tag oder Uhrzeit sind ungültig." } as const;
+  if (startsAt.getTime() <= Date.now()) return { error: "Der Zeitpunkt liegt in der Vergangenheit." } as const;
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
-  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." } as const;
 
-  // Ohne eigenen Titel heißt das Training wie die Vorlage.
+  // Ohne eigenen Titel heißt das Training wie die Vorlage, sonst wie die Sportart.
   let title = parsed.data.title;
   if (!title && parsed.data.templateId) {
     const { data: template } = await supabase
@@ -260,42 +305,96 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       .maybeSingle();
     title = template?.name ?? "";
   }
-  if (!title) return { error: "Wähl eine Vorlage oder schreib, was du vorhast." };
-
-  const { data, error } = await supabase
-    .from("meetups")
-    .insert({
-      created_by: userId,
-      title: title.slice(0, 80),
-      template_id: parsed.data.templateId || null,
-      starts_at: startsAt.toISOString(),
-      place: parsed.data.place || null,
-      max_participants: parsed.data.max === "" ? null : parsed.data.max,
-      note: parsed.data.note || null,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    if (error.message.includes("Höchstens 30")) {
-      return { error: "Du hast schon 30 geplante Trainings. Warte, bis eins vorbei ist." };
-    }
-    return { error: MEETUP_FAILED };
+  if (!title) {
+    const { data: sport } = await supabase.from("sports").select("name").eq("id", parsed.data.sportId).maybeSingle();
+    if (!sport) return { error: "Wähl eine Sportart aus der Liste." } as const;
+    title = sport.name;
   }
 
-  if (parsed.data.shareWith.length > 0) {
-    const { error: shareError } = await supabase
-      .from("meetup_shares")
-      .insert(parsed.data.shareWith.map((groupId) => ({ meetup_id: data.id, group_id: groupId })));
-    if (shareError) {
-      // Ganz oder gar nicht: ohne Teilen soll kein halbes Training stehen bleiben.
-      await supabase.from("meetups").delete().eq("id", data.id);
-      return { error: "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?" };
-    }
+  return {
+    supabase,
+    shareWith: parsed.data.shareWith,
+    // Gemeinsame Angaben für plan_meetup und update_meetup
+    fields: {
+      p_title: title.slice(0, 80),
+      p_starts_at: startsAt.toISOString(),
+      // Leere Angaben schickt die App als null; die Typen der Datenbankfunktion kennen dafür undefined.
+      p_place: parsed.data.place || undefined,
+      p_max_participants: parsed.data.max === "" ? undefined : parsed.data.max,
+      p_note: parsed.data.note || undefined,
+      p_template_id: parsed.data.templateId || undefined,
+      p_sport_id: parsed.data.sportId,
+      p_duration_minutes: measures.durationMinutes,
+      p_distance_m: measures.distanceM ?? undefined,
+      p_elevation_m: measures.elevationM ?? undefined,
+      p_pace_seconds_per_km: measures.paceSecondsPerKm ?? undefined,
+      p_speed_kmh: measures.speedKmh ?? undefined,
+      p_level: parsed.data.level || undefined,
+    },
+  } as const;
+}
+
+/**
+ * Fehler der Datenbank beim Planen oder Ändern als Satz für das Formular. denied: was eine
+ * verweigerte Zugriffsregel (42501) bei dieser Aktion bedeutet.
+ */
+function meetupWriteError(error: { code?: string; message?: string }, denied: string): string {
+  const known = meetupErrorMessage(error);
+  if (known) return known;
+  if (error.message?.includes("Höchstens 60")) {
+    return "Mehr als 60 geplante Trainings gehen nicht. Sag eine Reihe oder ein Training ab.";
+  }
+  if (error.code === "42501") return denied;
+  return MEETUP_FAILED;
+}
+
+/**
+ * Plant ein Training (plan_meetup): ganz oder gar nicht, samt Teilen. Ohne Teilen bleibt es privat.
+ * Mit „Jede Woche“ entsteht eine Reihe mit den nächsten acht Terminen. Die ID kommt vom Gerät,
+ * ein erneutes Senden legt nichts doppelt an. Wer plant, ist automatisch dabei (Trigger).
+ */
+export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: MEETUP_FAILED };
+  const input = await readMeetupForm(formData);
+  if ("error" in input) return { error: input.error };
+
+  const { data, error } = await input.supabase.rpc("plan_meetup", {
+    ...input.fields,
+    p_id: id.data,
+    p_share_ids: input.shareWith,
+    p_weekly: formData.get("weekly") === "on",
+  });
+  if (error || !data) {
+    const denied = "Teilen hat nicht geklappt. Bist du noch Mitglied der gewählten Communities?";
+    return { error: error ? meetupWriteError(error, denied) : MEETUP_FAILED };
   }
 
   revalidatePath("/", "layout");
-  redirect(`/plan/${data.id}`);
+  redirect(`/plan/${data}`);
+}
+
+/**
+ * Ändert ein eigenes kommendes Training (update_meetup): nur diesen Termin oder bei einer Reihe
+ * diesen und alle folgenden. Wer zugesagt hat, erfährt von neuer Zeit oder neuem Treffpunkt.
+ */
+export async function updateMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get("meetupId"));
+  const scope = z.enum(["single", "series"]).safeParse(formData.get("scope") ?? "single");
+  if (!id.success || !scope.success) return { error: "Dieses Training gibt es nicht mehr." };
+  const input = await readMeetupForm(formData);
+  if ("error" in input) return { error: input.error };
+
+  const { data, error } = await input.supabase.rpc("update_meetup", {
+    ...input.fields,
+    p_id: id.data,
+    p_scope: scope.data,
+  });
+  if (error) return { error: meetupWriteError(error, "Ändern lässt sich nur ein eigenes, kommendes Training.") };
+  if (!data) return { error: "Dieses Training gibt es nicht mehr oder es hat schon begonnen." };
+
+  revalidatePath("/", "layout");
+  redirect(`/plan/${data}`);
 }
 
 const meetupId = z.uuid();
@@ -404,6 +503,21 @@ export async function deleteMeetup(_prev: FormState, formData: FormData): Promis
   const supabase = await createClient();
   const { data, error } = await supabase.from("meetups").delete().eq("id", id.data).select("id");
   if (error || data.length === 0) return { error: "Das Training konnte nicht entfernt werden." };
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+/** Sagt diesen und alle folgenden Termine einer eigenen Reihe ab und beendet die Reihe. */
+export async function cancelMeetupSeries(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("cancel_meetup_series", { p_id: id.data });
+  if (error || !data) {
+    return { error: "Die Reihe konnte nicht abgesagt werden. Lade die Seite neu und versuch es erneut." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/");

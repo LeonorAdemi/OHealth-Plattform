@@ -1,6 +1,17 @@
 // Reine Funktionen ohne Seiteneffekte. Tests: logic.test.ts
 
 import type { ExerciseMeasure } from "@/lib/domain";
+import {
+  formatActivityDuration,
+  formatDistance,
+  formatNumber,
+  parseDecimal,
+  parseDistanceKm,
+  parseDurationMinutes,
+} from "@/modules/core/logic";
+
+// Zahlen, Dauer und Distanz sind für alle Sportarten gleich und liegen in core (auch für Events).
+export { formatActivityDuration, formatDistance, formatNumber, parseDecimal, parseDistanceKm, parseDurationMinutes };
 
 // Draft 1 rechnet fest in deutscher Zeit, passend zur View v_training_days.
 export const APP_TIME_ZONE = "Europe/Berlin";
@@ -74,24 +85,9 @@ export function isoWeek(now: Date, timeZone: string = APP_TIME_ZONE): number {
   return Math.floor((thursday - yearStart) / (7 * DAY_MS)) + 1;
 }
 
-/** Zahl in deutscher Schreibweise, z. B. 82.5 -> "82,5". */
-export function formatNumber(value: number, fractionDigits = 0): string {
-  return new Intl.NumberFormat("de-DE", {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(value);
-}
-
 /** Gewicht ohne überflüssige Nachkommastellen: 80 -> "80", 82.5 -> "82,5". */
 export function formatWeight(kg: number): string {
   return formatNumber(kg, Number.isInteger(kg) ? 0 : 1);
-}
-
-/** Liest Eingaben mit Komma oder Punkt: "82,5" -> 82.5. Ungültig -> null. */
-export function parseDecimal(input: string): number | null {
-  const cleaned = input.trim().replace(",", ".");
-  if (cleaned === "" || !/^\d+(\.\d+)?$/.test(cleaned)) return null;
-  return Number(cleaned);
 }
 
 // rest: Pause vor dem Satz in Sekunden. Nur bei Trainings mit Zeitmessung, bleibt bei Korrekturen erhalten.
@@ -231,12 +227,6 @@ export const FEELING_LABEL: Readonly<Record<number, string>> = {
   5: "am Limit",
 };
 
-/** Dauer in Minuten in Worten: "52 min", "1 h 05 min". */
-export function formatActivityDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes}\u00a0min`;
-  return `${Math.floor(minutes / 60)}\u00a0h ${String(minutes % 60).padStart(2, "0")}\u00a0min`;
-}
-
 /**
  * Kurzbeschreibung einer Aktivität für Listen: "Laufen · 45 min · 8,2 km".
  * Bei Krafttraining mit Sätzen statt Distanz die Zahl der Sätze.
@@ -269,23 +259,6 @@ export function activityMinutes(a: {
   if (!a.startedAt || !a.finishedAt) return null;
   const minutes = Math.round((Date.parse(a.finishedAt) - Date.parse(a.startedAt)) / 60000);
   return minutes >= 1 && minutes <= 1440 ? minutes : null;
-}
-
-/** Stunden und Minuten aus dem Formular zu Minuten. Ungültig oder 0 -> null. */
-export function parseDurationMinutes(hours: string, minutes: string): number | null {
-  const h = hours.trim() === "" ? 0 : Number(hours);
-  const m = minutes.trim() === "" ? 0 : Number(minutes);
-  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
-  const total = h * 60 + m;
-  return total >= 1 && total <= 1440 ? total : null;
-}
-
-/** Kilometer mit Komma oder Punkt zu Metern: "8,2" -> 8200. Leer -> null, ungültig -> NaN. */
-export function parseDistanceKm(input: string): number | null {
-  if (input.trim() === "") return null;
-  const km = parseDecimal(input);
-  if (km === null || km <= 0 || km > 1000) return Number.NaN;
-  return Math.round(km * 1000 * 10) / 10;
 }
 
 /**
@@ -336,12 +309,6 @@ export function formatDuration(seconds: number): { value: string; unit: string }
   const minutes = Math.floor(seconds / 60);
   const rest = String(seconds % 60).padStart(2, "0");
   return { value: `${minutes}:${rest}`, unit: "min" };
-}
-
-/** Distanz als "800 m" oder "5,2 km". */
-export function formatDistance(meters: number): { value: string; unit: string } {
-  if (meters < 1000) return { value: formatNumber(Math.round(meters)), unit: "m" };
-  return { value: formatNumber(meters / 1000, 1), unit: "km" };
 }
 
 /** Vergleichswert einer Zeile je nach Messart. Größer ist besser. */

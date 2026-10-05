@@ -74,7 +74,7 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
     hint: "Als Push aufs Handy. In der App zeigt der Tab Chats neue Nachrichten.",
   },
   { name: "friends", label: "Neue Follower und Folgen-Anfragen" },
-  { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt" },
+  { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt oder verlegt" },
   { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
 ];
 

@@ -1,20 +1,28 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import Link from "next/link";
+import { useActionState, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/result";
 
 import {
+  cancelMeetupSeries,
   createMeetup,
   deleteMeetup,
   joinMeetup,
   leaveMeetup,
   removeMeetupShare,
+  updateMeetup,
   updateMeetupShares,
 } from "../actions";
+import { MEETUP_LEVEL_LABEL, MEETUP_LEVELS, type MeetupFormValues, type MeetupLevel } from "../logic";
+import type { Sport } from "../queries";
+
+import { SportPicker } from "./sport-picker";
 
 const initial: FormState = {};
 
@@ -61,96 +69,313 @@ function ShareChoices({ communities, selected }: { communities: readonly Communi
   );
 }
 
+const selectClass =
+  "border-input bg-background focus-visible:outline-ring h-12 w-full rounded-lg border px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 md:h-10";
+
+/** Niveau als Auswahl-Chips; ein zweiter Tipp auf denselben Chip hebt die Auswahl auf. */
+function LevelChoice({ initial }: { initial: MeetupLevel | null }) {
+  const [level, setLevel] = useState<MeetupLevel | null>(initial);
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Niveau (optional)</legend>
+      <input type="hidden" name="level" value={level ?? ""} />
+      <div className="flex flex-wrap gap-2">
+        {MEETUP_LEVELS.map((l) => (
+          <ChoiceChip key={l} selected={level === l} onClick={() => setLevel(level === l ? null : l)}>
+            {MEETUP_LEVEL_LABEL[l]}
+          </ChoiceChip>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** Felder, die nur bestimmte Sportarten haben: Distanz, Höhenmeter, Tempo. */
+function SportFields({ sport, values }: { sport: Sport; values?: MeetupFormValues }) {
+  if (!sport.hasDistance && !sport.hasElevation && !sport.paceUnit) return null;
+  return (
+    <div className="grid max-w-sm grid-cols-2 gap-3">
+      {sport.hasDistance && (
+        <div className="space-y-2">
+          <Label htmlFor="distance">Distanz in km</Label>
+          <Input
+            id="distance"
+            name="distance"
+            inputMode="decimal"
+            placeholder="z. B. 10"
+            defaultValue={values?.distance}
+            className="num text-right"
+          />
+        </div>
+      )}
+      {sport.paceUnit === "min_km" && (
+        <div className="space-y-2">
+          <Label htmlFor="pace">Tempo in min/km</Label>
+          <Input
+            id="pace"
+            name="pace"
+            inputMode="text"
+            placeholder="z. B. 6:00"
+            defaultValue={values?.pace}
+            className="num text-right"
+          />
+        </div>
+      )}
+      {sport.paceUnit === "kmh" && (
+        <div className="space-y-2">
+          <Label htmlFor="speed">Tempo in km/h</Label>
+          <Input
+            id="speed"
+            name="speed"
+            inputMode="decimal"
+            placeholder="z. B. 25"
+            defaultValue={values?.speed}
+            className="num text-right"
+          />
+        </div>
+      )}
+      {sport.hasElevation && (
+        <div className="space-y-2">
+          <Label htmlFor="elevation">Höhenmeter</Label>
+          <Input
+            id="elevation"
+            name="elevation"
+            inputMode="numeric"
+            defaultValue={values?.elevation}
+            className="num text-right"
+          />
+        </div>
+      )}
+      <p className="text-muted-foreground col-span-2 text-sm">Alles optional. Hilft anderen einzuschätzen, ob es passt.</p>
+    </div>
+  );
+}
+
 /**
- * Training planen. Tag und Uhrzeit kommen vom Server vorbelegt (deutsche Zeit),
- * damit Server und Browser dasselbe anzeigen.
+ * Training planen oder bearbeiten. Zuerst die Sportart, danach nur die Felder, die zu ihr passen:
+ * bei Kraft die Vorlage, bei Ausdauer Distanz, Höhenmeter und Tempo. Tag und Uhrzeit kommen vom
+ * Server vorbelegt (deutsche Zeit), damit Server und Browser dasselbe anzeigen. Beim Planen gibt es
+ * „Jede Woche wiederholen“ und das Teilen; beim Bearbeiten einer Reihe die Wahl, ob nur dieser
+ * Termin oder auch alle folgenden geändert werden. Geteilt wird beim Bearbeiten auf der Seite des
+ * Trainings.
  */
-export function CreateMeetupForm({
+export function MeetupForm({
+  sports,
+  recentSportIds,
+  defaultSportId,
   templates,
-  communities,
-  preselected,
+  communities = [],
+  preselected = [],
   defaultDate,
   defaultTime,
   minDate,
+  existing,
 }: {
+  sports: readonly Sport[];
+  recentSportIds: readonly string[];
+  defaultSportId: string | null;
   templates: readonly { id: string; name: string }[];
-  communities: readonly CommunityOption[];
-  preselected: readonly string[];
+  /** Nur beim Planen: geteilt wird beim Bearbeiten auf der Seite des Trainings */
+  communities?: readonly CommunityOption[];
+  preselected?: readonly string[];
   defaultDate: string;
   defaultTime: string;
   minDate: string;
+  existing?: MeetupFormValues;
 }) {
-  const [state, action, pending] = useActionState(createMeetup, initial);
+  const [state, action, pending] = useActionState(existing ? updateMeetup : createMeetup, initial);
+  const [, startTransition] = useTransition();
+  // Beim Planen vergibt das Gerät die ID: Ein erneutes Senden legt nichts doppelt an.
+  const [id] = useState(() => existing?.id ?? crypto.randomUUID());
+  const [sportId, setSportId] = useState<string | null>(
+    existing?.sportId ?? defaultSportId ?? recentSportIds[0] ?? null,
+  );
+  const sport = sports.find((s) => s.id === sportId) ?? null;
 
   return (
-    <form action={action} className="max-w-xl space-y-6">
-      {templates.length > 0 && (
-        <div className="space-y-2">
-          <Label htmlFor="templateId">Vorlage (optional)</Label>
-          <select
-            id="templateId"
-            name="templateId"
-            defaultValue=""
-            className="border-input bg-background focus-visible:outline-ring h-12 w-full rounded-lg border px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 md:h-10"
-          >
-            <option value="">Ohne Vorlage</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-muted-foreground text-sm">Mit Vorlage startest du das Training am Tag direkt aus dem Plan.</p>
+    <form
+      // Über onSubmit statt action: React leert sonst nach einem Fehler alle Felder.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => action(data));
+      }}
+      className="max-w-xl space-y-8"
+    >
+      <input type="hidden" name={existing ? "meetupId" : "id"} value={id} />
+      <input type="hidden" name="sportId" value={sportId ?? ""} />
+      <SportPicker sports={sports} recentSportIds={recentSportIds} value={sportId} onChange={setSportId}>
+        {sport?.hasSets &&
+          (templates.length > 0 ? (
+            <div className="space-y-2 pt-2">
+              <Label htmlFor="templateId">Vorlage (optional)</Label>
+              <select
+                id="templateId"
+                name="templateId"
+                defaultValue={existing?.templateId ?? ""}
+                className={selectClass}
+              >
+                <option value="">Ohne Vorlage</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-muted-foreground text-sm">
+                Mit Vorlage startest du das Training am Tag direkt aus dem Plan.
+              </p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground pt-2 text-sm">
+              Mit einer Vorlage startest du das Training am Tag direkt.{" "}
+              <Link href="/vorlagen/neu" className="text-foreground underline underline-offset-4">
+                Vorlage erstellen
+              </Link>
+            </p>
+          ))}
+      </SportPicker>
+
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="date">Tag</Label>
+            <Input id="date" name="date" type="date" min={minDate} defaultValue={defaultDate} required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="time">Uhrzeit</Label>
+            <Input id="time" name="time" type="time" step={300} defaultValue={defaultTime} required />
+          </div>
         </div>
+
+        {existing?.seriesId ? (
+          <fieldset className="space-y-1">
+            <legend className="mb-1 text-sm font-medium">Ändern für</legend>
+            {(
+              [
+                ["single", "Nur diesen Termin"],
+                ["series", "Diesen und alle folgenden Termine"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3">
+                <input
+                  type="radio"
+                  name="scope"
+                  value={value}
+                  defaultChecked={value === "single"}
+                  className="accent-primary size-5 shrink-0"
+                />
+                {label}
+              </label>
+            ))}
+            <p className="text-muted-foreground text-sm">Jeder folgende Termin behält seinen Tag. Uhrzeit und Angaben ändern sich.</p>
+          </fieldset>
+        ) : (
+          !existing && (
+            <label className="flex min-h-11 cursor-pointer items-start gap-3">
+              <input type="checkbox" name="weekly" className="accent-primary mt-0.5 size-5 shrink-0" />
+              <span>
+                <span className="block">Jede Woche wiederholen</span>
+                <span className="text-muted-foreground block text-sm">
+                  Legt die nächsten acht Termine an. Die Reihe geht danach von selbst weiter, bis du sie absagst.
+                </span>
+              </span>
+            </label>
+          )
+        )}
+
+        <fieldset className="grid max-w-sm grid-cols-2 gap-3">
+          <legend className="mb-2 text-sm font-medium">Dauer</legend>
+          <div className="space-y-2">
+            <Label htmlFor="hours">Stunden</Label>
+            <Input
+              id="hours"
+              name="hours"
+              inputMode="numeric"
+              defaultValue={existing?.hours ?? "1"}
+              className="num text-right"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="minutes">Minuten</Label>
+            <Input
+              id="minutes"
+              name="minutes"
+              inputMode="numeric"
+              defaultValue={existing?.minutes ?? "0"}
+              className="num text-right"
+            />
+          </div>
+        </fieldset>
+
+        {/* key: Beim Wechsel der Sportart verschwinden Eingaben, die nicht mehr passen. */}
+        {sport && (
+          <SportFields key={sport.id} sport={sport} values={existing?.sportId === sport.id ? existing : undefined} />
+        )}
+
+        <LevelChoice initial={existing?.level ?? null} />
+
+        <div className="space-y-2">
+          <Label htmlFor="title">Titel (optional)</Label>
+          <Input
+            id="title"
+            name="title"
+            maxLength={80}
+            defaultValue={existing?.title}
+            placeholder={sport ? `Ohne Titel: ${sport.name}` : "Lockerer Lauf an der Isar"}
+          />
+        </div>
+      </div>
+
+      {!existing && (
+        <fieldset className="space-y-1">
+          <legend className="mb-1 text-sm font-medium">Teilen mit</legend>
+          <p className="text-muted-foreground pb-1 text-sm">
+            Mitglieder der gewählten Communities sehen das Training auf der Pinnwand und können zusagen.
+          </p>
+          <ShareChoices communities={communities} selected={preselected} />
+        </fieldset>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="title">{templates.length > 0 ? "Titel (optional mit Vorlage)" : "Was hast du vor?"}</Label>
-        <Input id="title" name="title" maxLength={80} placeholder="Lockerer Lauf an der Isar" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="date">Tag</Label>
-          <Input id="date" name="date" type="date" min={minDate} defaultValue={defaultDate} required />
+          <Label htmlFor="place">Treffpunkt (optional)</Label>
+          <Input
+            id="place"
+            name="place"
+            maxLength={80}
+            defaultValue={existing?.place}
+            placeholder="Reichenbachbrücke"
+            aria-describedby="place-hint"
+          />
+          <p id="place-hint" className="text-muted-foreground text-sm">
+            Ein öffentlicher Ort, zum Beispiel eine Brücke, ein Parkeingang, eine Halle oder ein Studio. Keine Privatadresse.
+          </p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="time">Uhrzeit</Label>
-          <Input id="time" name="time" type="time" step={300} defaultValue={defaultTime} required />
-        </div>
-      </div>
 
-      <fieldset className="space-y-1">
-        <legend className="mb-1 text-sm font-medium">Teilen mit</legend>
-        <p className="text-muted-foreground pb-1 text-sm">
-          Mitglieder der gewählten Communities sehen das Training auf der Pinnwand und können zusagen.
-        </p>
-        <ShareChoices communities={communities} selected={preselected} />
-      </fieldset>
-
-      <div className="space-y-2">
-        <Label htmlFor="place">Treffpunkt (optional)</Label>
-        <Input id="place" name="place" maxLength={80} placeholder="Reichenbachbrücke" aria-describedby="place-hint" />
-        <p id="place-hint" className="text-muted-foreground text-sm">
-          Ein öffentlicher Ort, zum Beispiel eine Brücke, ein Parkeingang oder ein Studio. Keine Privatadresse.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2 sm:w-1/2 sm:pr-2">
           <Label htmlFor="max">Höchstens (optional)</Label>
-          <Input id="max" name="max" type="number" inputMode="numeric" min={2} max={500} placeholder="Ohne Grenze" />
+          <Input
+            id="max"
+            name="max"
+            type="number"
+            inputMode="numeric"
+            min={2}
+            max={500}
+            defaultValue={existing?.max}
+            placeholder="Ohne Grenze"
+          />
         </div>
-      </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="note">Notiz (optional)</Label>
-        <Input id="note" name="note" maxLength={300} placeholder="Etwa 8 km, ruhiges Tempo" />
+        <div className="space-y-2">
+          <Label htmlFor="note">Notiz (optional)</Label>
+          <Input id="note" name="note" maxLength={300} defaultValue={existing?.note} placeholder="Wir laufen in zwei Gruppen" />
+        </div>
       </div>
 
       <ErrorText error={state.error} />
       <Button type="submit" className="w-full md:w-auto" disabled={pending}>
-        {pending ? "Wird geplant" : "Training planen"}
+        {pending ? "Wird gespeichert" : existing ? "Änderungen speichern" : "Training planen"}
       </Button>
     </form>
   );
@@ -232,30 +457,58 @@ export function RemoveFromCommunity({ meetupId, groupId, name }: { meetupId: str
 }
 
 // Entfernen in zwei Schritten: erst nachfragen, dann entfernen.
-export function DeleteMeetup({ meetupId, shared }: { meetupId: string; shared: boolean }) {
+export function DeleteMeetup({ meetupId, shared, inSeries }: { meetupId: string; shared: boolean; inSeries: boolean }) {
   const [confirming, setConfirming] = useState(false);
-  const [state, action, pending] = useActionState(deleteMeetup, initial);
+  const [scope, setScope] = useState<"single" | "series">("single");
+  const [singleState, single, singlePending] = useActionState(deleteMeetup, initial);
+  const [seriesState, series, seriesPending] = useActionState(cancelMeetupSeries, initial);
+  const pending = singlePending || seriesPending;
+  const error = scope === "series" ? seriesState.error : singleState.error;
 
   if (!confirming) {
     return (
       <Button variant="ghost" className="-ml-4" onClick={() => setConfirming(true)}>
-        Training entfernen
+        {inSeries ? "Absagen" : "Training entfernen"}
       </Button>
     );
   }
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={scope === "series" ? series : single} className="space-y-3">
       <input type="hidden" name="meetupId" value={meetupId} />
+      {inSeries && (
+        <fieldset className="space-y-1">
+          <legend className="mb-1 text-sm font-medium">Was absagen?</legend>
+          {(
+            [
+              ["single", "Nur diesen Termin"],
+              ["series", "Diesen und alle folgenden, die Reihe endet"],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3">
+              <input
+                type="radio"
+                name="cancelScope"
+                checked={scope === value}
+                onChange={() => setScope(value)}
+                className="accent-primary size-5 shrink-0"
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      )}
       <p>
-        {shared
-          ? "Das Training verschwindet für alle, auch für die, die schon zugesagt haben, samt Chat."
-          : "Das Training verschwindet aus deinem Plan."}
+        {scope === "series"
+          ? "Dieser und alle folgenden Termine verschwinden für alle, samt Chat. Wer zugesagt hat, erfährt es."
+          : shared
+            ? "Das Training verschwindet für alle, auch für die, die schon zugesagt haben, samt Chat."
+            : "Das Training verschwindet aus deinem Plan."}
       </p>
-      <ErrorText error={state.error} />
+      <ErrorText error={error} />
       <div className="flex gap-3">
         <Button type="submit" variant="destructive" disabled={pending}>
-          Entfernen
+          {inSeries ? "Absagen" : "Entfernen"}
         </Button>
         <Button type="button" variant="outline" disabled={pending} onClick={() => setConfirming(false)}>
           Abbrechen

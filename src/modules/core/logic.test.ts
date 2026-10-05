@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeMeetupDetails,
+  describeWeekly,
+  meetupFormValues,
+  meetupTimeRange,
+  parseElevation,
+  formatPace,
+  formatSpeed,
+  meetupDetailRows,
+  meetupErrorMessage,
+  parsePace,
+  parseSpeed,
   chatDayLabel,
   chatListTime,
   chatTime,
@@ -192,6 +203,7 @@ describe("Mitteilungen", () => {
       "3 neue Nachrichten zu „Lauf“, zuletzt von Ben",
     );
     expect(describeNotification({ ...base, kind: "cancelled" })).toBe("Ben hat „Lauf“ abgesagt");
+    expect(describeNotification({ ...base, kind: "changed" })).toBe("Ben hat Zeit oder Treffpunkt von „Lauf“ geändert");
     expect(describeNotification({ ...base, kind: "reminder" })).toBe("„Lauf“ beginnt in etwa einer Stunde");
   });
 
@@ -327,5 +339,160 @@ describe("Sportarten", () => {
   it("unbekannte Bereiche landen unter Sonstiges", () => {
     expect(toSportCategory("klettern")).toBe("klettern");
     expect(toSportCategory("quidditch")).toBe("sonstiges");
+  });
+});
+
+describe("Events je Sportart", () => {
+  const run = {
+    sportName: "Laufen",
+    durationMinutes: 60,
+    distanceM: 10000,
+    elevationM: 80,
+    paceSecondsPerKm: 360,
+    speedKmh: null,
+    level: "einsteiger" as const,
+  };
+
+  it("liest das Tempo in Minuten je Kilometer mit Doppelpunkt, Punkt oder Komma", () => {
+    expect(parsePace("6:00")).toBe(360);
+    expect(parsePace("5.30")).toBe(330);
+    expect(parsePace("5,45")).toBe(345);
+    expect(parsePace("7")).toBe(420);
+    expect(parsePace("")).toBeNull();
+    expect(parsePace("6:75")).toBeNaN();
+    expect(parsePace("0:30")).toBeNaN();
+    expect(parsePace("schnell")).toBeNaN();
+  });
+
+  it("liest km/h mit einer Nachkommastelle und lehnt Unsinn ab", () => {
+    expect(parseSpeed("27,5")).toBe(27.5);
+    expect(parseSpeed("25")).toBe(25);
+    expect(parseSpeed(" ")).toBeNull();
+    expect(parseSpeed("0,5")).toBeNaN();
+    expect(parseSpeed("120")).toBeNaN();
+  });
+
+  it("zeigt Tempo und Geschwindigkeit in deutscher Schreibweise", () => {
+    expect(formatPace(330)).toBe("5:30\u00a0min/km");
+    expect(formatSpeed(27.5)).toBe("27,5\u00a0km/h");
+    expect(formatSpeed(25)).toBe("25\u00a0km/h");
+  });
+
+  it("beschreibt ein Event mit Sportart und allen Angaben in einer Zeile", () => {
+    expect(describeMeetupDetails(run)).toBe(
+      "Laufen · 1\u00a0h 00\u00a0min · 10,0\u00a0km · 80\u00a0Hm · 6:00\u00a0min/km · Einsteiger willkommen",
+    );
+    expect(
+      describeMeetupDetails({ ...run, sportName: "Volleyball", distanceM: null, elevationM: null, paceSecondsPerKm: null, level: "gemischt" }),
+    ).toBe("Volleyball · 1\u00a0h 00\u00a0min · Gemischtes Niveau");
+  });
+
+  it("alte Events ohne Sportart und Angaben ergeben eine leere Beschreibung", () => {
+    expect(
+      describeMeetupDetails({
+        sportName: null,
+        durationMinutes: null,
+        distanceM: null,
+        elevationM: null,
+        paceSecondsPerKm: null,
+        speedKmh: null,
+        level: null,
+      }),
+    ).toBe("");
+  });
+
+  it("zeigt auf der Detailseite nur vorhandene Angaben als Zeilen", () => {
+    expect(meetupDetailRows({ ...run, elevationM: null, level: null }).map((r) => r.label)).toEqual([
+      "Sportart",
+      "Dauer",
+      "Distanz",
+      "Tempo",
+    ]);
+    expect(meetupDetailRows({ ...run, paceSecondsPerKm: null, speedKmh: 27.5 }).find((r) => r.label === "Tempo")?.value).toBe(
+      "27,5\u00a0km/h",
+    );
+  });
+
+  it("übernimmt die Meldungen der Datenbank, wenn Angaben nicht zur Sportart passen", () => {
+    expect(meetupErrorMessage({ code: "23514", message: "Zu Bouldern gibt es keinen Trainingsplan" })).toBe(
+      "Zu Bouldern gibt es keinen Trainingsplan.",
+    );
+    expect(meetupErrorMessage({ code: "23503", message: "Die Sportart quidditch gibt es nicht" })).toBe(
+      "Wähl eine Sportart aus der Liste.",
+    );
+    expect(meetupErrorMessage({ code: "42501", message: "new row violates row-level security" })).toBeNull();
+  });
+
+  it("liest Höhenmeter nur als ganze Zahl bis 20.000", () => {
+    expect(parseElevation("450")).toBe(450);
+    expect(parseElevation("0")).toBe(0);
+    expect(parseElevation("")).toBeNull();
+    expect(parseElevation("1,5")).toBeNaN();
+    expect(parseElevation("-5")).toBeNaN();
+    expect(parseElevation("1e3")).toBeNaN();
+    expect(parseElevation("25000")).toBeNaN();
+  });
+
+  it("nennt die Sportart nicht doppelt, wenn das Event wie sie heißt, und zeigt 0 Höhenmeter nicht", () => {
+    expect(describeMeetupDetails({ ...run, title: "Laufen", elevationM: 0, paceSecondsPerKm: null, level: null })).toBe(
+      "1\u00a0h 00\u00a0min · 10,0\u00a0km",
+    );
+    expect(describeMeetupDetails({ ...run, title: "Isarlauf", distanceM: null, elevationM: null, paceSecondsPerKm: null, level: null })).toBe(
+      "Laufen · 1\u00a0h 00\u00a0min",
+    );
+  });
+
+  it("zeigt Beginn und Ende eines Events in deutscher Zeit", () => {
+    expect(meetupTimeRange("2026-10-06T16:30:00Z", 60)).toBe("18:30\u201319:30");
+    expect(meetupTimeRange("2026-10-06T16:30:00Z", null)).toBe("18:30");
+  });
+
+  it("beschreibt den Rhythmus einer Reihe in deutscher Zeit", () => {
+    expect(describeWeekly("2026-10-06T16:30:00Z")).toBe("Jeden Dienstag, 18:30\u00a0Uhr");
+    // nach der Zeitumstellung: dieselbe Uhrzeit
+    expect(describeWeekly("2026-10-27T17:30:00Z")).toBe("Jeden Dienstag, 18:30\u00a0Uhr");
+  });
+
+  it("belegt das Formular zum Bearbeiten so vor, wie man es eintippen würde", () => {
+    expect(
+      meetupFormValues({
+        id: "m1",
+        seriesId: "s1",
+        sportId: "laufen",
+        templateId: null,
+        title: "Isarlauf",
+        durationMinutes: 75,
+        distanceM: 8200,
+        elevationM: 0,
+        paceSecondsPerKm: 330,
+        speedKmh: null,
+        level: "einsteiger",
+        place: null,
+        maxParticipants: 20,
+        note: null,
+      }),
+    ).toEqual({
+      id: "m1",
+      seriesId: "s1",
+      sportId: "laufen",
+      templateId: null,
+      title: "Isarlauf",
+      hours: "1",
+      minutes: "15",
+      distance: "8,2",
+      elevation: "0",
+      pace: "5:30",
+      speed: "",
+      level: "einsteiger",
+      place: "",
+      max: "20",
+      note: "",
+    });
+  });
+
+  it("übernimmt die Meldung, dass sich bei einer Reihe der Tag nur je Termin ändern lässt", () => {
+    expect(meetupErrorMessage({ code: "23514", message: "Den Tag änderst du nur für einen einzelnen Termin" })).toBe(
+      "Den Tag änderst du nur für einen einzelnen Termin.",
+    );
   });
 });

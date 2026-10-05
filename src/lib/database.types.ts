@@ -483,6 +483,38 @@ export type Database = {
           },
         ]
       }
+      meetup_series: {
+        Row: {
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          next_starts_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          next_starts_at: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          next_starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_series_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetup_shares: {
         Row: {
           created_at: string
@@ -520,11 +552,19 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          distance_m: number | null
+          duration_minutes: number | null
+          elevation_m: number | null
           group_id: string | null
           id: string
+          level: string | null
           max_participants: number | null
           note: string | null
+          pace_seconds_per_km: number | null
           place: string | null
+          series_id: string | null
+          speed_kmh: number | null
+          sport_id: string | null
           starts_at: string
           template_id: string | null
           title: string
@@ -532,11 +572,19 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
           group_id?: string | null
           id?: string
+          level?: string | null
           max_participants?: number | null
           note?: string | null
+          pace_seconds_per_km?: number | null
           place?: string | null
+          series_id?: string | null
+          speed_kmh?: number | null
+          sport_id?: string | null
           starts_at: string
           template_id?: string | null
           title: string
@@ -544,11 +592,19 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          distance_m?: number | null
+          duration_minutes?: number | null
+          elevation_m?: number | null
           group_id?: string | null
           id?: string
+          level?: string | null
           max_participants?: number | null
           note?: string | null
+          pace_seconds_per_km?: number | null
           place?: string | null
+          series_id?: string | null
+          speed_kmh?: number | null
+          sport_id?: string | null
           starts_at?: string
           template_id?: string | null
           title?: string
@@ -566,6 +622,20 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "meetup_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetups_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
             referencedColumns: ["id"]
           },
           {
@@ -845,6 +915,7 @@ export type Database = {
           has_sets: boolean
           id: string
           name: string
+          pace_unit: string | null
           position: number
         }
         Insert: {
@@ -855,6 +926,7 @@ export type Database = {
           has_sets?: boolean
           id: string
           name: string
+          pace_unit?: string | null
           position?: number
         }
         Update: {
@@ -865,6 +937,7 @@ export type Database = {
           has_sets?: boolean
           id?: string
           name?: string
+          pace_unit?: string | null
           position?: number
         }
         Relationships: []
@@ -1265,6 +1338,7 @@ export type Database = {
     }
     Functions: {
       block_person: { Args: { target: string }; Returns: undefined }
+      cancel_meetup_series: { Args: { p_id: string }; Returns: number }
       chat_messages_page: {
         Args: { cid: string; max_rows?: number }
         Returns: {
@@ -1406,14 +1480,24 @@ export type Database = {
         }
         Returns: {
           creator_name: string
+          distance_m: number
+          duration_minutes: number
+          elevation_m: number
           id: string
           is_joined: boolean
           is_mine: boolean
+          level: string
           max_participants: number
           note: string
+          pace_seconds_per_km: number
+          pace_unit: string
           participant_count: number
           place: string
+          series_id: string
           share_count: number
+          speed_kmh: number
+          sport_id: string
+          sport_name: string
           starts_at: string
           template_id: string
           title: string
@@ -1484,6 +1568,27 @@ export type Database = {
           user_id: string
         }[]
       }
+      plan_meetup: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_id: string
+          p_level?: string
+          p_max_participants?: number
+          p_note?: string
+          p_pace_seconds_per_km?: number
+          p_place?: string
+          p_share_ids: string[]
+          p_speed_kmh?: number
+          p_sport_id: string
+          p_starts_at: string
+          p_template_id?: string
+          p_title: string
+          p_weekly: boolean
+        }
+        Returns: string
+      }
       profile_stats: { Args: { target: string }; Returns: Json }
       push_forget: {
         Args: { endpoint: string; secret: string }
@@ -1527,6 +1632,26 @@ export type Database = {
           p_notes?: string
           p_performed_at: string
           p_sport_id: string
+        }
+        Returns: string
+      }
+      update_meetup: {
+        Args: {
+          p_distance_m?: number
+          p_duration_minutes: number
+          p_elevation_m?: number
+          p_id: string
+          p_level?: string
+          p_max_participants?: number
+          p_note?: string
+          p_pace_seconds_per_km?: number
+          p_place?: string
+          p_scope: string
+          p_speed_kmh?: number
+          p_sport_id: string
+          p_starts_at: string
+          p_template_id?: string
+          p_title: string
         }
         Returns: string
       }
