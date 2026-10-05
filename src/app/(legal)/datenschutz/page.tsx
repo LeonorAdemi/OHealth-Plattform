@@ -102,6 +102,15 @@ export default function PrivacyPage() {
           unseren Dienstleistern Protokolldaten an, zum Beispiel IP-Adresse,
           Zeitpunkt und aufgerufene Seite.
         </li>
+        <li>
+          <strong>Herkunft:</strong> Sagst du in den ersten 24 Stunden nach der
+          Registrierung über den Link eines Trainings zu oder trittst über einen
+          Einladungslink oder -code einer Community bei, speichern wir einmal, auf
+          welchem dieser Wege du gekommen bist, gegebenenfalls mit einer Kennung
+          aus dem Link (etwa für einen Aushang). Wir werten das nur zusammengefasst
+          aus, um zu sehen, welche Wege neue Mitglieder bringen. Andere sehen es
+          nicht, und es verschwindet mit deinem Konto.
+        </li>
       </ul>
       <p>
         Die Stadt trägst du selbst ein, wenn du willst. Wir erheben keine
@@ -167,6 +176,25 @@ export default function PrivacyPage() {
         Die verknüpfte Vorlage sehen andere nicht. Gib als Treffpunkt einen
         öffentlichen Ort an, keine Privatadresse. Wer eine Community verwaltet,
         kann ein Training von ihrer Pinnwand nehmen.
+      </p>
+      <p>
+        Nach einem Training fragen wir alle, die zugesagt haben, ob sie dabei
+        waren. Sagst du ja, entsteht daraus eine Aktivität mit Sportart und
+        Dauer des Trainings in deinem Verlauf. Wie jede Aktivität sehen sie deine
+        Gruppen und wer dir folgt, mit dem Titel des Trainings; hast du eine KI
+        verbunden, sieht sie die Aktivität auch. Wer das Training geplant hat,
+        sieht, wer bestätigt hat und wer nicht dabei war. Deine Antwort selbst
+        sieht sonst niemand. Die Nachfrage kommt als Mitteilung, wenn du
+        Erinnerungen nicht ausgeschaltet hast.
+      </p>
+      <p>
+        Ist ein Training in einer öffentlichen Community geteilt, gibt es einen
+        Link dazu, den Mitglieder weitergeben können. Über diesen Link sieht
+        jede Person, auch ohne Konto, Titel, Zeit, Treffpunkt, Sportart, Dauer,
+        Distanz, Höhenmeter, Tempo, Niveau, ob es jede Woche stattfindet, die
+        Zahl der Zusagen und den Namen der Community, aber nie die Notiz, wer es
+        plant oder wer zugesagt hat. Wer über den Link zusagt, tritt damit auch der
+        öffentlichen Community bei.
       </p>
       <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt

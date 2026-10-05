@@ -444,6 +444,79 @@ export async function getCommunityPreview(code: string) {
   };
 }
 
+/**
+ * Vorschau eines Events für den öffentlichen Link (public_meetup_preview): nur kommende Events in
+ * öffentlichen Communities, ohne Namen. Funktioniert auch ohne Anmeldung. null, wenn es nicht
+ * öffentlich ist.
+ */
+export async function getPublicMeetup(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("public_meetup_preview", { mid: id });
+  if (error) throw new Error("Das Training konnte nicht geladen werden.");
+  const row = data[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    startsAt: row.starts_at,
+    place: row.place,
+    maxParticipants: row.max_participants,
+    count: row.participant_count,
+    sportName: row.sport_name,
+    durationMinutes: row.duration_minutes,
+    distanceM: row.distance_m,
+    elevationM: row.elevation_m,
+    paceSecondsPerKm: row.pace_seconds_per_km,
+    speedKmh: row.speed_kmh,
+    level: toMeetupLevel(row.level),
+    weekly: row.weekly,
+    communityName: row.community_name,
+    isJoined: row.is_joined,
+  };
+}
+
+// ---------- „Warst du dabei?“ ----------
+
+/** Eigene vergangene Events der letzten 14 Tage ohne Antwort, neueste zuerst (my_open_attendance). */
+export async function getOpenAttendance() {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_open_attendance");
+  if (error) throw new Error("Offene Fragen konnten nicht geladen werden.");
+  return data.map((row) => ({
+    meetupId: row.meetup_id,
+    title: row.title,
+    startsAt: row.starts_at,
+    sportName: row.sport_name,
+    durationMinutes: row.duration_minutes,
+  }));
+}
+
+/** Die eigene Antwort zu einem Event. null, solange keine da ist. */
+export async function getMyAttendance(meetupId: string) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("meetup_attendance")
+    .select("attended, workout_id")
+    .eq("meetup_id", meetupId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error("Die Antwort konnte nicht geladen werden.");
+  return data ? { attended: data.attended, workoutId: data.workout_id } : null;
+}
+
+/** Wer dabei war, nur für die planende Person (meetup_attendance_names); sonst leer. */
+export async function getAttendanceNames(meetupId: string) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.rpc("meetup_attendance_names", { mid: meetupId });
+  if (error) throw new Error("Die Teilnahme konnte nicht geladen werden.");
+  return data.map((row) => ({
+    userId: row.user_id,
+    name: row.display_name,
+    attended: row.attended,
+    isMe: row.user_id === userId,
+  }));
+}
+
 // ---------- Geplante Trainings ----------
 
 type FeedScope = "board" | "mine" | "communities" | "single";

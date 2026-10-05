@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { requestOrigin } from "@/lib/request-origin";
 import { cn } from "@/lib/utils";
+import { InviteShare } from "@/modules/core/components/invite-share";
 import {
+  AttendanceQuestion,
   DeleteMeetup,
   MeetupToggle,
   RemoveFromCommunity,
@@ -20,9 +23,19 @@ import {
   describeWeekly,
   isMeetupFull,
   meetupDetailRows,
+  meetupEndsAt,
   meetupTimeRange,
+  publicEventPath,
+  canAnswerAttendance,
 } from "@/modules/core/logic";
-import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
+import {
+  getAttendanceNames,
+  getChatSummaries,
+  getMeetup,
+  getMyAttendance,
+  getMyCommunities,
+  getPublicMeetup,
+} from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
 
@@ -33,12 +46,38 @@ const longDate = new Intl.DateTimeFormat("de-DE", {
   month: "long",
 });
 
-export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PlanPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ zugesagt?: string }>;
+}) {
+  const [{ id }, { zugesagt }] = await Promise.all([params, searchParams]);
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const [meetup, communities, chats] = await Promise.all([getMeetup(id), getMyCommunities(), getChatSummaries()]);
+  const [meetup, communities, chats, publicMeetup] = await Promise.all([
+    getMeetup(id),
+    getMyCommunities(),
+    getChatSummaries(),
+    getPublicMeetup(id),
+  ]);
   if (!meetup) notFound();
+  const now = new Date();
+  const ended = meetupEndsAt(meetup.startsAt, meetup.durationMinutes) <= now;
+  // Teilnahme erst nach dem Ende laden, die Namen nur für die planende Person
+  const [attendance, attendanceNames] = ended
+    ? await Promise.all([
+        meetup.isJoined ? getMyAttendance(id) : null,
+        meetup.isMine ? getAttendanceNames(id) : [],
+      ])
+    : [null, []];
+  const canAnswer = meetup.isJoined && canAnswerAttendance(meetup.startsAt, meetup.durationMinutes, now);
+  // „Ja“ ohne Aktivität (selbst gelöscht) gilt wieder als offen
+  const counted = attendance?.attended === true && attendance.workoutId !== null;
+  const othersAnswers = attendanceNames.filter((a) => !a.isMe);
+  // Öffentlicher Link nur für kommende Events in öffentlichen Communities (prüft die Datenbank)
+  const publicUrl = publicMeetup ? `${await requestOrigin()}${publicEventPath(id)}` : null;
 
   const isPast = new Date(meetup.startsAt) <= new Date();
   const full = isMeetupFull(meetup.count, meetup.maxParticipants);
@@ -69,6 +108,22 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      {zugesagt === "1" && meetup.isJoined && !isPast && (
+        <div role="status" className="mt-6 max-w-2xl border-y py-4">
+          <p className="font-medium">Zusage gespeichert.</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <a href={`/plan/${meetup.id}/kalender`} className="text-foreground underline underline-offset-4">
+              In den Kalender eintragen
+            </a>
+            . Für eine Erinnerung vorher: OHealth zum Home-Bildschirm hinzufügen und unter{" "}
+            <Link href="/profil/einstellungen" className="text-foreground underline underline-offset-4">
+              Einstellungen
+            </Link>{" "}
+            die Mitteilungen einschalten.
+          </p>
+        </div>
+      )}
+
       <dl className="mt-6 max-w-2xl">
         {meetupDetailRows(meetup).map((row) => (
           <div key={row.label} className="flex min-h-14 items-center gap-4 border-b py-3">
@@ -92,6 +147,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <dt className="text-muted-foreground w-28 shrink-0 text-sm">Geteilt</dt>
           <dd className="min-w-0 break-words">
             {meetup.shareCount === 0 ? "Privat, nur für dich" : sharedIn.map((c) => c.name).join(", ") || "In einer deiner Communities"}
+            {publicUrl && <span className="text-muted-foreground block text-sm">Über den Link für alle sichtbar, ohne Namen</span>}
           </dd>
         </div>
         {hasCompany && (
@@ -136,7 +192,68 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             </a>
           </p>
         )}
+        {publicUrl && meetup.isJoined && (
+          <InviteShare
+            url={publicUrl}
+            compact
+            align="start"
+            label="Link teilen"
+            text={`${meetup.title} bei OHealth. Komm mit.`}
+          />
+        )}
       </div>
+
+      {meetup.isJoined && ended && (attendance || canAnswer) && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="teilnahme">
+          <h2 id="teilnahme" className="text-xl font-semibold">
+            {counted ? "Du warst dabei" : attendance?.attended === false ? "Du warst nicht dabei" : "Warst du dabei?"}
+          </h2>
+          {counted ? (
+            <p className="mt-2">
+              Als Trainingstag gezählt.{" "}
+              <Link href={`/workouts/${attendance.workoutId}`} className="underline underline-offset-4">
+                Aktivität ansehen oder ergänzen
+              </Link>
+            </p>
+          ) : (
+            <p className="text-muted-foreground mt-1 text-sm">Wer dabei war, bekommt das Training als Trainingstag.</p>
+          )}
+          {canAnswer && !counted && (
+            <div className="mt-3">
+              <AttendanceQuestion
+                meetupId={meetup.id}
+                title={meetup.title}
+                declined={attendance?.attended === false}
+              />
+            </div>
+          )}
+        </section>
+      )}
+
+      {meetup.isMine && ended && othersAnswers.some((a) => a.attended !== null) && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="war-dabei">
+          <h2 id="war-dabei" className="text-xl font-semibold">
+            War dabei
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <span className="num">{attendanceNames.filter((a) => a.attended).length}</span> bestätigt
+            {othersAnswers.some((a) => a.attended === null) && (
+              <>
+                , <span className="num">{othersAnswers.filter((a) => a.attended === null).length}</span> ohne Antwort
+              </>
+            )}
+          </p>
+          <ul className="mt-2" aria-label="War dabei">
+            {attendanceNames
+              .filter((a) => a.attended)
+              .map((a) => (
+                <li key={a.userId} className={cn("flex min-h-14 items-center border-b", a.isMe && "text-brand")}>
+                  {a.isMe ? "Du" : a.name}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       {hasCompany && (
         <section className="mt-10 max-w-2xl" aria-labelledby="chat">

@@ -14,6 +14,8 @@ const PUBLIC_PATHS = [
   "/datenschutz",
   // Teilen-Link einer Community: Vorschau auch ohne Konto
   "/beitreten",
+  // Öffentlicher Link eines Events (nur Events in öffentlichen Communities, prüft die Datenbank)
+  "/e",
 ];
 
 // Erneuert die Sitzung einmal je Anfrage und leitet je nach Anmeldestatus um.

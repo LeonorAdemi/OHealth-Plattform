@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import {
   berlinLocalToDate,
+  campaignTag,
   CHAT_NOTIFICATION_KINDS,
   groupTypeFor,
   MAX_BIO,
@@ -472,6 +473,62 @@ export async function joinMeetup(_prev: FormState, formData: FormData): Promise<
 
   revalidatePath("/", "layout");
   return {};
+}
+
+/**
+ * Sagt über den öffentlichen Link zu (join_public_meetup). Wer noch nicht Mitglied ist, tritt
+ * dabei der öffentlichen Community bei. Läuft nach ausdrücklichem Tipp oder, wer vor der
+ * Registrierung „zusagen“ gewählt hat, direkt nach der Anmeldung.
+ */
+export async function joinPublicMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  if (!id.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("join_public_meetup", { mid: id.data });
+  if (error) {
+    if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
+    if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
+    if (error.message.includes("Nicht angemeldet")) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+    if (error.code === "42501") return { error: "Zu diesem Training kannst du über den Link nicht zusagen." };
+    return { error: MEETUP_FAILED };
+  }
+  // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
+  await supabase.rpc("record_signup_source", {
+    p_source: "event_link",
+    p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
+  });
+
+  revalidatePath("/", "layout");
+  redirect(`/plan/${id.data}?zugesagt=1`);
+}
+
+/**
+ * Beantwortet „Warst du dabei?“ (confirm_attendance). Bei „Ja“ entsteht eine Aktivität mit Sportart
+ * und Dauer des Trainings, die als Trainingstag zählt; „Nein“ nimmt sie wieder zurück.
+ */
+export async function confirmAttendance(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = meetupId.safeParse(formData.get("meetupId"));
+  const answer = z.enum(["ja", "nein"]).safeParse(formData.get("antwort"));
+  if (!id.success || !answer.success) return { error: "Dieses Training gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("confirm_attendance", {
+    p_meetup_id: id.data,
+    p_attended: answer.data === "ja",
+  });
+  if (error) {
+    if (error.message.includes("noch nicht vorbei")) return { error: "Das Training ist noch nicht vorbei." };
+    if (error.message.includes("zu lange her")) return { error: "Das Training ist mehr als 14 Tage her." };
+    if (error.code === "42501") return { error: "Bestätigen kann nur, wer zugesagt hat." };
+    return { error: MEETUP_FAILED };
+  }
+
+  revalidatePath("/", "layout");
+  // Nach „Ja“ auf „Heute“ bleiben (mit Hinweis), sonst zur Seite des Trainings: dort steht, dass es
+  // zählt, mit dem Weg zur Aktivität.
+  if (answer.data === "ja") redirect(formData.get("von") === "heute" ? "/?dabei=1" : `/plan/${id.data}`);
+  return { message: "Gespeichert." };
 }
 
 /** Sagt für ein Training ab. Damit schließt sich auch der Chat. */
@@ -960,6 +1017,11 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
+  // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
+  await supabase.rpc("record_signup_source", {
+    p_source: "group_link",
+    p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
+  });
 
   revalidatePath("/community");
   redirect(`/community/${data}`);

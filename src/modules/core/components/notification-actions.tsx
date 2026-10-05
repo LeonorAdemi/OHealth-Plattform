@@ -75,7 +75,7 @@ const OPTIONS: { name: keyof Prefs; label: string; hint?: string }[] = [
   },
   { name: "friends", label: "Neue Follower und Folgen-Anfragen" },
   { name: "cancelled", label: "Ein Training, bei dem ich dabei bin, wird abgesagt oder verlegt" },
-  { name: "reminder", label: "Erinnerung etwa eine Stunde vor dem Training" },
+  { name: "reminder", label: "Erinnerung vor und Nachfrage nach dem Training" },
 ];
 
 const initial: FormState = {};

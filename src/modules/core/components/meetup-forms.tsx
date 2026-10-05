@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -11,15 +11,23 @@ import type { FormState } from "@/lib/result";
 
 import {
   cancelMeetupSeries,
+  confirmAttendance,
   createMeetup,
   deleteMeetup,
   joinMeetup,
+  joinPublicMeetup,
   leaveMeetup,
   removeMeetupShare,
   updateMeetup,
   updateMeetupShares,
 } from "../actions";
-import { MEETUP_LEVEL_LABEL, MEETUP_LEVELS, type MeetupFormValues, type MeetupLevel } from "../logic";
+import {
+  JOIN_INTENT_COOKIE,
+  MEETUP_LEVEL_LABEL,
+  MEETUP_LEVELS,
+  type MeetupFormValues,
+  type MeetupLevel,
+} from "../logic";
 import type { Sport } from "../queries";
 
 import { SportPicker } from "./sport-picker";
@@ -332,6 +340,7 @@ export function MeetupForm({
           <legend className="mb-1 text-sm font-medium">Teilen mit</legend>
           <p className="text-muted-foreground pb-1 text-sm">
             Mitglieder der gewählten Communities sehen das Training auf der Pinnwand und können zusagen.
+            In öffentlichen Communities gibt es dazu einen Link, über den alle es sehen, ohne Namen.
           </p>
           <ShareChoices communities={communities} selected={preselected} />
         </fieldset>
@@ -514,6 +523,131 @@ export function DeleteMeetup({ meetupId, shared, inSeries }: { meetupId: string;
           Abbrechen
         </Button>
       </div>
+    </form>
+  );
+}
+
+/**
+ * Zusagen über den öffentlichen Link. autoJoin: Wer vor der Anmeldung „zusagen“ gewählt hat, sagt
+ * nach der Rückkehr ohne weiteren Tipp zu.
+ */
+export function PublicMeetupJoin({
+  meetupId,
+  campaign,
+  autoJoin,
+}: {
+  meetupId: string;
+  campaign: string | null;
+  autoJoin: boolean;
+}) {
+  const [state, action, pending] = useActionState(joinPublicMeetup, initial);
+  const form = useRef<HTMLFormElement>(null);
+  const sent = useRef(false);
+
+  useEffect(() => {
+    if (autoJoin && !sent.current) {
+      sent.current = true;
+      form.current?.requestSubmit();
+    }
+  }, [autoJoin]);
+
+  return (
+    <form ref={form} action={action} className="space-y-3">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      {campaign && <input type="hidden" name="quelle" value={campaign} />}
+      <ErrorText error={state.error} />
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? "Wird zugesagt" : "Ich bin dabei"}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * Registrieren oder Anmelden, um über den öffentlichen Link zuzusagen. Der Tipp merkt sich für eine
+ * halbe Stunde, dass diese Person zusagen will, damit die Zusage nach der Rückkehr von selbst läuft.
+ */
+export function PublicMeetupAuthLinks({ meetupId, next }: { meetupId: string; next: string }) {
+  const remember = () => {
+    document.cookie = `${JOIN_INTENT_COOKIE}=${meetupId}; Max-Age=1800; Path=/; SameSite=Lax`;
+  };
+  const encoded = encodeURIComponent(next);
+  return (
+    <div className="space-y-4">
+      <Button asChild className="w-full">
+        <Link href={`/registrieren?next=${encoded}`} onClick={remember}>
+          Konto erstellen und zusagen
+        </Link>
+      </Button>
+      <p className="text-sm">
+        <Link
+          href={`/login?next=${encoded}`}
+          onClick={remember}
+          className="inline-flex min-h-11 items-center underline underline-offset-4"
+        >
+          Ich habe schon ein Konto
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+/**
+ * „Warst du dabei?“ mit „Ja, war dabei“ und „Nein“. Beide als Umriss, weil auf „Heute“ der eine
+ * gefüllte Button „Aktivität eintragen“ ist. Nach der Antwort zeigt die Seite den neuen Stand.
+ */
+/**
+ * „Warst du dabei?“ mit Ja und Nein. `declined`: schon mit Nein beantwortet, dann bleibt nur Ja.
+ * `from="heute"`: nach „Ja“ bleibt die Person auf „Heute“, sonst geht es zur Seite des Trainings.
+ */
+export function AttendanceQuestion({
+  meetupId,
+  title,
+  declined = false,
+  from = "event",
+}: {
+  meetupId: string;
+  title: string;
+  declined?: boolean;
+  from?: "heute" | "event";
+}) {
+  const [state, action, pending] = useActionState(confirmAttendance, initial);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <input type="hidden" name="von" value={from} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          name="antwort"
+          value="ja"
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          aria-label={`Ja, war dabei: ${title}`}
+        >
+          Ja, war dabei
+        </Button>
+        {!declined && (
+          <Button
+            type="submit"
+            name="antwort"
+            value="nein"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            aria-label={`Nein: ${title}`}
+          >
+            Nein
+          </Button>
+        )}
+      </div>
+      <ErrorText error={state.error} />
+      {state.message && (
+        <p role="status" className="text-sm">
+          {state.message}
+        </p>
+      )}
     </form>
   );
 }

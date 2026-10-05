@@ -146,8 +146,32 @@ export function describeProfile(p: { city: string | null; sports: readonly strin
 }
 
 /** Pfad, zu dem man nach der Registrierung zurückkehrt, um direkt beizutreten. */
-export function joinAfterAuthPath(code: string): string {
-  return `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
+export function joinAfterAuthPath(code: string, campaign: string | null = null): string {
+  const base = `/beitreten/${encodeURIComponent(code)}?beitreten=1`;
+  return campaign ? `${base}&quelle=${campaign}` : base;
+}
+
+/**
+ * Kennung aus ?quelle= in einem geteilten Link, etwa „sticker-boulderwelt“. Nur Kleinbuchstaben,
+ * Ziffern und Bindestriche, höchstens 40 Zeichen; alles andere zählt als keine Kennung.
+ */
+export function campaignTag(value: string | string[] | undefined): string | null {
+  return typeof value === "string" && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
+}
+
+/**
+ * Cookie, das der Tipp auf „Konto erstellen und zusagen“ setzt. Nur dann sagt die Seite nach der
+ * Rückkehr ohne weiteren Tipp zu; ein präparierter Link allein reicht nicht.
+ */
+export const JOIN_INTENT_COOKIE = "ohealth_zusage";
+
+/** Öffentlicher Link zu einem Event. Mit zusagen: nach Anmeldung oder Registrierung gleich zusagen. */
+export function publicEventPath(id: string, options: { zusagen?: boolean; campaign?: string | null } = {}): string {
+  const params = new URLSearchParams();
+  if (options.zusagen) params.set("zusagen", "1");
+  if (options.campaign) params.set("quelle", options.campaign);
+  const query = params.toString();
+  return query ? `/e/${id}?${query}` : `/e/${id}`;
 }
 
 // ---------- Treffen ----------
@@ -311,7 +335,8 @@ export type NotificationKind =
   | "new_follower"
   | "follow_accepted"
   | "message_request"
-  | "changed";
+  | "changed"
+  | "attendance";
 
 const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "new_training",
@@ -326,6 +351,7 @@ const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   "follow_accepted",
   "message_request",
   "changed",
+  "attendance",
 ];
 
 /** Mitteilungen zu Chat-Nachrichten: nur für den Push, in der App zählt der Tab „Chats“. */
@@ -350,6 +376,8 @@ export function describeNotification(n: { kind: NotificationKind; actorName: str
       return `${n.actorName} hat „${n.title}“ abgesagt`;
     case "changed":
       return `${n.actorName} hat Zeit oder Treffpunkt von „${n.title}“ geändert`;
+    case "attendance":
+      return `Warst du bei „${n.title}“ dabei?`;
     case "reminder":
       return `„${n.title}“ beginnt in etwa einer Stunde`;
     case "community_message":
@@ -726,4 +754,19 @@ export function meetupFormValues(m: {
     max: m.maxParticipants ? String(m.maxParticipants) : "",
     note: m.note ?? "",
   };
+}
+
+// ---------- „Warst du dabei?“ ----------
+
+const ATTENDANCE_DAYS = 14;
+
+/** Ende eines Events: Beginn plus Dauer, ohne Dauer eine Stunde (wie private.meetup_ends_at). */
+export function meetupEndsAt(startsAt: string, durationMinutes: number | null): Date {
+  return new Date(Date.parse(startsAt) + (durationMinutes ?? 60) * 60_000);
+}
+
+/** Ob man jetzt bestätigen kann, dabei gewesen zu sein: nach dem Ende, höchstens 14 Tage danach. */
+export function canAnswerAttendance(startsAt: string, durationMinutes: number | null, now: Date): boolean {
+  const ends = meetupEndsAt(startsAt, durationMinutes).getTime();
+  return ends <= now.getTime() && ends >= now.getTime() - ATTENDANCE_DAYS * 24 * 60 * 60_000;
 }

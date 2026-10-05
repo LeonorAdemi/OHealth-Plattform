@@ -6,7 +6,13 @@ import { cache } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { AcceptCommunityInvite } from "@/modules/core/components/community-forms";
-import { COMMUNITY_JOIN_HINT, COMMUNITY_KIND_LABEL, describeCommunity, joinAfterAuthPath } from "@/modules/core/logic";
+import {
+  campaignTag,
+  COMMUNITY_JOIN_HINT,
+  COMMUNITY_KIND_LABEL,
+  describeCommunity,
+  joinAfterAuthPath,
+} from "@/modules/core/logic";
 import { getCommunityPreview } from "@/modules/core/queries";
 
 // Teilen-Link einer Community. Öffentlich, damit Messenger eine Vorschau zeigen und
@@ -34,9 +40,9 @@ export default async function InvitePage({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ beitreten?: string }>;
+  searchParams: Promise<{ beitreten?: string; quelle?: string }>;
 }) {
-  const [{ code }, { beitreten }] = await Promise.all([params, searchParams]);
+  const [{ code }, { beitreten, quelle }] = await Promise.all([params, searchParams]);
   const community = await preview(code);
 
   if (!community) {
@@ -55,7 +61,8 @@ export default async function InvitePage({
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
-  const next = joinAfterAuthPath(code);
+  const campaign = campaignTag(quelle);
+  const next = joinAfterAuthPath(code, campaign);
 
   return (
     <>
@@ -69,7 +76,7 @@ export default async function InvitePage({
 
       <div className="mt-8">
         {signedIn ? (
-          <AcceptCommunityInvite code={code} autoJoin={beitreten === "1"} />
+          <AcceptCommunityInvite code={code} autoJoin={beitreten === "1"} campaign={campaign} />
         ) : (
           <div className="space-y-4">
             <Button asChild className="w-full">

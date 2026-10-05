@@ -55,6 +55,11 @@ insert into public.meetup_participants (meetup_id, user_id) values
 insert into public.meetup_messages (meetup_id, user_id, body) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', 'Bin dabei');
 insert into public.notification_prefs (user_id, message) values ('00000000-0000-0000-0000-00000000000a', false);
+-- Anna kam über einen Event-Link.
+insert into private.signup_sources (user_id, source) values ('00000000-0000-0000-0000-00000000000a', 'event_link');
+-- Anna hat geantwortet, ob sie dabei war (als Betreiber, ohne Zeitprüfung).
+insert into public.meetup_attendance (meetup_id, user_id, attended) values
+  ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', false);
 -- Anna hat eine wöchentliche Reihe.
 insert into public.meetup_series (id, created_by, next_starts_at) values
   ('70000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', now() + interval '8 weeks');
@@ -94,6 +99,8 @@ select is(
   + (select count(*)::int from public.template_version_exercises where version_id = '50000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetups where created_by = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_series where created_by = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from private.signup_sources where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.meetup_attendance where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_reads where user_id = '00000000-0000-0000-0000-00000000000a')
@@ -103,7 +110,7 @@ select is(
   + (select count(*)::int from public.notifications where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.notification_prefs where user_id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Reihen, Chat-Nachrichten mit Gelesen-Stand, Folgen, Blockierungen und Mitteilungen sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Reihen, Chat-Nachrichten mit Gelesen-Stand, Folgen, Blockierungen, Mitteilungen und Herkunft sind vollständig weg');
 
 select results_eq(
   $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,
