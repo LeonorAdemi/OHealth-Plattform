@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(36);
+select plan(37);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com');
@@ -149,19 +149,27 @@ select results_eq($$ select * from private.legacy_activity_values('30000000-0000
   $$ values ('krafttraining'::text, null::int, null::numeric) $$,
   'Workout ohne Sätze: Krafttraining');
 
--- Der Durchlauf aus der Migration verändert keine Sätze
-select is(
-  (select count(*)::int from public.workout_sets s join public.workouts w on w.id = s.workout_id
-   where w.user_id = '00000000-0000-0000-0000-00000000000a'),
-  9, 'Alle Sätze bleiben erhalten');
+-- Der Durchlauf aus der Migration: schreibt die Werte und lässt Sätze und unveränderte Workouts in Ruhe
 update public.workouts w
 set sport_id = v.sport_id, duration_minutes = v.duration_minutes, distance_m = v.distance_m
 from public.workouts src cross join lateral private.legacy_activity_values(src.id) v
 where w.id = src.id and src.id::text like '30000000%'
   and (v.sport_id <> 'krafttraining' or v.duration_minutes is not null or v.distance_m is not null);
-select is_empty(
-  $$ select 1 from public.workouts where id::text like '30000000%' and sport_id is null $$,
-  'Nach der Zuordnung hat jedes Workout eine Sportart');
+select results_eq(
+  $$ select sport_id, duration_minutes, distance_m from public.workouts
+     where id in ('30000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000003',
+                  '30000000-0000-0000-0000-000000000005') order by id $$,
+  $$ values ('laufen'::text, null::int, 6000.0::numeric), ('krafttraining', 70, null), ('laufen', 28, 5000.0) $$,
+  'Nach dem Durchlauf: Sportart, Dauer und Distanz geschrieben');
+select results_eq(
+  $$ select sport_id, duration_minutes, distance_m from public.workouts
+     where id = '30000000-0000-0000-0000-000000000002' $$,
+  $$ values ('krafttraining'::text, null::int, null::numeric) $$,
+  'Nach dem Durchlauf: Kraft ohne Timer unverändert');
+select is(
+  (select count(*)::int from public.workout_sets s join public.workouts w on w.id = s.workout_id
+   where w.user_id = '00000000-0000-0000-0000-00000000000a'),
+  9, 'Nach dem Durchlauf: alle Sätze erhalten');
 
 select * from finish();
 rollback;

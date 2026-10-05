@@ -106,6 +106,7 @@ insert into public.cities (id, name, country, status, aliases, lat, lng) values
 -- Katalog und Städte: lesbar für alle Angemeldeten, schreibbar nur per Migration.
 alter table public.sports enable row level security;
 alter table public.cities enable row level security;
+-- Die Zuordnungs-Trigger unten laufen mit den Rechten der Person und brauchen diese Leserechte.
 create policy sports_select on public.sports for select to authenticated using (true);
 create policy cities_select on public.cities for select to authenticated using (true);
 -- Zusätzlich zu RLS: Schreibrechte gar nicht erst vergeben (RLS sperrt etwa TRUNCATE nicht).
