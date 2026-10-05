@@ -144,7 +144,7 @@ export function describeWorkouts(workouts: readonly AgentWorkout[], fromDay: str
       titel: w.title,
       ...(w.durationMinutes ? { dauer: plain(formatActivityDuration(w.durationMinutes)) } : {}),
       ...(w.distanceM ? { distanz: distanceText(w.distanceM) } : {}),
-      ...(w.elevationM ? { hoehenmeter: w.elevationM } : {}),
+      ...(w.elevationM !== null ? { hoehenmeter: w.elevationM } : {}),
       ...(w.feeling ? { anstrengung: FEELING_LABEL[w.feeling] } : {}),
       uebungen: groupSetsIntoBlocks(w.sets).map((block) => ({
         name: block.exerciseName,

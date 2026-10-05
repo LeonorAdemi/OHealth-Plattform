@@ -300,6 +300,10 @@ export function activityErrorMessage(error: { code?: string; message?: string } 
     return "Diese Angaben sind nicht möglich. Prüf Dauer, Distanz und Höhenmeter.";
   }
   if (error?.code === "23503") return "Wähl eine Sportart aus der Liste.";
+  // Abgelaufene Anmeldung: Die Datenbank kennt die Person nicht mehr.
+  if (error?.code === "42501" || error?.code === "PGRST301") {
+    return "Deine Anmeldung ist abgelaufen. Melde dich neu an.";
+  }
   return "Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.";
 }
 

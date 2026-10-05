@@ -792,6 +792,9 @@ describe("Aktivität", () => {
     expect(activityErrorMessage({ code: "23503", message: "violates foreign key" })).toBe(
       "Wähl eine Sportart aus der Liste.",
     );
+    expect(activityErrorMessage({ code: "PGRST301", message: "JWT expired" })).toBe(
+      "Deine Anmeldung ist abgelaufen. Melde dich neu an.",
+    );
     expect(activityErrorMessage(null)).toBe("Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.");
   });
 });

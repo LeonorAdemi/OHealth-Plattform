@@ -80,6 +80,7 @@ export function ActivityForm({
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [failedToSend, setFailedToSend] = useState(false);
 
   const sport = sports.find((s) => s.id === sportId) ?? null;
   const recent = recentSportIds.flatMap((rid) => sports.filter((s) => s.id === rid));
@@ -124,11 +125,15 @@ export function ActivityForm({
       notes: notes.trim() || null,
     };
     setSaving(true);
-    // Ohne Netz wirft der Aufruf statt ein Ergebnis zu liefern. Die Eingaben bleiben stehen, und
-    // ein neuer Versuch legt dank der ID vom Gerät nichts doppelt an.
+    // Ohne Netz (oder bei einem Absturz auf dem Server) wirft der Aufruf, statt ein Ergebnis zu
+    // liefern. Die Eingaben bleiben stehen, und ein neuer Versuch legt dank der ID vom Gerät nichts
+    // doppelt an.
     const result = await (existing ? updateActivity(values) : saveActivity(values)).catch(() => null);
     setSaving(false);
-    if (!result) return setError("Keine Verbindung. Deine Angaben sind noch da, versuch es gleich noch einmal.");
+    setFailedToSend(!result);
+    if (!result) {
+      return setError("Das hat nicht geklappt. Deine Angaben sind noch da. Prüf deine Verbindung und sende erneut.");
+    }
     if (!result.ok) return setError(result.error);
     router.push(existing ? `/workouts/${result.data.id}` : "/");
     router.refresh();
@@ -305,7 +310,13 @@ export function ActivityForm({
         </p>
       )}
       <Button type="submit" className="w-full md:w-auto" disabled={saving}>
-        {saving ? "Wird gesendet" : existing ? "Änderungen speichern" : "Aktivität speichern"}
+        {saving
+          ? "Wird gesendet"
+          : failedToSend
+            ? "Erneut senden"
+            : existing
+              ? "Änderungen speichern"
+              : "Aktivität speichern"}
       </Button>
     </form>
   );

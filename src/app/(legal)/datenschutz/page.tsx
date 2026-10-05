@@ -246,9 +246,9 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          Die App darf dein Profil mit Namen, deine Aktivitäten mit Sportart, Dauer,
-          Distanz, Höhenmetern, Anstrengung und allen Sätzen, deine Trainingstage,
-          deine Bestwerte und deine Vorlagen lesen. Notizen zu Aktivitäten liest sie nicht.
+          Die App darf dein Profil mit Namen, deine Aktivitäten mit allen Angaben
+          (Sportart, Titel, Dauer, Distanz, Höhenmeter, Anstrengung, Notiz und Sätze),
+          deine Trainingstage, deine Bestwerte und deine Vorlagen lesen.
         </li>
         <li>
           Sie darf neue private Vorlagen anlegen und neue Versionen deiner
