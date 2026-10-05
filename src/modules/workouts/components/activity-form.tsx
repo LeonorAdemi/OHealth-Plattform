@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { SportPicker } from "@/modules/core/components/sport-picker";
 import { berlinDateTimeParts, berlinLocalToDate } from "@/modules/core/logic";
 import type { Sport } from "@/modules/core/queries";
@@ -41,7 +41,7 @@ export function ActivityForm({
 }: {
   sports: readonly Sport[];
   recentSportIds: readonly string[];
-  /** Eigene Trainingspläne, für Sportarten mit Übungen und Sätzen */
+  /** Eigene Vorlagen, für Sportarten mit Übungen und Sätzen */
   templates?: readonly { id: string; name: string; exerciseCount: number }[];
   existing?: ActivityValues;
 }) {
@@ -178,21 +178,9 @@ export function ActivityForm({
         <legend className="text-sm font-medium">Wie anstrengend? (optional)</legend>
         <div className="flex flex-wrap gap-2">
           {FEELINGS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              aria-pressed={feeling === f.value}
-              onClick={() => setFeeling(feeling === f.value ? null : f.value)}
-              className={cn(
-                "inline-flex min-h-11 items-center rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-                "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-                feeling === f.value
-                  ? "border-foreground text-foreground font-medium"
-                  : "border-input text-muted-foreground hover:bg-accent",
-              )}
-            >
+            <ChoiceChip key={f.value} selected={feeling === f.value} onClick={() => setFeeling(feeling === f.value ? null : f.value)}>
               {f.label}
-            </button>
+            </ChoiceChip>
           ))}
         </div>
       </fieldset>
@@ -221,8 +209,8 @@ export function ActivityForm({
 }
 
 /**
- * Bei Sportarten mit Übungen und Sätzen: eigene Trainingspläne zum direkten Start, dazu Sätze
- * nachtragen. Ohne Plan ein Hinweis, wie man einen anlegt.
+ * Bei Sportarten mit Übungen und Sätzen: eigene Vorlagen zum direkten Start, dazu Sätze
+ * nachtragen. Ohne Vorlage ein Hinweis, wie man eine anlegt.
  */
 function StrengthPlans({ templates }: { templates: readonly { id: string; name: string; exerciseCount: number }[] }) {
   return (
@@ -230,13 +218,13 @@ function StrengthPlans({ templates }: { templates: readonly { id: string; name: 
       <p className="text-sm font-medium">Mit Übungen und Sätzen</p>
       {templates.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          Noch kein Trainingsplan.{" "}
+          Noch keine Vorlage.{" "}
           <Link href="/vorlagen/neu" className="text-foreground underline underline-offset-4">
-            Trainingsplan erstellen
+            Vorlage erstellen
           </Link>
         </p>
       ) : (
-        <ul aria-label="Deine Trainingspläne" className="max-w-xl">
+        <ul aria-label="Deine Vorlagen" className="max-w-xl">
           {templates.map((t) => (
             <li key={t.id} className="border-b">
               <Link
@@ -254,7 +242,7 @@ function StrengthPlans({ templates }: { templates: readonly { id: string; name: 
       )}
       <p className="text-sm">
         <Link href="/workouts/neu" className="inline-flex min-h-11 items-center underline underline-offset-4">
-          Ohne Plan: Sätze nachtragen
+          Ohne Vorlage: Sätze nachtragen
         </Link>
       </p>
       <p className="text-muted-foreground text-sm">Oder trag unten nur die Dauer ein.</p>

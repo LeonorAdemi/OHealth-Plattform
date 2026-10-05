@@ -1,37 +1,26 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 import { matchesSport, SPORT_CATEGORY_LABEL } from "../logic";
 import type { Sport } from "../queries";
 
 function SportChip({ sport, selected, onSelect }: { sport: Sport; selected: boolean; onSelect: () => void }) {
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-        "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-        selected ? "border-foreground text-foreground font-medium" : "border-input text-muted-foreground hover:bg-accent",
-      )}
-    >
-      {selected && <Check size={16} strokeWidth={1.5} aria-hidden />}
+    <ChoiceChip selected={selected} onClick={onSelect}>
       {sport.name}
-    </button>
+    </ChoiceChip>
   );
 }
 
 /**
  * Sportart wählen: oben die zuletzt genutzten als Chips, darunter „Alle Sportarten“ mit Suche und den
  * Gruppen des Katalogs. Für „Aktivität eintragen“ und „Training planen“. Was unter der Auswahl
- * stehen soll (etwa Trainingspläne bei Kraft), kommt als children.
+ * stehen soll (etwa die Vorlagen bei Kraft), kommt als children.
  */
 export function SportPicker({
   sports,
@@ -95,6 +84,17 @@ export function SportPicker({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="zum Beispiel Bouldern"
               autoComplete="off"
+              onKeyDown={(e) => {
+                // Enter wählt den ersten Treffer, statt das Formular abzuschicken.
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const first = grouped[0]?.[1][0];
+                if (first) {
+                  onChange(first.id);
+                  setShowAll(false);
+                  setQuery("");
+                }
+              }}
             />
           </div>
           {grouped.length === 0 ? (

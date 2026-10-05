@@ -573,6 +573,14 @@ export function parsePace(input: string): number | null {
   return seconds;
 }
 
+/** Höhenmeter als ganze Zahl: "450" -> 450. Leer -> null, sonst ungültig oder über 20.000 -> NaN. */
+export function parseElevation(input: string): number | null {
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
+  if (!/^\d{1,5}$/.test(trimmed) || Number(trimmed) > 20000) return Number.NaN;
+  return Number(trimmed);
+}
+
 /** Geschwindigkeit als "27,5 km/h", ganze Zahlen ohne Nachkommastelle. */
 export function formatSpeed(kmh: number): string {
   return `${formatNumber(kmh, Number.isInteger(kmh) ? 0 : 1)} km/h`;
@@ -588,9 +596,11 @@ export function parseSpeed(input: string): number | null {
 
 /**
  * Kurzbeschreibung eines Events: "Laufen · 60 min · 10 km · 6:00 min/km · Einsteiger willkommen".
- * Fehlende Angaben fallen weg; ohne Sportart (alte Events) beginnt sie mit der Dauer.
+ * Fehlende Angaben fallen weg; ohne Sportart (alte Events) beginnt sie mit der Dauer. Heißt das Event
+ * wie seine Sportart, steht sie nicht noch einmal da.
  */
 export function describeMeetupDetails(m: {
+  title?: string;
   sportName: string | null;
   durationMinutes: number | null;
   distanceM: number | null;
@@ -601,7 +611,7 @@ export function describeMeetupDetails(m: {
 }): string {
   const distance = m.distanceM ? formatDistance(m.distanceM) : null;
   return [
-    m.sportName,
+    m.sportName !== m.title ? m.sportName : null,
     m.durationMinutes ? formatActivityDuration(m.durationMinutes) : null,
     distance ? `${distance.value} ${distance.unit}` : null,
     m.elevationM ? `${formatNumber(m.elevationM)} Hm` : null,
@@ -622,6 +632,14 @@ export function meetupErrorMessage(error: { code?: string; message?: string } | 
   if (error?.code === "23514" && /^(Zu .+ gibt es|Ohne Sportart gibt es)/.test(message)) return `${message}.`;
   if (error?.code === "23503" && message.startsWith("Die Sportart")) return "Wähl eine Sportart aus der Liste.";
   return null;
+}
+
+/** Uhrzeit von Beginn bis Ende in deutscher Zeit: "18:30–19:30". Ohne Dauer nur der Beginn. */
+export function meetupTimeRange(startsAt: string, durationMinutes: number | null): string {
+  const start = berlinDateTimeParts(new Date(startsAt)).time;
+  if (!durationMinutes) return start;
+  const end = berlinDateTimeParts(new Date(Date.parse(startsAt) + durationMinutes * 60_000)).time;
+  return `${start}\u2013${end}`;
 }
 
 /** Angaben eines Events als Zeilen für die Detailseite. Fehlende Angaben fallen weg. */

@@ -62,7 +62,8 @@ Leitidee: **Organisatorin gewinnen → Schleife schließen → sicher starten �
 | Neu | Inhalt | Aus 08 | Größe |
 | --- | --- | --- | --- |
 | **N0** | Fundament: AP0 und Nachtrag zu AP2 | AP0, AP2 | S |
-| **N1** | Events mit Sportart, Dauer und wöchentlicher Wiederholung | AP3 (Teil), AP8 (Teil) | M |
+| **N1** | Events je Sportart (Angaben je Sportart, Vorlage bei Kraft) | AP3 (Teil) | M |
+| **N1b** | Wöchentliche Wiederholung, Termine ändern und absagen | AP8 (Teil) | M |
 | **N2** | Öffentlicher Event-Link, Zusage nach Registrierung, Herkunft messen | AP8 (Teil), AP9 (Teil) | M |
 | **N3** | „Warst du dabei?" | AP3 | M |
 | **N4** | Vertrauen und Recht: Melden, Mitglieder entfernen, Nutzungsbedingungen, Mindestalter | AP7, LEGAL | M |
@@ -85,10 +86,11 @@ Leitidee: **Organisatorin gewinnen → Schleife schließen → sicher starten �
 
 Am 5. Oktober 2026 in zwei Schritte geteilt (mit der Nutzerin abgestimmt):
 
-- **N1 Events je Sportart:** Events bekommen Sportart, Dauer und je nach Sportart eigene Angaben: Trainingsplan bei Kraft, Distanz, Höhenmeter und Tempo bei Ausdauer, Niveau für alle. Die Sportart ist aus der Community vorbelegt. Aus der Dauer ergibt sich das Ende des Events. Bei „Aktivität eintragen“ mit Krafttraining stehen die eigenen Trainingspläne direkt zur Auswahl. Kosten pro Person bleiben bewusst in der Notiz, bis Zahlungen kommen.
+- **N1 Events je Sportart:** Events bekommen Sportart, Dauer und je nach Sportart eigene Angaben: Vorlage bei Kraft, Distanz, Höhenmeter und Tempo bei Ausdauer, Niveau für alle. Die Sportart ist aus der Community vorbelegt. Aus der Dauer ergibt sich das Ende des Events. Bei „Aktivität eintragen“ mit Krafttraining stehen die eigenen Vorlagen direkt zur Auswahl. Kosten pro Person bleiben bewusst in der Notiz, bis Zahlungen kommen.
 - **N1b Wöchentliche Wiederholung:** „Jeden Dienstag, 18:30" legt die nächsten acht Termine an (`series_id`). Einen Termin oder die ganze Reihe ändern oder absagen. Die Reihe wird automatisch fortgeschrieben.
 - **Nicht** in N1: Warteliste. Die Obergrenze (`max_participants`) gibt es schon. Ob eine Warteliste gebraucht wird, zeigen die Gespräche.
-- **Fertig, wenn:** Eine Organisatorin legt einen wöchentlichen Lauftreff in unter einer Minute an. Datenbanktests für Reihe, Ändern und Absagen (nur Verwaltung der Community) sowie für die Rechte von KI-Tokens.
+- **N1 fertig, wenn:** Ein Event lässt sich für jede Sportart mit den passenden Angaben planen, aus einer Community ist deren Sportart vorbelegt, und Pinnwand, Wochenplan und Event-Seite zeigen die Angaben. Datenbanktest belegt, dass nur passende Angaben gespeichert werden und eine KI keine Events sieht.
+- **N1b fertig, wenn:** Eine Organisatorin legt einen wöchentlichen Lauftreff in unter einer Minute an. Datenbanktests für Reihe, Ändern und Absagen (nur Verwaltung der Community) sowie für die Rechte von KI-Tokens.
 
 ### N2 Öffentlicher Event-Link (M)
 

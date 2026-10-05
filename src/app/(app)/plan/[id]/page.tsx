@@ -14,7 +14,7 @@ import {
 import { ChatRow } from "@/modules/core/components/chat-link";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
-import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull, meetupDetailRows } from "@/modules/core/logic";
+import { COMMUNITY_KIND_LABEL, describeMeetupCount, isMeetupFull, meetupDetailRows, meetupTimeRange } from "@/modules/core/logic";
 import { getChatSummaries, getMeetup, getMyCommunities } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Training" };
@@ -24,8 +24,6 @@ const longDate = new Intl.DateTimeFormat("de-DE", {
   weekday: "long",
   day: "numeric",
   month: "long",
-  hour: "numeric",
-  minute: "2-digit",
 });
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
@@ -58,7 +56,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         <div className="min-w-0">
           <h1 className="text-titel font-semibold break-words">{meetup.title}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {longDate.format(new Date(meetup.startsAt))}&nbsp;Uhr · {meetup.isMine ? "von dir" : `von ${meetup.creatorName}`}
+            {longDate.format(new Date(meetup.startsAt))}, {meetupTimeRange(meetup.startsAt, meetup.durationMinutes)}&nbsp;Uhr · {meetup.isMine ? "von dir" : `von ${meetup.creatorName}`}
           </p>
         </div>
       </div>

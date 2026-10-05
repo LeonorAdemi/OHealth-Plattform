@@ -6,16 +6,22 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(22);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'anna@example.com'),
   ('00000000-0000-0000-0000-00000000000b', 'ben@example.com');
 insert into public.groups (id, name, type, invite_code, created_by, sport) values
   ('10000000-0000-0000-0000-000000000001', 'Volleyball Westend', 'community', 'volley-code',
-   '00000000-0000-0000-0000-00000000000a', 'Volleyball');
+   '00000000-0000-0000-0000-00000000000a', 'Volleyball'),
+  ('10000000-0000-0000-0000-000000000002', 'Lauftreff Isar', 'community', 'lauf-code',
+   '00000000-0000-0000-0000-00000000000a', 'Laufen');
 insert into public.workout_templates (id, user_id, name) values
   ('40000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a', 'Oberkörper');
+
+select is(
+  (select prosecdef from pg_proc where oid = 'private.check_meetup_fields()'::regprocedure),
+  false, 'Prüfung der Angaben läuft ohne erhöhte Rechte');
 
 select results_eq(
   $$ select id, pace_unit from public.sports where pace_unit is not null order by id $$,
@@ -72,23 +78,41 @@ select throws_ok(
   '23514', null, 'Niveau nur aus der festen Auswahl');
 
 select results_eq(
+  $$ select f.sport_name, f.pace_unit, f.speed_kmh from public.meetups m
+     cross join lateral public.meetup_feed('single', null, m.id, '-infinity') f
+     where m.title = 'Feierabendrunde' $$,
+  $$ values ('Rennrad'::text, 'kmh'::text, 27.5::numeric) $$,
+  'Der Feed liefert das Tempo in km/h mit seiner Einheit');
+
+select results_eq(
   $$ select sport_name, pace_unit, duration_minutes, distance_m, elevation_m, pace_seconds_per_km, level
      from public.meetup_feed('single', null, '60000000-0000-0000-0000-000000000001', '-infinity') $$,
   $$ values ('Laufen'::text, 'min_km'::text, 60, 10000.0::numeric, 80, 360, 'einsteiger'::text) $$,
   'Der Feed liefert Sportart und Angaben des Events');
 
 -- Alte Events ohne Sportart: Zuordnung wie in der Migration
-insert into public.meetups (id, title, starts_at) values
-  ('60000000-0000-0000-0000-000000000002', 'Alt geteilt', now() + interval '2 days'),
-  ('60000000-0000-0000-0000-000000000003', 'Alt privat', now() + interval '2 days');
-insert into public.meetup_shares (meetup_id, group_id)
-values ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001');
+insert into public.meetups (id, title, starts_at, template_id) values
+  ('60000000-0000-0000-0000-000000000002', 'Alt geteilt', now() + interval '2 days', null),
+  ('60000000-0000-0000-0000-000000000003', 'Alt privat', now() + interval '2 days', null),
+  ('60000000-0000-0000-0000-000000000004', 'Alt mit Vorlage', now() + interval '2 days', '40000000-0000-0000-0000-00000000000a'),
+  ('60000000-0000-0000-0000-000000000005', 'Alt doppelt geteilt', now() + interval '2 days', null);
+insert into public.meetup_shares (meetup_id, group_id) values
+  ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001'),
+  ('60000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001'),
+  ('60000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002');
 reset role;
 select results_eq(
   $$ select private.legacy_meetup_sport(id) from public.meetups
      where id in ('60000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000003') order by id $$,
   $$ values ('volleyball'::text), (null) $$,
   'Alte Events bekommen die eindeutige Sportart ihrer Community, private bleiben ohne');
+select is(private.legacy_meetup_sport('60000000-0000-0000-0000-000000000004'), 'krafttraining',
+  'Alte Events mit Vorlage werden Krafttraining');
+select is(private.legacy_meetup_sport('60000000-0000-0000-0000-000000000005'), null,
+  'Geteilt mit Communities verschiedener Sportarten: keine Zuordnung');
+select throws_ok(
+  $$ update public.meetups set sport_id = 'volleyball' where id = '60000000-0000-0000-0000-000000000001' $$,
+  '23514', 'Zu Volleyball gibt es keine Distanz', 'Die Prüfung greift auch beim Ändern, nicht nur beim Anlegen');
 set local role authenticated;
 
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000b", "role": "authenticated"}';

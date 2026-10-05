@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   describeMeetupDetails,
+  meetupTimeRange,
+  parseElevation,
   formatPace,
   formatSpeed,
   meetupDetailRows,
@@ -416,5 +418,29 @@ describe("Events je Sportart", () => {
       "Wähl eine Sportart aus der Liste.",
     );
     expect(meetupErrorMessage({ code: "42501", message: "new row violates row-level security" })).toBeNull();
+  });
+
+  it("liest Höhenmeter nur als ganze Zahl bis 20.000", () => {
+    expect(parseElevation("450")).toBe(450);
+    expect(parseElevation("0")).toBe(0);
+    expect(parseElevation("")).toBeNull();
+    expect(parseElevation("1,5")).toBeNaN();
+    expect(parseElevation("-5")).toBeNaN();
+    expect(parseElevation("1e3")).toBeNaN();
+    expect(parseElevation("25000")).toBeNaN();
+  });
+
+  it("nennt die Sportart nicht doppelt, wenn das Event wie sie heißt, und zeigt 0 Höhenmeter nicht", () => {
+    expect(describeMeetupDetails({ ...run, title: "Laufen", elevationM: 0, paceSecondsPerKm: null, level: null })).toBe(
+      "1\u00a0h 00\u00a0min · 10,0\u00a0km",
+    );
+    expect(describeMeetupDetails({ ...run, title: "Isarlauf", distanceM: null, elevationM: null, paceSecondsPerKm: null, level: null })).toBe(
+      "Laufen · 1\u00a0h 00\u00a0min",
+    );
+  });
+
+  it("zeigt Beginn und Ende eines Events in deutscher Zeit", () => {
+    expect(meetupTimeRange("2026-10-06T16:30:00Z", 60)).toBe("18:30\u201319:30");
+    expect(meetupTimeRange("2026-10-06T16:30:00Z", null)).toBe("18:30");
   });
 });

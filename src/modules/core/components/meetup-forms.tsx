@@ -1,14 +1,13 @@
 "use client";
 
-import { Check } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/result";
-import { cn } from "@/lib/utils";
 
 import {
   createMeetup,
@@ -80,22 +79,9 @@ function LevelChoice() {
       <input type="hidden" name="level" value={level ?? ""} />
       <div className="flex flex-wrap gap-2">
         {MEETUP_LEVELS.map((l) => (
-          <button
-            key={l}
-            type="button"
-            aria-pressed={level === l}
-            onClick={() => setLevel(level === l ? null : l)}
-            className={cn(
-              "inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors duration-150 ease-out md:min-h-9",
-              "focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2",
-              level === l
-                ? "border-foreground text-foreground font-medium"
-                : "border-input text-muted-foreground hover:bg-accent",
-            )}
-          >
-            {level === l && <Check size={16} strokeWidth={1.5} aria-hidden />}
+          <ChoiceChip key={l} selected={level === l} onClick={() => setLevel(level === l ? null : l)}>
             {MEETUP_LEVEL_LABEL[l]}
-          </button>
+          </ChoiceChip>
         ))}
       </div>
     </fieldset>
@@ -116,7 +102,7 @@ function SportFields({ sport }: { sport: Sport }) {
       {sport.paceUnit === "min_km" && (
         <div className="space-y-2">
           <Label htmlFor="pace">Tempo in min/km</Label>
-          <Input id="pace" name="pace" inputMode="decimal" placeholder="z. B. 6:00" className="num text-right" />
+          <Input id="pace" name="pace" inputMode="text" placeholder="z. B. 6:00" className="num text-right" />
         </div>
       )}
       {sport.paceUnit === "kmh" && (
@@ -138,7 +124,7 @@ function SportFields({ sport }: { sport: Sport }) {
 
 /**
  * Training planen. Zuerst die Sportart, danach nur die Felder, die zu ihr passen: bei Kraft der
- * Trainingsplan, bei Ausdauer Distanz, Höhenmeter und Tempo. Tag und Uhrzeit kommen vom Server
+ * Vorlage, bei Ausdauer Distanz, Höhenmeter und Tempo. Tag und Uhrzeit kommen vom Server
  * vorbelegt (deutsche Zeit), damit Server und Browser dasselbe anzeigen.
  */
 export function CreateMeetupForm({
@@ -163,19 +149,28 @@ export function CreateMeetupForm({
   minDate: string;
 }) {
   const [state, action, pending] = useActionState(createMeetup, initial);
+  const [, startTransition] = useTransition();
   const [sportId, setSportId] = useState<string | null>(defaultSportId ?? recentSportIds[0] ?? null);
   const sport = sports.find((s) => s.id === sportId) ?? null;
 
   return (
-    <form action={action} className="max-w-xl space-y-8">
+    <form
+      // Über onSubmit statt action: React leert sonst nach einem Fehler alle Felder.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => action(data));
+      }}
+      className="max-w-xl space-y-8"
+    >
       <input type="hidden" name="sportId" value={sportId ?? ""} />
       <SportPicker sports={sports} recentSportIds={recentSportIds} value={sportId} onChange={setSportId}>
         {sport?.hasSets &&
           (templates.length > 0 ? (
             <div className="space-y-2 pt-2">
-              <Label htmlFor="templateId">Trainingsplan (optional)</Label>
+              <Label htmlFor="templateId">Vorlage (optional)</Label>
               <select id="templateId" name="templateId" defaultValue="" className={selectClass}>
-                <option value="">Ohne Trainingsplan</option>
+                <option value="">Ohne Vorlage</option>
                 {templates.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -183,14 +178,14 @@ export function CreateMeetupForm({
                 ))}
               </select>
               <p className="text-muted-foreground text-sm">
-                Mit Trainingsplan startest du das Training am Tag direkt aus dem Plan.
+                Mit Vorlage startest du das Training am Tag direkt aus dem Plan.
               </p>
             </div>
           ) : (
             <p className="text-muted-foreground pt-2 text-sm">
-              Mit einem Trainingsplan startest du am Tag direkt.{" "}
+              Mit einer Vorlage startest du das Training am Tag direkt.{" "}
               <Link href="/vorlagen/neu" className="text-foreground underline underline-offset-4">
-                Trainingsplan erstellen
+                Vorlage erstellen
               </Link>
             </p>
           ))}
@@ -253,11 +248,9 @@ export function CreateMeetupForm({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="max">Höchstens (optional)</Label>
-            <Input id="max" name="max" type="number" inputMode="numeric" min={2} max={500} placeholder="Ohne Grenze" />
-          </div>
+        <div className="space-y-2 sm:w-1/2 sm:pr-2">
+          <Label htmlFor="max">Höchstens (optional)</Label>
+          <Input id="max" name="max" type="number" inputMode="numeric" min={2} max={500} placeholder="Ohne Grenze" />
         </div>
 
         <div className="space-y-2">
@@ -267,7 +260,7 @@ export function CreateMeetupForm({
       </div>
 
       <ErrorText error={state.error} />
-      <Button type="submit" className="w-full md:w-auto" disabled={pending || !sport}>
+      <Button type="submit" className="w-full md:w-auto" disabled={pending}>
         {pending ? "Wird geplant" : "Training planen"}
       </Button>
     </form>

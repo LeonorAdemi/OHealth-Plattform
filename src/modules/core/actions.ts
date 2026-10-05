@@ -19,6 +19,7 @@ import {
   normalizeSports,
   parseDistanceKm,
   parseDurationMinutes,
+  parseElevation,
   parsePace,
   parseSpeed,
 } from "./logic";
@@ -231,10 +232,7 @@ const meetupSchema = z.object({
   hours: z.string(),
   minutes: z.string(),
   distance: z.string(),
-  elevation: z.union([
-    z.literal(""),
-    z.coerce.number().int("Gib die Höhenmeter als ganze Zahl ein.").min(0).max(20000, "Höchstens 20.000 Höhenmeter."),
-  ]),
+  elevation: z.string(),
   pace: z.string(),
   speed: z.string(),
   level: z.union([z.literal(""), z.enum(MEETUP_LEVELS)]),
@@ -246,11 +244,15 @@ function meetupMeasures(d: z.infer<typeof meetupSchema>) {
   if (durationMinutes === null) return { error: "Gib eine Dauer zwischen 1 Minute und 24 Stunden ein." } as const;
   const distanceM = parseDistanceKm(d.distance);
   if (Number.isNaN(distanceM)) return { error: "Gib die Distanz in Kilometern ein, zum Beispiel 8,5." } as const;
+  const elevationM = parseElevation(d.elevation);
+  if (Number.isNaN(elevationM)) return { error: "Gib die Höhenmeter als ganze Zahl bis 20.000 ein." } as const;
   const paceSecondsPerKm = parsePace(d.pace);
-  if (Number.isNaN(paceSecondsPerKm)) return { error: "Gib das Tempo in Minuten je Kilometer ein, zum Beispiel 6:00." } as const;
+  if (Number.isNaN(paceSecondsPerKm)) {
+    return { error: "Gib das Tempo als Minuten und Sekunden je Kilometer ein, zum Beispiel 6:00 oder 5.30." } as const;
+  }
   const speedKmh = parseSpeed(d.speed);
   if (Number.isNaN(speedKmh)) return { error: "Gib das Tempo in km/h ein, zum Beispiel 25." } as const;
-  return { durationMinutes, distanceM, paceSecondsPerKm, speedKmh } as const;
+  return { durationMinutes, distanceM, elevationM, paceSecondsPerKm, speedKmh } as const;
 }
 
 const MEETUP_FAILED = "Das hat nicht geklappt. Prüf deine Verbindung und versuch es erneut.";
@@ -295,7 +297,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   const userId = claims?.claims?.sub;
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
-  // Ohne eigenen Titel heißt das Training wie der Trainingsplan, sonst wie die Sportart.
+  // Ohne eigenen Titel heißt das Training wie die Vorlage, sonst wie die Sportart.
   let title = parsed.data.title;
   if (!title && parsed.data.templateId) {
     const { data: template } = await supabase
@@ -325,7 +327,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       sport_id: parsed.data.sportId,
       duration_minutes: measures.durationMinutes,
       distance_m: measures.distanceM,
-      elevation_m: parsed.data.elevation === "" ? null : parsed.data.elevation,
+      elevation_m: measures.elevationM,
       pace_seconds_per_km: measures.paceSecondsPerKm,
       speed_kmh: measures.speedKmh,
       level: parsed.data.level || null,
