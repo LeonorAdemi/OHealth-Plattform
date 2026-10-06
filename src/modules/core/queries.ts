@@ -791,9 +791,11 @@ export async function getAgentAuthorization(authorizationId: string) {
 /** Städte mit Stand (live oder geplant), live zuerst. */
 export const getCities = cache(async () => {
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.from("cities").select("id, name, status").order("status").order("name");
+  const { data, error } = await supabase.from("cities").select("id, name, status").order("name");
   if (error) throw new Error("Die Städte konnten nicht geladen werden.");
-  return data.map((c) => ({ id: c.id, name: c.name, live: c.status === "live" }));
+  return data
+    .map((c) => ({ id: c.id, name: c.name, live: c.status === "live" }))
+    .sort((a, b) => Number(b.live) - Number(a.live));
 });
 
 /** Die eigene Stadt aus dem Profil (Katalog) und ob ich auf einer Warteliste stehe. */

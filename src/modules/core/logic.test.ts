@@ -45,6 +45,8 @@ import {
   joinAfterAuthPath,
   passkeysEnabled,
   withNext,
+  discoverCityId,
+  sportFilterOptions,
 } from "./logic";
 
 describe("Aktive Anmelde-Anbieter", () => {
@@ -534,5 +536,29 @@ describe("Warst du dabei?", () => {
     expect(canAnswerAttendance(start, 60, new Date("2026-10-06T17:30:00Z"))).toBe(true);
     expect(canAnswerAttendance(start, 60, new Date("2026-10-20T17:00:00Z"))).toBe(true);
     expect(canAnswerAttendance(start, 60, new Date("2026-10-20T18:00:00Z"))).toBe(false);
+  });
+});
+
+describe("Entdecken", () => {
+  it("nimmt die eigene Stadt nur, wenn sie live ist", () => {
+    expect(discoverCityId("muenchen", ["muenchen"])).toBe("muenchen");
+    expect(discoverCityId("berlin", ["muenchen"])).toBe("muenchen");
+    expect(discoverCityId(null, ["muenchen"])).toBe("muenchen");
+  });
+
+  it("ordnet die Sportarten nach Häufigkeit, dann nach Name", () => {
+    expect(
+      sportFilterOptions([
+        { sportId: "laufen", sportName: "Laufen" },
+        { sportId: "bouldern", sportName: "Bouldern" },
+        { sportId: "laufen", sportName: "Laufen" },
+        { sportId: "yoga", sportName: "Yoga" },
+        { sportId: null, sportName: null },
+      ]),
+    ).toEqual([
+      { id: "laufen", name: "Laufen" },
+      { id: "bouldern", name: "Bouldern" },
+      { id: "yoga", name: "Yoga" },
+    ]);
   });
 });

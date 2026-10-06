@@ -898,6 +898,51 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   redirect("/profil");
 }
 
+const onboardingSchema = z.object({
+  sports: z.array(z.string().trim().min(1).max(40)).max(5, "Wähl höchstens fünf Sportarten."),
+  cityId: z.string().regex(/^[a-z0-9_]{2,40}$/, "Wähl deine Stadt."),
+});
+
+/**
+ * Einstieg ohne Einladung: Sportarten und Stadt ins Profil. Läuft OHealth in der Stadt noch nicht,
+ * kommt die Person auf die Warteliste (city_interest). Danach geht es zu „Entdecken“.
+ */
+export async function saveOnboarding(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = onboardingSchema.safeParse({
+    sports: formData.getAll("sports").filter((v) => typeof v === "string"),
+    cityId: formData.get("cityId") ?? "",
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+
+  const { data: city } = await supabase
+    .from("cities")
+    .select("id, name, status")
+    .eq("id", parsed.data.cityId)
+    .maybeSingle();
+  if (!city) return { error: "Wähl deine Stadt." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ sports: normalizeSports(parsed.data.sports), city: city.name, city_id: city.id })
+    .eq("id", userId);
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  // Warteliste nur für Städte, in denen es OHealth noch nicht gibt; sonst eine alte Eintragung löschen.
+  const waitlist =
+    city.status === "live"
+      ? await supabase.from("city_interest").delete().eq("user_id", userId)
+      : await supabase.from("city_interest").upsert({ user_id: userId, city_id: city.id });
+  if (waitlist.error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/", "layout");
+  redirect("/entdecken");
+}
+
 const AVATAR_MAX_BYTES = 512 * 1024;
 
 /** Erkennt WebP und JPEG an den ersten Bytes, unabhängig davon, was der Browser angibt. */
