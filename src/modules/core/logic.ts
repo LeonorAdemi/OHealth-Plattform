@@ -131,18 +131,21 @@ export function toSportCategory(value: string): SportCategory {
   return value in SPORT_CATEGORY_LABEL ? (value as SportCategory) : "sonstiges";
 }
 
+/** Text für Suchen: ohne Groß- und Kleinschreibung, Umlaute und ß zu unterscheiden („Über“ wird „uber“). */
+export function foldForSearch(text: string): string {
+  return text
+    .toLocaleLowerCase("de-DE")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/ß/g, "ss")
+    .trim();
+}
+
 /** Sucht im Katalog nach Name oder Suchbegriff, ohne Groß- und Kleinschreibung und Umlaute zu unterscheiden. */
 export function matchesSport(sport: { name: string; aliases: readonly string[] }, query: string): boolean {
-  const fold = (t: string) =>
-    t
-      .toLocaleLowerCase("de-DE")
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/ß/g, "ss")
-      .trim();
-  const q = fold(query);
+  const q = foldForSearch(query);
   if (!q) return true;
-  return [sport.name, ...sport.aliases].some((t) => fold(t).includes(q));
+  return [sport.name, ...sport.aliases].some((t) => foldForSearch(t).includes(q));
 }
 
 // ---------- Profil ----------

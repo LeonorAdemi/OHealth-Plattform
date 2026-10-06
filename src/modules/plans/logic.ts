@@ -1,12 +1,14 @@
-import type { SportCategory } from "@/modules/core/logic";
+import { foldForSearch, type SportCategory } from "@/modules/core/logic";
 
 import type { Catalog, Goal, GoalLevel, Intensity, Plan, Unit } from "./catalog";
 
-/** Name und Gruppe je Sportart aus dem Sportarten-Katalog, für Namen und Sportfarben. */
-export type SportLookup = ReadonlyMap<string, { name: string; category: SportCategory }>;
+/** Name, Gruppe und Suchbegriffe je Sportart aus dem Sportarten-Katalog, für Namen, Sportfarben und Suche. */
+export type SportLookup = ReadonlyMap<string, { name: string; category: SportCategory; aliases: readonly string[] }>;
 
-export function sportLookup(sports: readonly { id: string; name: string; category: SportCategory }[]): SportLookup {
-  return new Map(sports.map((s) => [s.id, { name: s.name, category: s.category }]));
+export function sportLookup(
+  sports: readonly { id: string; name: string; category: SportCategory; aliases: readonly string[] }[],
+): SportLookup {
+  return new Map(sports.map((s) => [s.id, { name: s.name, category: s.category, aliases: s.aliases }]));
 }
 
 export const INTENSITY_LABEL: Record<Intensity, string> = {
@@ -147,6 +149,88 @@ export function filterCatalog(
         ? []
         : catalog.plans.filter((p) => !sportId || planSportIds(p, catalog.units).includes(sportId)),
     units: kind === "plaene" ? [] : catalog.units.filter((u) => !sportId || u.sportId === sportId),
+  };
+}
+
+// ---------- Suche ----------
+
+export const MAX_QUERY = 60;
+
+/** Suchtext wie für den Vergleich: gefaltet, Zahl und Einheit getrennt („5km“ wird „5 km“). */
+function searchText(text: string): string {
+  return foldForSearch(text).replace(/(\d)(\p{L})/gu, "$1 $2");
+}
+
+/** Wörter einer Suche, höchstens acht. */
+export function searchWords(query: string): string[] {
+  return searchText(query.slice(0, MAX_QUERY)).split(/\s+/).filter(Boolean).slice(0, 8);
+}
+
+type Field = { text: string; weight: number };
+
+/** Gewicht je Treffer: Titel vor Suchbegriffen, Sportart und Ziel, dann der Rest. */
+function score(fields: readonly Field[], words: readonly string[]): number {
+  let total = 0;
+  for (const word of words) {
+    const best = Math.max(0, ...fields.filter((f) => f.text.includes(word)).map((f) => f.weight));
+    if (best === 0) return 0;
+    total += best;
+  }
+  return total;
+}
+
+function sportFields(ids: readonly string[], sports: SportLookup): Field[] {
+  return ids.flatMap((id) => {
+    const s = sports.get(id);
+    return [id, s?.name ?? "", ...(s?.aliases ?? [])].map((t) => ({ text: searchText(t), weight: 2 }));
+  });
+}
+
+const fields = (weight: number, texts: readonly string[]): Field[] =>
+  texts.map((t) => ({ text: searchText(t), weight }));
+
+/**
+ * Sucht in Plänen und Einheiten: jedes Wort muss vorkommen, im Titel, in den Suchbegriffen, bei der
+ * Sportart (auch ihre Suchbegriffe wie „Joggen“), beim Ziel, im Niveau oder im Ablauf. Ein Plan wird
+ * auch über seine Einheiten gefunden. Treffer im Titel stehen oben, sonst bleibt die Reihenfolge.
+ */
+export function searchCatalog(
+  catalog: Catalog,
+  items: { plans: readonly Plan[]; units: readonly Unit[] },
+  query: string,
+  sports: SportLookup,
+): { plans: Plan[]; units: Unit[] } {
+  const words = searchWords(query);
+  if (words.length === 0) return { plans: [...items.plans], units: [...items.units] };
+  const units = new Map(catalog.units.map((u) => [u.slug, u]));
+  const goalsOfPlan = (slug: string) =>
+    catalog.goals.filter((g) => g.levels.some((l) => l.path.includes(slug))).map((g) => g.label);
+  const goalsOfUnit = (slug: string) => catalog.goals.filter((g) => g.units.includes(slug)).map((g) => g.label);
+  const unitTexts = (u: Unit) => [u.title, ...u.steps.map((s) => s.text)];
+
+  const rank = <T>(list: readonly T[], fieldsOf: (item: T) => Field[]) =>
+    list
+      .map((item) => ({ item, score: score(fieldsOf(item), words) }))
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((r) => r.item);
+
+  return {
+    plans: rank(items.plans, (p) => [
+      ...fields(3, [p.title]),
+      ...fields(2, [...(p.keywords ?? []), ...goalsOfPlan(p.slug)]),
+      ...sportFields(planSportIds(p, catalog.units), sports),
+      ...fields(1, [
+        p.level,
+        ...p.week.flatMap((slug) => (slug && units.has(slug) ? unitTexts(units.get(slug)!) : [])),
+      ]),
+    ]),
+    units: rank(items.units, (u) => [
+      ...fields(3, [u.title]),
+      ...fields(2, [...(u.keywords ?? []), ...goalsOfUnit(u.slug)]),
+      ...sportFields([u.sportId], sports),
+      ...fields(1, [INTENSITY_LABEL[u.intensity], ...u.steps.map((s) => s.text)]),
+    ]),
   };
 }
 
