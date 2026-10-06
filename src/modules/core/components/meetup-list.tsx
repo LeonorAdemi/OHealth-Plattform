@@ -5,6 +5,7 @@ import { describeMeetupCount, describeMeetupDetails, formatMeetupWhen, isMeetupF
 import type { ChatSummary, Meetup } from "../queries";
 import { ChatLine } from "./chat-link";
 import { MeetupToggle } from "./meetup-forms";
+import { SportDot } from "./sport-dot";
 
 /** Datumsblock: Tag groß und schmal, Monat klein darunter. */
 export function MeetupDate({ startsAt }: { startsAt: string }) {
@@ -62,7 +63,12 @@ export function MeetupList({
                 <span className="line-clamp-2 block font-medium break-words group-hover:underline group-hover:underline-offset-4">
                   {m.title}
                 </span>
-                {details && <span className="num mt-0.5 block text-sm">{details}</span>}
+                {details && (
+                  <span className="num mt-0.5 flex items-center gap-2 text-sm">
+                    <SportDot category={m.sportCategory} />
+                    {details}
+                  </span>
+                )}
                 <span className="text-muted-foreground mt-0.5 block text-sm">{meta.join(" · ")}</span>
               </Link>
               {chats && m.isJoined && chats[m.id] && <ChatLine chat={chats[m.id]} title={m.title} />}

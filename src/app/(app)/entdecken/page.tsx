@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { JoinPublicButton } from "@/modules/core/components/community-forms";
+import { SportDot } from "@/modules/core/components/sport-dot";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { SportFilter } from "@/modules/core/components/sport-filter";
 import {
@@ -102,7 +103,10 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
                 >
                   <MeetupDate startsAt={m.startsAt} />
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium break-words">{m.title}</span>
+                    <span className="flex items-center gap-2 font-medium break-words">
+                      <SportDot category={m.sportCategory} />
+                      {m.title}
+                    </span>
                     <span className="text-muted-foreground block text-sm">
                       {[m.sportName, formatMeetupWhen(m.startsAt), m.communityName].filter(Boolean).join(" · ")}
                     </span>

@@ -15,7 +15,7 @@ export default async function WelcomePage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-titel font-semibold">Willkommen bei OHealth</h1>
-      <p className="mt-2">Zwei Fragen, dann zeigen wir dir, wer in deiner Nähe trainiert.</p>
+      <p className="mt-2">Drei Fragen, dann zeigen wir dir, wer in deiner Nähe trainiert.</p>
       <div className="mt-8">
         <OnboardingForm
           sports={sports}

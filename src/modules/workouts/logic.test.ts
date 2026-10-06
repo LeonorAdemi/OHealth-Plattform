@@ -45,6 +45,15 @@ import {
   formatActivityDuration,
   parseDistanceKm,
   parseDurationMinutes,
+  daysOfWeek,
+  goalStreak,
+  heatLevel,
+  describeWeekProgress,
+  ringState,
+  weekProgress,
+  type WeekSport,
+  isoWeekOf,
+  type WeekSummary,
 } from "./logic";
 
 // Samstag, 3. Oktober 2026, 12:00 Uhr deutscher Zeit
@@ -796,5 +805,69 @@ describe("Aktivität", () => {
       "Deine Anmeldung ist abgelaufen. Melde dich neu an.",
     );
     expect(activityErrorMessage(null)).toBe("Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.");
+  });
+});
+
+describe("Serie", () => {
+  const week = (trainingDays: number): WeekSummary => ({ weekStart: "", trainingDays, minutes: 0, distanceM: 0 });
+
+  it("zählt Wochen in Folge mit erreichtem Ziel", () => {
+    expect(goalStreak([week(3), week(4), week(3), week(1), week(5)], 3)).toBe(3);
+  });
+
+  it("lässt die laufende Woche aus, solange ihr Ziel noch offen ist", () => {
+    expect(goalStreak([week(1), week(3), week(3)], 3)).toBe(2);
+    expect(goalStreak([week(0), week(2)], 3)).toBe(0);
+  });
+});
+
+describe("Wochen im Überblick", () => {
+  it("liefert die sieben Tage einer Woche, auch über den Monatswechsel", () => {
+    expect(daysOfWeek("2026-09-28")).toEqual([
+      "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+    ]);
+  });
+
+  it("nennt die Kalenderwoche eines Montags", () => {
+    expect(isoWeekOf("2026-10-05")).toBe(41);
+    expect(isoWeekOf("2026-12-28")).toBe(53);
+  });
+});
+
+describe("Heatmap", () => {
+  it("stuft Minuten für die Heatmap ein", () => {
+    expect([undefined, 0, 1, 29, 30, 59, 60, 89, 90, 300].map(heatLevel)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  });
+});
+
+describe("Kreise je Sportart", () => {
+  const sport = (times: number | null, done: number): WeekSport => ({
+    sportId: "krafttraining",
+    name: "Krafttraining",
+    category: "kraft",
+    times,
+    done,
+  });
+
+  it("hat so viele Segmente wie das Vorhaben und füllt je Aktivität eins", () => {
+    expect(ringState(sport(3, 2))).toEqual({ segments: 3, filled: 2, complete: false, extra: 0 });
+  });
+
+  it("schließt sich mit erreichtem Vorhaben und zählt, was darüber hinausgeht", () => {
+    expect(ringState(sport(3, 3))).toMatchObject({ filled: 3, complete: true, extra: 0 });
+    expect(ringState(sport(3, 5))).toMatchObject({ filled: 3, complete: true, extra: 2 });
+  });
+
+  it("zeigt Spontanes ohne Vorhaben als vollen Kreis und begrenzt die Segmente", () => {
+    expect(ringState(sport(null, 2))).toEqual({ segments: 1, filled: 1, complete: false, extra: 0 });
+    expect(ringState(sport(20, 1)).segments).toBe(14);
+  });
+
+  it("fasst die Woche zusammen, je Sportart höchstens ihr Vorhaben", () => {
+    const week = [sport(3, 4), { ...sport(1, 0), sportId: "laufen", name: "Laufen" }, { ...sport(null, 1), sportId: "yoga" }];
+    expect(weekProgress(week)).toEqual({ done: 3, total: 4, closed: 1, rings: 2 });
+    expect(describeWeekProgress(week)).toBe("3 von 4 Trainings geschafft. Noch 1.");
+    expect(describeWeekProgress([sport(2, 2)])).toBe("Vorhaben dieser Woche geschafft.");
+    expect(describeWeekProgress([sport(null, 1)])).toBeNull();
   });
 });

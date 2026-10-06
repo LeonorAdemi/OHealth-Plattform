@@ -39,6 +39,16 @@
   --brand-foreground: #ffffff;
   --brand-subtle: #dff7ea;
 
+  /* Sportfarben: je Gruppe des Sportarten-Katalogs eine Farbe, nur als Fläche, Punkt oder Linie,
+     immer zusammen mit dem Namen der Sportart. Kontrast auf Weiß mindestens 3:1. docs/DESIGN.md, Abschnitt 4 */
+  --sport-ausdauer: #2563eb;
+  --sport-outdoor: #0e7490;
+  --sport-kraft: #ea580c;
+  --sport-klettern: #7c3aed;
+  --sport-ballsport: #b45309;
+  --sport-koerper: #db2777;
+  --sport-sonstiges: #64748b;
+
   /* Signal: nur Fehler und Löschen */
   --destructive: #be2323;
   --destructive-foreground: #ffffff;
@@ -81,6 +91,13 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-subtle: var(--brand-subtle);
+  --color-sport-ausdauer: var(--sport-ausdauer);
+  --color-sport-outdoor: var(--sport-outdoor);
+  --color-sport-kraft: var(--sport-kraft);
+  --color-sport-klettern: var(--sport-klettern);
+  --color-sport-ballsport: var(--sport-ballsport);
+  --color-sport-koerper: var(--sport-koerper);
+  --color-sport-sonstiges: var(--sport-sonstiges);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -182,4 +199,10 @@
   .legal strong {
     font-weight: 500;
   }
+}
+
+/* Bewegung nach docs/DESIGN.md, Abschnitt 11: nur als Antwort, einmalig, ohne Federn. */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

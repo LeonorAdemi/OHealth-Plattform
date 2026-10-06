@@ -2,6 +2,7 @@
 
 import type { ExerciseMeasure } from "@/lib/domain";
 import {
+  type SportCategory,
   formatActivityDuration,
   formatDistance,
   formatNumber,
@@ -903,4 +904,87 @@ export function formatWorkoutWhen(performedAt: string, now: Date): string {
   if (day === dayKey(now)) return `Heute, ${time}`;
   if (day === dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000))) return `Gestern, ${time}`;
   return `${whenDay.format(date)}, ${time}`;
+}
+
+// ---------- Wochenziel und Überblick („Heute“) ----------
+
+/** Eine Woche aus my_weekly_summary, die laufende zuerst. */
+export type WeekSummary = { weekStart: string; trainingDays: number; minutes: number; distanceM: number };
+
+/**
+ * Wochen in Folge mit mindestens goal Trainingstagen, die laufende zuerst. Ist das Ziel in der
+ * laufenden Woche noch nicht erreicht, zählt die Serie ab der Vorwoche (die Woche läuft noch).
+ */
+export function goalStreak(weeks: readonly WeekSummary[], goal: number): number {
+  const start = weeks.length > 0 && weeks[0].trainingDays < goal ? 1 : 0;
+  let streak = 0;
+  for (let i = start; i < weeks.length && weeks[i].trainingDays >= goal; i++) streak += 1;
+  return streak;
+}
+
+/** Die sieben Kalendertage einer Woche ab ihrem Montag ("JJJJ-MM-TT"). */
+export function daysOfWeek(monday: string): string[] {
+  const start = keyToUtc(monday);
+  return Array.from({ length: 7 }, (_, i) => utcToKey(start + i * DAY_MS));
+}
+
+/** Kalenderwoche eines Montags ("JJJJ-MM-TT"). */
+export function isoWeekOf(monday: string): number {
+  return isoWeek(new Date(keyToUtc(monday) + 12 * 60 * 60 * 1000), "UTC");
+}
+
+// ---------- Farbige Ansicht („Heute“): Ring, Heatmap, Balken ----------
+
+/** Ein Trainingstag aus my_activity_days: Minuten und Gruppe der Hauptsportart. */
+export type ActivityDay = { day: string; minutes: number; category: SportCategory };
+
+/** Stufe in der Heatmap: 0 ohne Training, dann bis 29, 59, 89 und ab 90 Minuten. */
+export function heatLevel(minutes: number | undefined): 0 | 1 | 2 | 3 | 4 {
+  if (!minutes || minutes <= 0) return 0;
+  if (minutes < 30) return 1;
+  if (minutes < 60) return 2;
+  if (minutes < 90) return 3;
+  return 4;
+}
+
+// ---------- Kreise je Sportart („Heute“) ----------
+
+/** Eine Sportart der laufenden Woche: Vorhaben (ohne Vorhaben null) und Zahl der Aktivitäten. */
+export type WeekSport = { sportId: string; name: string; category: SportCategory; times: number | null; done: number };
+
+/** Höchstens so viele Segmente zeichnet ein Kreis; darüber wird er unlesbar. */
+export const MAX_RING_SEGMENTS = 14;
+
+/**
+ * Zustand eines Kreises: Segmente nach Vorhaben, gefüllt mit jeder Aktivität, geschlossen, sobald
+ * das Vorhaben erreicht ist. Ohne Vorhaben ein voller Zusatzkreis.
+ */
+export function ringState(sport: WeekSport): { segments: number; filled: number; complete: boolean; extra: number } {
+  if (sport.times === null) return { segments: 1, filled: 1, complete: false, extra: 0 };
+  const segments = Math.min(sport.times, MAX_RING_SEGMENTS);
+  return {
+    segments,
+    filled: Math.min(sport.done, segments),
+    complete: sport.done >= sport.times,
+    extra: Math.max(0, sport.done - sport.times),
+  };
+}
+
+/** Stand aller Vorhaben der Woche: erledigte Einheiten (je Sportart höchstens ihr Vorhaben) und Summe. */
+export function weekProgress(sports: readonly WeekSport[]): { done: number; total: number; closed: number; rings: number } {
+  const goals = sports.filter((s) => s.times !== null);
+  return {
+    done: goals.reduce((sum, s) => sum + Math.min(s.done, s.times ?? 0), 0),
+    total: goals.reduce((sum, s) => sum + (s.times ?? 0), 0),
+    closed: goals.filter((s) => s.done >= (s.times ?? 0)).length,
+    rings: goals.length,
+  };
+}
+
+/** Satz über den Kreisen: „3 von 4 Trainings geschafft. Noch 1.“ oder „Alle Vorhaben geschafft.“ */
+export function describeWeekProgress(sports: readonly WeekSport[]): string | null {
+  const { done, total, closed, rings } = weekProgress(sports);
+  if (rings === 0) return null;
+  if (closed === rings) return rings === 1 ? "Vorhaben dieser Woche geschafft." : "Alle Vorhaben dieser Woche geschafft.";
+  return `${done} von ${total} Trainings geschafft. Noch ${total - done}.`;
 }

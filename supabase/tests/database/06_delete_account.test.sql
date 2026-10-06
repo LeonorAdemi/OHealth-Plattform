@@ -63,6 +63,8 @@ insert into public.meetup_attendance (meetup_id, user_id, attended) values
 -- Anna hat den Nutzungsbedingungen zugestimmt und wurde aus der Crew einmal entfernt.
 insert into public.terms_acceptances (user_id, version) values ('00000000-0000-0000-0000-00000000000a', '2026-10-06');
 insert into public.city_interest (user_id, city_id) values ('00000000-0000-0000-0000-00000000000a', 'berlin');
+insert into public.weekly_goals (user_id, days) values ('00000000-0000-0000-0000-00000000000a', 4);
+insert into public.weekly_sport_goals (user_id, sport_id, times) values ('00000000-0000-0000-0000-00000000000a', 'laufen', 2);
 insert into public.group_bans (group_id, user_id, until)
 values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', now() - interval '1 day');
 -- Anna hat eine wöchentliche Reihe.
@@ -108,6 +110,8 @@ select is(
   + (select count(*)::int from public.meetup_attendance where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.terms_acceptances where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.city_interest where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.weekly_goals where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.weekly_sport_goals where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.group_bans where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')
@@ -118,7 +122,7 @@ select is(
   + (select count(*)::int from public.notifications where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.notification_prefs where user_id = '00000000-0000-0000-0000-00000000000a'),
   0,
-  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Reihen, Chat-Nachrichten mit Gelesen-Stand, Folgen, Blockierungen, Mitteilungen und Herkunft sind vollständig weg');
+  'Konto, Profil, Workouts, Sätze, Mitgliedschaften, Vorlagen mit Versionen, geplante Trainings und Reihen, Chat-Nachrichten mit Gelesen-Stand, Folgen, Blockierungen, Mitteilungen, Wochenziel, Vorhaben je Sportart und Herkunft sind vollständig weg');
 
 select results_eq(
   $$ select user_id from public.meetup_participants where meetup_id = '60000000-0000-0000-0000-00000000000b' $$,
