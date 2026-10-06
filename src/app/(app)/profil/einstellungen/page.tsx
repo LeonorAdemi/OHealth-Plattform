@@ -10,9 +10,9 @@ import { PushToggle } from "@/modules/core/components/push-toggle";
 import { PasskeySetup } from "@/modules/core/components/passkey-setup";
 import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
 import { passkeysEnabled } from "@/modules/core/logic";
-import { getAgentGrants, getNotificationPrefs } from "@/modules/core/queries";
-import { WeeklyGoalForm } from "@/modules/workouts/components/weekly-goal-form";
-import { getWeeklyGoal } from "@/modules/workouts/queries";
+import { getAgentGrants, getNotificationPrefs, getSports } from "@/modules/core/queries";
+import { SportGoalsForm } from "@/modules/workouts/components/sport-goals-form";
+import { getSportGoals } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Einstellungen" };
 
@@ -27,11 +27,12 @@ async function appOrigin() {
 }
 
 export default async function SettingsPage() {
-  const [grants, origin, prefs, goal] = await Promise.all([
+  const [grants, origin, prefs, goals, sports] = await Promise.all([
     getAgentGrants(),
     appOrigin(),
     getNotificationPrefs(),
-    getWeeklyGoal(),
+    getSportGoals(),
+    getSports(),
   ]);
 
   return (
@@ -48,12 +49,13 @@ export default async function SettingsPage() {
 
       <section className="mt-8 max-w-xl scroll-mt-8" id="wochenziel" aria-labelledby="wochenziel-titel">
         <h2 id="wochenziel-titel" className="text-xl font-semibold">
-          Wochenziel
+          Vorhaben pro Woche
         </h2>
         <p className="text-muted-foreground mt-1 mb-3 text-sm">
-          An wie vielen Tagen pro Woche du trainieren willst. Jede Sportart zählt. Nur du siehst dein Ziel.
+          Wie oft du dir je Sportart pro Woche vornimmst. Auf „Heute“ füllt jedes Training seinen Kreis. Nur du
+          siehst deine Vorhaben.
         </p>
-        <WeeklyGoalForm goal={goal} />
+        <SportGoalsForm goals={goals} sports={sports} />
       </section>
 
       <section className="mt-10 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">

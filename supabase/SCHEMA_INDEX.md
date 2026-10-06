@@ -33,6 +33,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.template_versions → 20261004111940_workout_templates.sql:36
 - public.terms_acceptances → 20261006210000_trust_and_safety.sql:404
 - public.weekly_goals → 20261008090000_weekly_goal.sql:10
+- public.weekly_sport_goals → 20261008150000_sport_goals.sql:10
 - public.workout_sets → 20261003084225_core_and_workouts.sql:73; geändert in workout_edit_and_set_order, training_sessions
 - public.workout_templates → 20261004111940_workout_templates.sql:19
 - public.workouts → 20261003084225_core_and_workouts.sql:62; geändert in training_sessions, sports_and_cities, meetup_attendance
@@ -90,6 +91,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - private.limit_communities → 20261003175019_public_communities.sql:70
 - private.limit_meetup_messages → 20261004175505_planned_trainings_and_chat.sql:245
 - private.limit_meetups → 20261006120000_meetup_series.sql:130; 3 Fassungen
+- private.limit_sport_goals → 20261008150000_sport_goals.sql:45
 - private.limit_template_versions → 20261004111940_workout_templates.sql:200
 - private.limit_templates → 20261004111940_workout_templates.sql:187
 - private.limit_version_exercises → 20261004111940_workout_templates.sql:213
@@ -161,6 +163,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.my_follows → 20261005140000_follows.sql:274
 - public.my_new_bests → 20261008090000_weekly_goal.sql:118
 - public.my_open_attendance → 20261006180000_meetup_attendance.sql:166
+- public.my_week_sports → 20261008150000_sport_goals.sql:132
 - public.my_weekly_summary → 20261008090000_weekly_goal.sql:79
 - public.open_direct_chat → 20261005140000_follows.sql:427; 2 Fassungen
 - public.people_search → 20261005140000_follows.sql:295
@@ -174,9 +177,10 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.remove_group_member → 20261006210000_trust_and_safety.sql:370
 - public.respond_chat_request → 20261005140000_follows.sql:457
 - public.respond_follow_request → 20261005140000_follows.sql:228
-- public.save_onboarding → 20261008090000_weekly_goal.sql:44; 2 Fassungen
+- public.save_onboarding → 20261008150000_sport_goals.sql:89; 3 Fassungen
 - public.save_push_subscription → 20261004203926_push_and_reminders.sql:44
 - public.save_template → 20261004124327_agent_write_templates.sql:64; 2 Fassungen
+- public.set_sport_goals → 20261008150000_sport_goals.sql:64
 - public.unblock_person → 20261005100000_friends_and_direct_chats.sql:230
 - public.unfollow_person → 20261005140000_follows.sql:217
 - public.unread_chat_count → 20261006210000_trust_and_safety.sql:251; 4 Fassungen
@@ -288,6 +292,13 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.weekly_goals: weekly_goals_insert → 20261008090000_weekly_goal.sql:21
 - public.weekly_goals: weekly_goals_select → 20261008090000_weekly_goal.sql:19
 - public.weekly_goals: weekly_goals_update → 20261008090000_weekly_goal.sql:23
+- public.weekly_sport_goals: agent_weekly_sport_goals_no_delete → 20261008150000_sport_goals.sql:40
+- public.weekly_sport_goals: agent_weekly_sport_goals_no_insert → 20261008150000_sport_goals.sql:34
+- public.weekly_sport_goals: agent_weekly_sport_goals_no_update → 20261008150000_sport_goals.sql:37
+- public.weekly_sport_goals: weekly_sport_goals_delete → 20261008150000_sport_goals.sql:30
+- public.weekly_sport_goals: weekly_sport_goals_insert → 20261008150000_sport_goals.sql:26
+- public.weekly_sport_goals: weekly_sport_goals_select → 20261008150000_sport_goals.sql:24
+- public.weekly_sport_goals: weekly_sport_goals_update → 20261008150000_sport_goals.sql:28
 - public.workout_sets: agent_sets_no_delete → 20261003171441_agent_read_only.sql:90
 - public.workout_sets: agent_sets_no_insert → 20261003171441_agent_read_only.sql:84
 - public.workout_sets: agent_sets_no_update → 20261003171441_agent_read_only.sql:87
@@ -339,6 +350,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - limit_communities → 20261003175019_public_communities.sql:83
 - limit_meetup_messages → 20261004175505_planned_trainings_and_chat.sql:259
 - limit_meetups → 20261004173314_community_search_and_meetups.sql:164
+- limit_sport_goals → 20261008150000_sport_goals.sql:55
 - limit_template_versions → 20261004111940_workout_templates.sql:210
 - limit_templates → 20261004111940_workout_templates.sql:197
 - limit_version_exercises → 20261004111940_workout_templates.sql:223

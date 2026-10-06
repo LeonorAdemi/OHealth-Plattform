@@ -16,10 +16,10 @@ import {
  * der Vorwoche Distanzen gab) und die Serie. Daneben in Stein der genaue Wert der Vorwoche.
  * weeks kommt aus my_weekly_summary, die laufende Woche zuerst.
  */
-export function WeekStats({ weeks, goal }: { weeks: readonly WeekSummary[]; goal: number | null }) {
+export function WeekStats({ weeks }: { weeks: readonly WeekSummary[] }) {
   const [current, previous] = weeks;
   if (!current) return null;
-  const streak = goalStreak(weeks, goal ?? 1);
+  const streak = goalStreak(weeks, 1);
   const showDistance = current.distanceM > 0 || (previous?.distanceM ?? 0) > 0;
   const km = formatDistance(current.distanceM);
 
@@ -42,7 +42,7 @@ export function WeekStats({ weeks, goal }: { weeks: readonly WeekSummary[]; goal
       <Stat
         value={formatNumber(streak)}
         unit={streak === 1 ? "Woche" : "Wochen"}
-        label={goal ? "in Folge mit Wochenziel" : "in Folge mit Training"}
+        label="in Folge mit Training"
         before={null}
       />
     </dl>
@@ -68,23 +68,20 @@ const dayLabel = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "nume
 
 /**
  * Die letzten Wochen als Heatmap in Moos: Spalten sind Wochen (älteste links), Zeilen Montag bis
- * Sonntag, je kräftiger, desto mehr Minuten. Darunter, in wie vielen Wochen das Ziel erreicht war.
+ * Sonntag, je kräftiger, desto mehr Minuten.
  * weeks kommt aus my_weekly_summary (laufende zuerst), minutesByDay aus my_activity_days.
  */
 export function ActivityHeatmap({
   weeks,
   minutesByDay,
   today,
-  goal,
 }: {
   weeks: readonly WeekSummary[];
   minutesByDay: Readonly<Record<string, number>>;
   today: string;
-  goal: number | null;
 }) {
   const columns = [...weeks].reverse();
   const trainingDays = weeks.reduce((sum, w) => sum + w.trainingDays, 0);
-  const reached = goal === null ? 0 : weeks.filter((w) => w.trainingDays >= goal).length;
 
   return (
     <section aria-labelledby="wochen-ueberblick">
@@ -128,11 +125,6 @@ export function ActivityHeatmap({
         ))}
         <span className="ml-1">mehr</span>
       </div>
-      {goal !== null && (
-        <p className="mt-3 text-sm">
-          Wochenziel in <span className="num font-semibold">{reached}</span> von {weeks.length} Wochen erreicht.
-        </p>
-      )}
     </section>
   );
 }

@@ -908,34 +908,8 @@ export function formatWorkoutWhen(performedAt: string, now: Date): string {
 
 // ---------- Wochenziel und Überblick („Heute“) ----------
 
-/** Wählbare Wochenziele in Trainingstagen; vorbelegt im Einstieg ist 3. */
-export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
-export const DEFAULT_WEEKLY_GOAL = 3;
-
 /** Eine Woche aus my_weekly_summary, die laufende zuerst. */
 export type WeekSummary = { weekStart: string; trainingDays: number; minutes: number; distanceM: number };
-
-/** „1 Tag“, „3 Tage“ */
-export function describeDays(n: number): string {
-  return `${n} ${n === 1 ? "Tag" : "Tage"}`;
-}
-
-/** Stand zum Wochenziel. Prozent abgerundet und höchstens 100, damit nichts geschönt wird. */
-export function goalProgress(count: number, goal: number): { percent: number; remaining: number; reached: boolean } {
-  return {
-    percent: Math.min(100, Math.floor((count / goal) * 100)),
-    remaining: Math.max(0, goal - count),
-    reached: count >= goal,
-  };
-}
-
-/** Satz unter der Großzahl: „75 % deines Wochenziels. Noch 1 Tag.“ oder „Wochenziel erreicht.“ */
-export function describeGoal(count: number, goal: number): string {
-  const { percent, remaining, reached } = goalProgress(count, goal);
-  if (!reached) return `${percent} % deines Wochenziels. Noch ${describeDays(remaining)}.`;
-  if (count === goal) return "Wochenziel erreicht.";
-  return `Wochenziel erreicht, ${describeDays(count - goal)} mehr.`;
-}
 
 /**
  * Wochen in Folge mit mindestens goal Trainingstagen, die laufende zuerst. Ist das Ziel in der
@@ -964,23 +938,6 @@ export function isoWeekOf(monday: string): number {
 /** Ein Trainingstag aus my_activity_days: Minuten und Gruppe der Hauptsportart. */
 export type ActivityDay = { day: string; minutes: number; category: SportCategory };
 
-/**
- * Segmente des Rings: so viele wie das Ziel (ohne Ziel sieben), mehr, wenn mehr trainiert wurde,
- * höchstens sieben. Die ersten tragen die Sportart der Trainingstage in zeitlicher Reihenfolge.
- */
-export function ringSegments(days: readonly ActivityDay[], goal: number | null): (SportCategory | null)[] {
-  const sorted = [...days].sort((a, b) => a.day.localeCompare(b.day));
-  const total = Math.min(7, Math.max(goal ?? 7, sorted.length));
-  return Array.from({ length: total }, (_, i) => sorted[i]?.category ?? null);
-}
-
-/** Wie viele Tage je Gruppe, häufigste zuerst (Legende neben dem Ring). */
-export function categoryCounts(days: readonly ActivityDay[]): { category: SportCategory; days: number }[] {
-  const counts = new Map<SportCategory, number>();
-  for (const d of days) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
-  return [...counts].map(([category, n]) => ({ category, days: n })).sort((a, b) => b.days - a.days);
-}
-
 /** Stufe in der Heatmap: 0 ohne Training, dann bis 29, 59, 89 und ab 90 Minuten. */
 export function heatLevel(minutes: number | undefined): 0 | 1 | 2 | 3 | 4 {
   if (!minutes || minutes <= 0) return 0;
@@ -988,4 +945,46 @@ export function heatLevel(minutes: number | undefined): 0 | 1 | 2 | 3 | 4 {
   if (minutes < 60) return 2;
   if (minutes < 90) return 3;
   return 4;
+}
+
+// ---------- Kreise je Sportart („Heute“) ----------
+
+/** Eine Sportart der laufenden Woche: Vorhaben (ohne Vorhaben null) und Zahl der Aktivitäten. */
+export type WeekSport = { sportId: string; name: string; category: SportCategory; times: number | null; done: number };
+
+/** Höchstens so viele Segmente zeichnet ein Kreis; darüber wird er unlesbar. */
+export const MAX_RING_SEGMENTS = 14;
+
+/**
+ * Zustand eines Kreises: Segmente nach Vorhaben, gefüllt mit jeder Aktivität, geschlossen, sobald
+ * das Vorhaben erreicht ist. Ohne Vorhaben ein voller Zusatzkreis.
+ */
+export function ringState(sport: WeekSport): { segments: number; filled: number; complete: boolean; extra: number } {
+  if (sport.times === null) return { segments: 1, filled: 1, complete: false, extra: 0 };
+  const segments = Math.min(sport.times, MAX_RING_SEGMENTS);
+  return {
+    segments,
+    filled: Math.min(sport.done, segments),
+    complete: sport.done >= sport.times,
+    extra: Math.max(0, sport.done - sport.times),
+  };
+}
+
+/** Stand aller Vorhaben der Woche: erledigte Einheiten (je Sportart höchstens ihr Vorhaben) und Summe. */
+export function weekProgress(sports: readonly WeekSport[]): { done: number; total: number; closed: number; rings: number } {
+  const goals = sports.filter((s) => s.times !== null);
+  return {
+    done: goals.reduce((sum, s) => sum + Math.min(s.done, s.times ?? 0), 0),
+    total: goals.reduce((sum, s) => sum + (s.times ?? 0), 0),
+    closed: goals.filter((s) => s.done >= (s.times ?? 0)).length,
+    rings: goals.length,
+  };
+}
+
+/** Satz über den Kreisen: „3 von 4 Trainings geschafft. Noch 1.“ oder „Alle Vorhaben geschafft.“ */
+export function describeWeekProgress(sports: readonly WeekSport[]): string | null {
+  const { done, total, closed, rings } = weekProgress(sports);
+  if (rings === 0) return null;
+  if (closed === rings) return rings === 1 ? "Vorhaben dieser Woche geschafft." : "Alle Vorhaben dieser Woche geschafft.";
+  return `${done} von ${total} Trainings geschafft. Noch ${total - done}.`;
 }

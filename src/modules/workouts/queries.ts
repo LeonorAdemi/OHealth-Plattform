@@ -14,6 +14,7 @@ import {
   weekKeys,
   type ActivityDay,
   type BestRow,
+  type WeekSport,
   type WeekSummary,
   type ExerciseSessionRow,
   type StoredSet,
@@ -813,12 +814,34 @@ export async function getExerciseHistory(exerciseId: string) {
 
 // ---------- Wochenziel und Überblick („Heute“) ----------
 
-/** Eigenes Wochenziel in Trainingstagen, null ohne Ziel. */
-export async function getWeeklyGoal(): Promise<number | null> {
+/** Eigene Vorhaben je Sportart in ihrer Reihenfolge („Krafttraining 3× pro Woche“). */
+export async function getSportGoals() {
   const { supabase, userId } = await requireUser();
-  const { data, error } = await supabase.from("weekly_goals").select("days").eq("user_id", userId).maybeSingle();
-  if (error) throw new Error("Das Wochenziel konnte nicht geladen werden.");
-  return data?.days ?? null;
+  const { data, error } = await supabase
+    .from("weekly_sport_goals")
+    .select("sport_id, times")
+    .eq("user_id", userId)
+    .order("position")
+    .limit(5);
+  if (error) throw new Error("Die Vorhaben konnten nicht geladen werden.");
+  return data.map((g) => ({ sportId: g.sport_id, times: g.times }));
+}
+
+/**
+ * Laufende Woche je Sportart (my_week_sports): Vorhaben (ohne null) und Zahl der Aktivitäten,
+ * zuerst die Vorhaben in ihrer Reihenfolge, dann Spontanes.
+ */
+export async function getWeekSports(): Promise<WeekSport[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_week_sports");
+  if (error) throw new Error("Die Woche konnte nicht geladen werden.");
+  return data.map((row) => ({
+    sportId: row.sport_id,
+    name: row.sport_name,
+    category: toSportCategory(row.category),
+    times: row.times,
+    done: row.done,
+  }));
 }
 
 /** Die letzten Wochen mit Trainingstagen, Minuten und Distanz, die laufende zuerst (my_weekly_summary). */

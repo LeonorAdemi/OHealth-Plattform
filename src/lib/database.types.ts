@@ -1245,6 +1245,45 @@ export type Database = {
           },
         ]
       }
+      weekly_sport_goals: {
+        Row: {
+          position: number
+          sport_id: string
+          times: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          position?: number
+          sport_id: string
+          times: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          position?: number
+          sport_id?: string
+          times?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_sport_goals_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "sports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_sport_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sets: {
         Row: {
           created_at: string
@@ -1856,6 +1895,16 @@ export type Database = {
           title: string
         }[]
       }
+      my_week_sports: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          category: string
+          done: number
+          sport_id: string
+          sport_name: string
+          times: number
+        }[]
+      }
       open_direct_chat: { Args: { other: string }; Returns: string }
       my_weekly_summary: {
         Args: { p_weeks?: number }
@@ -1946,7 +1995,12 @@ export type Database = {
         Returns: undefined
       }
       save_onboarding: {
-        Args: { p_city: string; p_sports: string[]; p_weekly_goal?: number }
+        Args: {
+          p_city: string
+          p_sport_goals?: Json
+          p_sports: string[]
+          p_weekly_goal?: number
+        }
         Returns: undefined
       }
       save_push_subscription: {
@@ -1964,6 +2018,7 @@ export type Database = {
         }
         Returns: string
       }
+      set_sport_goals: { Args: { p_goals: Json }; Returns: undefined }
       unblock_person: { Args: { target: string }; Returns: undefined }
       unfollow_person: { Args: { target: string }; Returns: undefined }
       unread_chat_count: { Args: never; Returns: number }

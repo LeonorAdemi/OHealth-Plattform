@@ -907,8 +907,26 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 const onboardingSchema = z.object({
   sports: z.array(z.string().trim().min(1).max(40)).max(5, "Wähl höchstens fünf Sportarten."),
   cityId: z.string().regex(/^[a-z0-9_]{2,40}$/, "Wähl deine Stadt."),
-  weeklyGoal: z.coerce.number().int().min(1, "Wähl dein Wochenziel.").max(7, "Wähl dein Wochenziel."),
+  sportGoals: z
+    .array(
+      z.object({
+        sport_id: z.string().regex(/^[a-z0-9_]{2,40}$/),
+        times: z.int().min(1).max(14, "Höchstens 14 pro Woche."),
+      }),
+    )
+    .max(5, "Höchstens fünf Vorhaben."),
 });
+
+/** Liest ein JSON-Feld aus einem Formular; ungültig -> null (die Prüfung meldet dann den Fehler). */
+function jsonField(formData: FormData, name: string): unknown {
+  const raw = formData.get(name);
+  if (typeof raw !== "string" || raw === "") return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Einstieg ohne Einladung: Sportarten und Stadt ins Profil. Läuft OHealth in der Stadt noch nicht,
@@ -919,7 +937,7 @@ export async function saveOnboarding(_prev: FormState, formData: FormData): Prom
   const parsed = onboardingSchema.safeParse({
     sports: formData.getAll("sports").filter((v) => typeof v === "string"),
     cityId: formData.get("cityId") ?? "",
-    weeklyGoal: formData.get("weeklyGoal") ?? "",
+    sportGoals: jsonField(formData, "sportGoals"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -927,7 +945,7 @@ export async function saveOnboarding(_prev: FormState, formData: FormData): Prom
   const { error } = await supabase.rpc("save_onboarding", {
     p_sports: normalizeSports(parsed.data.sports),
     p_city: parsed.data.cityId,
-    p_weekly_goal: parsed.data.weeklyGoal,
+    p_sport_goals: parsed.data.sportGoals,
   });
   if (error) return { error: error.code === "22023" ? "Wähl deine Stadt." : "Das hat nicht geklappt. Versuch es erneut." };
 

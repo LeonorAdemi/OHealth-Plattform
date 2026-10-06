@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
+import { Stepper } from "@/components/ui/stepper";
 import type { FormState } from "@/lib/result";
 
 import { saveOnboarding } from "../actions";
@@ -11,12 +12,11 @@ import { MAX_SPORTS, SPORT_CATEGORY_LABEL, type SportCategory } from "../logic";
 
 const initial: FormState = {};
 
-// Wochenziel in Trainingstagen; vorbelegt mit drei, damit der Einstieg schnell bleibt.
-const GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
-const DEFAULT_GOAL = 3;
+// Vorhaben je Sportart: jede gewählte Sportart startet mit einmal pro Woche.
+const DEFAULT_TIMES = 1;
 
 /**
- * Einstieg: Sportarten (bis zu fünf), Stadt und Wochenziel. Städte, die noch nicht live sind,
+ * Einstieg: Sportarten (bis zu fünf), Stadt und wie oft pro Woche je Sportart. Städte, die noch nicht live sind,
  * heißen „bald“.
  */
 export function OnboardingForm({
@@ -33,7 +33,11 @@ export function OnboardingForm({
   const [state, action, pending] = useActionState(saveOnboarding, initial);
   const [chosen, setChosen] = useState<string[]>([...initialSports]);
   const [cityId, setCityId] = useState(initialCityId);
-  const [goal, setGoal] = useState<number>(DEFAULT_GOAL);
+  const [times, setTimes] = useState<Record<string, number>>({});
+  const timesOf = (name: string) => times[name] ?? DEFAULT_TIMES;
+  const sportGoals = chosen
+    .map((name) => ({ sport_id: sports.find((s) => s.name === name)?.id, times: timesOf(name) }))
+    .filter((g) => g.sport_id && g.times > 0);
   const full = chosen.length >= MAX_SPORTS;
   const groups = (Object.keys(SPORT_CATEGORY_LABEL) as SportCategory[])
     .map((category) => ({ category, items: sports.filter((s) => s.category === category) }))
@@ -52,7 +56,7 @@ export function OnboardingForm({
         <input key={name} type="hidden" name="sports" value={name} />
       ))}
       <input type="hidden" name="cityId" value={cityId} />
-      <input type="hidden" name="weeklyGoal" value={goal} />
+      <input type="hidden" name="sportGoals" value={JSON.stringify(sportGoals)} />
 
       <fieldset className="space-y-4">
         <legend className="text-xl font-semibold">Was machst du gern?</legend>
@@ -91,20 +95,27 @@ export function OnboardingForm({
         )}
       </fieldset>
 
-      <fieldset className="space-y-3">
-        <legend className="text-xl font-semibold">Wie oft willst du pro Woche trainieren?</legend>
-        <p className="text-muted-foreground text-sm">
-          Dein Wochenziel in Trainingstagen. Jede Sportart zählt. Nur du siehst es, ändern kannst du es in den
-          Einstellungen.
-        </p>
-        <div role="group" aria-label="Wochenziel" className="flex flex-wrap gap-2">
-          {GOAL_OPTIONS.map((n) => (
-            <ChoiceChip key={n} selected={goal === n} onClick={() => setGoal(n)}>
-              {n === 1 ? "1 Tag" : `${n} Tage`}
-            </ChoiceChip>
-          ))}
-        </div>
-      </fieldset>
+      {chosen.length > 0 && (
+        <fieldset className="space-y-3">
+          <legend className="text-xl font-semibold">Was nimmst du dir pro Woche vor?</legend>
+          <p className="text-muted-foreground text-sm">
+            Je Sportart ein Kreis auf „Heute“, der sich mit jedem Training füllt. Nur du siehst ihn, ändern kannst du
+            es in den Einstellungen. 0× heißt: ohne Vorhaben.
+          </p>
+          <ul>
+            {chosen.map((name) => (
+              <li key={name} className="flex min-h-14 items-center justify-between gap-4 border-b">
+                <span>{name}</span>
+                <Stepper
+                  label={`${name} pro Woche`}
+                  value={timesOf(name)}
+                  onChange={(n) => setTimes((current) => ({ ...current, [name]: n }))}
+                />
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
 
       {state.error && (
         <p role="alert" className="text-destructive text-sm">

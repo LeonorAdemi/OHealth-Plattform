@@ -13,7 +13,7 @@ Fitness-Apps sind fast alle dunkel, laut und verspielt: Neonfarben, Abzeichen, K
 | Üblich im Markt | OHealth |
 | --- | --- |
 | Dunkler Hintergrund, Neon-Akzente | Weißes Blatt, eine ruhige Akzentfarbe |
-| Abzeichen, Flammen, Konfetti | Fortschritt zeigt sich in Zahl, Typografie und einem Ring, der sich füllt |
+| Abzeichen, Flammen, Konfetti | Fortschritt zeigt sich in Zahl, Typografie und Kreisen, die sich füllen |
 | Motivationssprüche | Nüchterne, genaue Sätze |
 | Karten, Schatten, Verläufe | Weißraum und feine Linien |
 
@@ -47,9 +47,9 @@ Sechs Grundfarben und die Sportfarben, mehr gibt es nicht. Werte stehen als Toke
 | Nebel | `#F3F6F4` | `muted`, `secondary` | Hover, gedrückter Zustand, leere Rasterpunkte |
 | Moos | `#156B4A` | `brand` | Eigene Zeile, eigener Fortschritt, neuer Bestwert |
 
-Dazu Signal `#BE2323` (`destructive`) nur für Fehler und Löschen, sowie Moos hell `#DFF7EA` (`brand-subtle`) als Markierung hinter einem neuen Bestwert und dem erreichten Wochenziel.
+Dazu Signal `#BE2323` (`destructive`) nur für Fehler und Löschen, sowie Moos hell `#DFF7EA` (`brand-subtle`) als Markierung hinter einem neuen Bestwert.
 
-**Sportfarben.** Jede Gruppe des Sportarten-Katalogs hat eine Farbe (Token `sport-<gruppe>`). Sie zeigt, was jemand gemacht hat oder vorhat, und ist dadurch auf einen Blick lesbar: im Wochenring, in den Balken des Wochenstreifens, als Punkt vor Aktivitäten und Events.
+**Sportfarben.** Jede Gruppe des Sportarten-Katalogs hat eine Farbe (Token `sport-<gruppe>`). Sie zeigt, was jemand gemacht hat oder vorhat, und ist dadurch auf einen Blick lesbar: in den Kreisen je Sportart, in den Balken des Wochenstreifens, als Punkt vor Aktivitäten und Events.
 
 | Gruppe | Hex | Token | Kontrast auf Weiß |
 | --- | --- | --- | --- |
@@ -104,7 +104,7 @@ Diese zwei Elemente machen OHealth wiedererkennbar. Sie werden überall gleich g
 
 **Das Wochenraster.** Sieben Quadrate für Montag bis Sonntag, 10 px groß, 4 px Abstand, 2 px Eckenradius. Trainiert: Eisen gefüllt. Nicht trainiert: Nebel. Eigene Zeile: Moos statt Eisen. Es ersetzt Flammen und Streak-Abzeichen und zeigt Konstanz auf einen Blick, im Leaderboard für jede Person in derselben Form.
 
-**Der Wochenring.** Oben auf „Heute“ steht statt des Wochenrasters ein Ring (176 px, Strich 16 px, runde Enden) mit der Großzahl der Trainingstage in der Mitte und „von 4“ darunter. Er hat so viele Segmente wie das Wochenziel (ohne Ziel sieben, mehr, wenn mehr trainiert wurde, höchstens sieben). Jeder Trainingstag füllt ein Segment in der Sportfarbe des Tages, in zeitlicher Reihenfolge; offene Segmente sind Nebel. Daneben die Sportgruppen der Woche mit Punkt und Zahl der Tage. Er zeigt den Fortschritt zum selbst gewählten Ziel, nie einen vorgefüllten oder geschönten Stand. Überall sonst bleibt das Wochenraster.
+**Die Kreise je Sportart.** Oben auf „Heute“ steht je Vorhaben ein Kreis (96 px, am Desktop 112 px, Strich 9 von 100, runde Enden), nebeneinander. Er hat so viele Segmente, wie man sich für die Sportart pro Woche vorgenommen hat, und jede Aktivität füllt eins in der Sportfarbe; offene Segmente sind Nebel, in der Mitte steht „2/3“. Ist das Vorhaben erreicht, ist der Kreis geschlossen: ohne Lücken, Fläche leicht in der Sportfarbe, Häkchen in der Mitte. Spontanes ohne Vorhaben ist ein kleiner voller Kreis (64 px) mit „1×“. Unter jedem Kreis Name und Stand. Die Kreise zeigen den Fortschritt zum selbst gewählten Vorhaben, nie einen vorgefüllten oder geschönten Stand. Das Wochenraster bleibt daneben das Zeichen für Trainingstage.
 
 ## 7. Logo
 
@@ -189,7 +189,7 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 
 - Dauer 150 ms, bei Overlays 200 ms, immer `ease-out`.
 - Erlaubt: Ein- und Ausblenden von Overlays, Zustandswechsel von Bedienelementen, das einmalige Hinterlegen eines Bestwerts.
-- Der Erfolgsmoment auf „Heute“: Neue Segmente des Wochenrings füllen sich nach einem Training nacheinander (600 ms je Segment, 120 ms versetzt). Ist das Wochenziel neu erreicht, wächst der Ring einmal kurz (700 ms, höchstens 4 %) und darunter erscheint ein Hinweis in Moos hell mit der Serie. Beides einmal je neuem Stand, gemerkt auf dem Gerät, nicht bei jedem Besuch.
+- Der Erfolgsmoment auf „Heute“, in zwei Größen derselben Bewegung: klein für jede neue Aktivität (Segment füllt sich in 500 ms, Kreis pulsiert um höchstens 6 %, dünne Welle in der Sportfarbe), groß, wenn sich ein Kreis schließt (Lücken schließen sich, Häkchen zeichnet sich, Kreis wächst um höchstens 15 %, größere Welle). Einmal je neuem Stand, gemerkt auf dem Gerät, nicht bei jedem Besuch. Kein Konfetti, keine Geräusche.
 - Nicht erlaubt: Einblend-Animationen beim Laden oder Scrollen, hüpfende oder federnde Bewegungen, Konfetti, hochzählende Zahlen.
 - `prefers-reduced-motion` wird respektiert.
 

@@ -46,13 +46,12 @@ import {
   parseDistanceKm,
   parseDurationMinutes,
   daysOfWeek,
-  describeGoal,
-  goalProgress,
   goalStreak,
   heatLevel,
-  categoryCounts,
-  ringSegments,
-  type ActivityDay,
+  describeWeekProgress,
+  ringState,
+  weekProgress,
+  type WeekSport,
   isoWeekOf,
   type WeekSummary,
 } from "./logic";
@@ -809,22 +808,7 @@ describe("Aktivität", () => {
   });
 });
 
-describe("Wochenziel", () => {
-  it("rechnet den Anteil abgerundet und höchstens 100 Prozent", () => {
-    expect(goalProgress(1, 3)).toEqual({ percent: 33, remaining: 2, reached: false });
-    expect(goalProgress(2, 4)).toEqual({ percent: 50, remaining: 2, reached: false });
-    expect(goalProgress(5, 4)).toEqual({ percent: 100, remaining: 0, reached: true });
-  });
-
-  it("sagt genau, wie viel noch fehlt oder dass das Ziel erreicht ist", () => {
-    expect(describeGoal(0, 3)).toBe("0\u00a0% deines Wochenziels. Noch 3\u00a0Tage.");
-    expect(describeGoal(3, 4)).toBe("75\u00a0% deines Wochenziels. Noch 1\u00a0Tag.");
-    expect(describeGoal(4, 4)).toBe("Wochenziel erreicht.");
-    expect(describeGoal(5, 4)).toBe("Wochenziel erreicht, 1\u00a0Tag mehr.");
-  });
-});
-
-describe("Serie mit Wochenziel", () => {
+describe("Serie", () => {
   const week = (trainingDays: number): WeekSummary => ({ weekStart: "", trainingDays, minutes: 0, distanceM: 0 });
 
   it("zählt Wochen in Folge mit erreichtem Ziel", () => {
@@ -850,29 +834,40 @@ describe("Wochen im Überblick", () => {
   });
 });
 
-describe("Ring und Heatmap", () => {
-  const day = (d: string, category: ActivityDay["category"], minutes = 30): ActivityDay => ({ day: d, minutes, category });
-
-  it("legt die Trainingstage in zeitlicher Reihenfolge in die Segmente, offene bis zum Ziel", () => {
-    expect(ringSegments([day("2026-10-07", "klettern"), day("2026-10-05", "ausdauer")], 4)).toEqual([
-      "ausdauer", "klettern", null, null,
-    ]);
-  });
-
-  it("zeigt ohne Ziel sieben Segmente und mehr als das Ziel, aber höchstens sieben", () => {
-    expect(ringSegments([], null)).toHaveLength(7);
-    const five = ["05", "06", "07", "08", "09"].map((d) => day(`2026-10-${d}`, "kraft"));
-    expect(ringSegments(five, 3)).toEqual(["kraft", "kraft", "kraft", "kraft", "kraft"]);
-  });
-
-  it("zählt Tage je Gruppe, häufigste zuerst", () => {
-    expect(categoryCounts([day("a", "ausdauer"), day("b", "kraft"), day("c", "kraft")])).toEqual([
-      { category: "kraft", days: 2 },
-      { category: "ausdauer", days: 1 },
-    ]);
-  });
-
+describe("Heatmap", () => {
   it("stuft Minuten für die Heatmap ein", () => {
     expect([undefined, 0, 1, 29, 30, 59, 60, 89, 90, 300].map(heatLevel)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  });
+});
+
+describe("Kreise je Sportart", () => {
+  const sport = (times: number | null, done: number): WeekSport => ({
+    sportId: "krafttraining",
+    name: "Krafttraining",
+    category: "kraft",
+    times,
+    done,
+  });
+
+  it("hat so viele Segmente wie das Vorhaben und füllt je Aktivität eins", () => {
+    expect(ringState(sport(3, 2))).toEqual({ segments: 3, filled: 2, complete: false, extra: 0 });
+  });
+
+  it("schließt sich mit erreichtem Vorhaben und zählt, was darüber hinausgeht", () => {
+    expect(ringState(sport(3, 3))).toMatchObject({ filled: 3, complete: true, extra: 0 });
+    expect(ringState(sport(3, 5))).toMatchObject({ filled: 3, complete: true, extra: 2 });
+  });
+
+  it("zeigt Spontanes ohne Vorhaben als vollen Kreis und begrenzt die Segmente", () => {
+    expect(ringState(sport(null, 2))).toEqual({ segments: 1, filled: 1, complete: false, extra: 0 });
+    expect(ringState(sport(20, 1)).segments).toBe(14);
+  });
+
+  it("fasst die Woche zusammen, je Sportart höchstens ihr Vorhaben", () => {
+    const week = [sport(3, 4), { ...sport(1, 0), sportId: "laufen", name: "Laufen" }, { ...sport(null, 1), sportId: "yoga" }];
+    expect(weekProgress(week)).toEqual({ done: 3, total: 4, closed: 1, rings: 2 });
+    expect(describeWeekProgress(week)).toBe("3 von 4 Trainings geschafft. Noch 1.");
+    expect(describeWeekProgress([sport(2, 2)])).toBe("Vorhaben dieser Woche geschafft.");
+    expect(describeWeekProgress([sport(null, 1)])).toBeNull();
   });
 });

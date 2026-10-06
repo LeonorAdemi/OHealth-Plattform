@@ -14,24 +14,17 @@ import {
 } from "@/modules/core/logic";
 import { getMeetups, getOpenAttendance } from "@/modules/core/queries";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
-import { GoalRing } from "@/modules/workouts/components/goal-ring";
+import { SportRings } from "@/modules/workouts/components/sport-rings";
+import { WeekGrid } from "@/modules/workouts/components/week-grid";
 import { ActivityHeatmap, WeekBests, WeekStats } from "@/modules/workouts/components/today-overview";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
-import {
-  categoryCounts,
-  describeActivity,
-  describeDays,
-  describeGoal,
-  goalStreak,
-  isoWeek,
-  ringSegments,
-} from "@/modules/workouts/logic";
+import { describeActivity, describeWeekProgress, isoWeek } from "@/modules/workouts/logic";
 import {
   getActivityDays,
   getMyWorkoutsBetween,
   getNewBests,
   getRecentWorkouts,
-  getWeeklyGoal,
+  getWeekSports,
   getWeeklySummary,
 } from "@/modules/workouts/queries";
 
@@ -53,13 +46,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const week = berlinWeek(now, offset);
   const thisWeek = berlinWeek(now);
   const overviewStart = berlinWeek(now, -(OVERVIEW_WEEKS - 1)).days[0].date;
-  const [activityDays, recent, planned, done, openAttendance, goal, summary, upcoming, bests] = await Promise.all([
+  const [activityDays, recent, planned, done, openAttendance, weekSports, summary, upcoming, bests] = await Promise.all([
     getActivityDays(overviewStart),
     getRecentWorkouts(5),
     getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
     getMyWorkoutsBetween(week.from, week.to),
     getOpenAttendance(),
-    getWeeklyGoal(),
+    getWeekSports(),
     getWeeklySummary(STREAK_WEEKS),
     getMeetups("mine", { from: now, to: new Date(now.getTime() + NEXT_DAYS * 86400000), limit: 1 }),
     getNewBests(thisWeek.from),
@@ -68,12 +61,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const monday = thisWeek.days[0].date;
   const thisWeekDays = activityDays.filter((d) => d.day >= monday);
   const count = thisWeekDays.length;
+  const trainedDays = new Set(thisWeekDays.map((d) => d.day));
+  const progress = describeWeekProgress(weekSports);
+  const hasGoals = weekSports.some((s) => s.times !== null);
   const overview = summary.slice(0, OVERVIEW_WEEKS);
   const minutesByDay = Object.fromEntries(activityDays.map((d) => [d.day, d.minutes]));
   const dayStats: Record<string, PlanDayStat> = Object.fromEntries(
     activityDays.map((d) => [d.day, { minutes: d.minutes, category: d.category }]),
   );
-  const ringLabel = goal ? `${count} von ${goal} Trainingstagen, Wochenziel ${goal}` : `${count} von 7 Tagen trainiert`;
   const next = upcoming[0];
 
   const items: Record<string, PlanItem[]> = {};
@@ -116,46 +111,35 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <h1 className="text-muted-foreground text-sm">Woche {isoWeek(now)}</h1>
-      <div className="mt-4 flex flex-wrap items-center gap-x-10 gap-y-6">
-        <GoalRing
-          segments={ringSegments(thisWeekDays, goal)}
-          count={count}
-          goal={goal}
-          week={monday}
-          label={ringLabel}
-          streak={goal ? goalStreak(summary, goal) : 0}
-        />
-        <div className="min-w-0 space-y-4">
-          <p className="text-xl font-semibold">
-            {goal ? describeGoal(count, goal) : `${count === 1 ? "Trainingstag" : "Trainingstage"} diese Woche`}
-          </p>
-          {count > 0 && (
-            <ul className="space-y-1.5" aria-label="Sportarten diese Woche">
-              {categoryCounts(thisWeekDays).map((c) => (
-                <li key={c.category} className="flex items-center gap-2 text-sm">
-                  <SportDot category={c.category} className="size-3" />
-                  <span>{SPORT_CATEGORY_LABEL[c.category]}</span>
-                  <span className="text-muted-foreground num">{describeDays(c.days)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {!goal && (
-            <p className="text-sm">
-              <Link
-                href="/profil/einstellungen#wochenziel"
-                className="inline-flex min-h-11 items-center underline underline-offset-4"
-              >
-                Wochenziel festlegen
-              </Link>
-            </p>
-          )}
-        </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h1 className="text-muted-foreground text-sm">Woche {isoWeek(now)}</h1>
+        <WeekGrid days={thisWeek.days.map((d) => trainedDays.has(d.date))} own />
+        <span className="text-muted-foreground text-sm">
+          {count} {count === 1 ? "Trainingstag" : "Trainingstage"}
+        </span>
       </div>
 
+      <section className="mt-6" aria-labelledby="vorhaben">
+        <h2 id="vorhaben" className="text-xl font-semibold">
+          {progress ?? "Was nimmst du dir pro Woche vor?"}
+        </h2>
+        {weekSports.length > 0 && (
+          <div className="mt-5">
+            <SportRings sports={weekSports} week={monday} />
+          </div>
+        )}
+        {!hasGoals && (
+          <p className="mt-3 text-sm">
+            Je Sportart ein Kreis, der sich mit jedem Training füllt.{" "}
+            <Link href="/profil/einstellungen#wochenziel" className="underline underline-offset-4">
+              Vorhaben festlegen
+            </Link>
+          </p>
+        )}
+      </section>
+
       <div className="mt-10">
-        <WeekStats weeks={summary} goal={goal} />
+        <WeekStats weeks={summary} />
       </div>
 
       {next && (
@@ -256,7 +240,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         <div className="min-w-0 space-y-10">
           <WeekBests bests={bests} />
           {overview.some((w) => w.trainingDays > 0) && (
-            <ActivityHeatmap weeks={overview} minutesByDay={minutesByDay} today={today} goal={goal} />
+            <ActivityHeatmap weeks={overview} minutesByDay={minutesByDay} today={today} />
           )}
         </div>
       </div>
