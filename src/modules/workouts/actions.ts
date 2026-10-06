@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { FormState, Result } from "@/lib/result";
 import { createClient } from "@/lib/supabase/server";
 
-import { activityErrorMessage } from "./logic";
+import { activityErrorMessage, BODY_WEIGHT_MAX, BODY_WEIGHT_MIN, parseBodyWeight } from "./logic";
 
 const setSchema = z
   .object({
@@ -409,4 +409,38 @@ export async function saveSportGoals(_prev: FormState, formData: FormData): Prom
 
   revalidatePath("/");
   return { message: "Vorhaben gespeichert." };
+}
+
+/**
+ * Speichert das eigene Körpergewicht für Kalorien (set_body_weight). Gesundheitsdatum: nur mit
+ * Einwilligung, die Datenbank prüft sie und den Bereich noch einmal.
+ */
+export async function saveBodyWeight(_prev: FormState, formData: FormData): Promise<FormState> {
+  const weightKg = parseBodyWeight(String(formData.get("weight") ?? ""));
+  if (weightKg === null) {
+    return { error: `Gib dein Gewicht in kg zwischen ${BODY_WEIGHT_MIN} und ${BODY_WEIGHT_MAX} ein, zum Beispiel 72,5.` };
+  }
+  if (formData.get("consent") !== "on") {
+    return { error: "Setz das Häkchen, damit wir dein Gewicht speichern dürfen." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_body_weight", { p_weight_kg: weightKg, p_consent: true });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/", "layout");
+  return { message: "Gewicht gespeichert." };
+}
+
+/** Löscht das eigene Körpergewicht samt Einwilligung. Danach erscheinen keine Kalorien mehr. */
+export async function deleteBodyWeight(_prev: FormState, _formData: FormData): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+  const { error } = await supabase.from("body_weights").delete().eq("user_id", userId);
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/", "layout");
+  return { message: "Gewicht gelöscht." };
 }

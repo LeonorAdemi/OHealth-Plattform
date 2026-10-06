@@ -7,6 +7,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - private.push_config → 20261004203926_push_and_reminders.sql:68; geändert in push_keys_in_db
 - private.signup_sources → 20261006150000_public_event_link.sql:23
 - public.blocks → 20261005100000_friends_and_direct_chats.sql:35
+- public.body_weights → 20261009090000_calories.sql:38
 - public.chat_messages → 20261004220000_chats.sql:32; geändert in trust_and_safety
 - public.chat_reads → 20261004220000_chats.sql:42
 - public.chats → 20261004220000_chats.sql:20; geändert in friends_and_direct_chats, follows
@@ -28,7 +29,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.profiles → 20261003084225_core_and_workouts.sql:9; geändert in profile_details, follows, sports_and_cities
 - public.push_subscriptions → 20261004203926_push_and_reminders.sql:20
 - public.reports → 20261003175019_public_communities.sql:173; geändert in trust_and_safety
-- public.sports → 20261005160000_sports_and_cities.sql:25; geändert in meetup_sports
+- public.sports → 20261005160000_sports_and_cities.sql:25; geändert in meetup_sports, calories
 - public.template_version_exercises → 20261004111940_workout_templates.sql:47
 - public.template_versions → 20261004111940_workout_templates.sql:36
 - public.terms_acceptances → 20261006210000_trust_and_safety.sql:404
@@ -164,6 +165,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.my_new_bests → 20261008090000_weekly_goal.sql:118
 - public.my_open_attendance → 20261006180000_meetup_attendance.sql:166
 - public.my_week_sports → 20261008150000_sport_goals.sql:132
+- public.my_weekly_calories → 20261009090000_calories.sql:92
 - public.my_weekly_summary → 20261008090000_weekly_goal.sql:79
 - public.open_direct_chat → 20261005140000_follows.sql:427; 2 Fassungen
 - public.people_search → 20261005140000_follows.sql:295
@@ -180,6 +182,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.save_onboarding → 20261008150000_sport_goals.sql:89; 3 Fassungen
 - public.save_push_subscription → 20261004203926_push_and_reminders.sql:44
 - public.save_template → 20261004124327_agent_write_templates.sql:64; 2 Fassungen
+- public.set_body_weight → 20261009090000_calories.sql:68
 - public.set_sport_goals → 20261008150000_sport_goals.sql:64
 - public.unblock_person → 20261005100000_friends_and_direct_chats.sql:230
 - public.unfollow_person → 20261005140000_follows.sql:217
@@ -192,6 +195,11 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 
 - public.blocks: agent_blocks_none → 20261005100000_friends_and_direct_chats.sql:57
 - public.blocks: blocks_select → 20261005100000_friends_and_direct_chats.sql:50
+- public.body_weights: agent_body_weights_none → 20261009090000_calories.sql:61
+- public.body_weights: body_weights_delete → 20261009090000_calories.sql:57
+- public.body_weights: body_weights_insert → 20261009090000_calories.sql:53
+- public.body_weights: body_weights_select → 20261009090000_calories.sql:51
+- public.body_weights: body_weights_update → 20261009090000_calories.sql:55
 - public.chat_messages: agent_chat_messages_none → 20261004220000_chats.sql:95
 - public.chat_messages: chat_messages_delete → 20261004220000_chats.sql:84
 - public.chat_messages: chat_messages_delete_moderator → 20261005080000_community_chat.sql:26

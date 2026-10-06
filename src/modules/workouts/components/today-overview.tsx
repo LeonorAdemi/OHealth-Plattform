@@ -16,7 +16,14 @@ import {
  * der Vorwoche Distanzen gab) und die Serie. Daneben in Stein der genaue Wert der Vorwoche.
  * weeks kommt aus my_weekly_summary, die laufende Woche zuerst.
  */
-export function WeekStats({ weeks }: { weeks: readonly WeekSummary[] }) {
+export function WeekStats({
+  weeks,
+  calories = null,
+}: {
+  weeks: readonly WeekSummary[];
+  /** kcal je Woche, die laufende zuerst (my_weekly_calories); null ohne Körpergewicht. */
+  calories?: readonly number[] | null;
+}) {
   const [current, previous] = weeks;
   if (!current) return null;
   const streak = goalStreak(weeks, 1);
@@ -37,6 +44,14 @@ export function WeekStats({ weeks }: { weeks: readonly WeekSummary[] }) {
           unit={km.unit}
           label="Distanz diese Woche"
           before={previous ? `Vorwoche ${formatDistance(previous.distanceM).value} ${formatDistance(previous.distanceM).unit}` : null}
+        />
+      )}
+      {calories && calories.length > 0 && (
+        <Stat
+          value={formatNumber(calories[0])}
+          unit="kcal"
+          label="Kalorien diese Woche"
+          before={calories.length > 1 ? `Vorwoche ${formatNumber(calories[1])} kcal` : null}
         />
       )}
       <Stat

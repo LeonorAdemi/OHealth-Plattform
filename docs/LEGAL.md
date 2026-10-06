@@ -25,7 +25,7 @@ Der Entwurfs-Hinweis verschwindet erst, wenn die Pflichtangaben gefüllt sind un
 Diese Punkte sind Rechtsfragen und bewusst nicht im Code entschieden:
 
 - [ ] **Impressumspflicht.** Gilt sie für dieses Angebot, und reicht E-Mail als Kontaktweg oder braucht es einen zweiten?
-- [ ] **Gesundheitsdaten.** Sind Trainingsdaten in dieser Form besondere Kategorien nach Art. 9 DSGVO? Spätestens mit dem Physio- oder Health-Modul (Schmerz, Stimmung, Ernährung) ist das neu zu bewerten und eine ausdrückliche Einwilligung vorzusehen.
+- [ ] **Gesundheitsdaten.** Sind Trainingsdaten in dieser Form besondere Kategorien nach Art. 9 DSGVO? Spätestens mit dem Physio- oder Health-Modul (Schmerz, Stimmung, Ernährung) ist das neu zu bewerten und eine ausdrückliche Einwilligung vorzusehen. Das freiwillige Körpergewicht für Kalorien (`body_weights`) ist das erste ausdrückliche Gesundheitsdatum und läuft bereits über eine eigene, protokollierte Einwilligung; Text und Rechtsgrundlage auf der Datenschutzseite prüfen lassen.
 - [ ] **Auftragsverarbeitung.** Verträge zur Auftragsverarbeitung mit Supabase und Vercel abschließen und ablegen.
 - [ ] **Drittlandübermittlung.** Vercel sitzt in den USA. Rechtsgrundlage der Übermittlung prüfen und im Text benennen.
 - [ ] **Anmeldeanbieter.** Rolle von Apple, Google und Facebook bei der Anmeldung prüfen und den Text bei Bedarf ergänzen.

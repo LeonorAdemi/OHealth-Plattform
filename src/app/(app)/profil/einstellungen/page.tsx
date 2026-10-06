@@ -11,8 +11,9 @@ import { PasskeySetup } from "@/modules/core/components/passkey-setup";
 import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
 import { passkeysEnabled } from "@/modules/core/logic";
 import { getAgentGrants, getNotificationPrefs, getSports } from "@/modules/core/queries";
+import { BodyWeightForm } from "@/modules/workouts/components/body-weight-form";
 import { SportGoalsForm } from "@/modules/workouts/components/sport-goals-form";
-import { getSportGoals } from "@/modules/workouts/queries";
+import { getMyBodyWeight, getSportGoals } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Einstellungen" };
 
@@ -27,12 +28,13 @@ async function appOrigin() {
 }
 
 export default async function SettingsPage() {
-  const [grants, origin, prefs, goals, sports] = await Promise.all([
+  const [grants, origin, prefs, goals, sports, weightKg] = await Promise.all([
     getAgentGrants(),
     appOrigin(),
     getNotificationPrefs(),
     getSportGoals(),
     getSports(),
+    getMyBodyWeight(),
   ]);
 
   return (
@@ -56,6 +58,17 @@ export default async function SettingsPage() {
           siehst deine Vorhaben.
         </p>
         <SportGoalsForm goals={goals} sports={sports} />
+      </section>
+
+      <section className="mt-10 max-w-xl scroll-mt-8" id="gewicht" aria-labelledby="gewicht-titel">
+        <h2 id="gewicht-titel" className="text-xl font-semibold">
+          Körpergewicht
+        </h2>
+        <p className="text-muted-foreground mt-1 mb-3 text-sm">
+          Freiwillig. Damit rechnet OHealth die Kalorien deiner Aktivitäten: Faktor der Sportart × Gewicht × Dauer.
+          Ohne Gewicht erscheinen keine Kalorien.
+        </p>
+        <BodyWeightForm weightKg={weightKg} />
       </section>
 
       <section className="mt-10 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">

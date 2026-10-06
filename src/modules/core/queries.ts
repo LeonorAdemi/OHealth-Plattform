@@ -172,7 +172,7 @@ export const getSports = cache(async () => {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("sports")
-    .select("id, name, category, has_distance, has_elevation, has_sets, pace_unit, aliases")
+    .select("id, name, category, has_distance, has_elevation, has_sets, pace_unit, aliases, met")
     .order("position")
     .limit(200);
   if (error) throw new Error("Sportarten konnten nicht geladen werden.");
@@ -185,6 +185,8 @@ export const getSports = cache(async () => {
     hasSets: s.has_sets,
     paceUnit: toPaceUnit(s.pace_unit),
     aliases: s.aliases,
+    // Kalorienfaktor (docs/bereiche/kalorien.md)
+    met: Number(s.met),
   }));
 });
 

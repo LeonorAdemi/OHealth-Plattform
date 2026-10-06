@@ -233,6 +233,18 @@ export default function PrivacyPage() {
         deinem Konto werden sie gelöscht.
       </p>
       <p>
+        Dein Körpergewicht speichern wir nur, wenn du es in den Einstellungen
+        freiwillig angibst und ausdrücklich einwilligst; den Zeitpunkt der
+        Einwilligung speichern wir mit. Damit rechnet die App die Kalorien
+        deiner Aktivitäten (Kalorienfaktor der Sportart × Gewicht × Dauer).
+        Das Gewicht ist ein Gesundheitsdatum. Rechtsgrundlage ist deine
+        Einwilligung (Art. 6 Abs. 1 Buchstabe a und Art. 9 Abs. 2 Buchstabe a
+        DSGVO). Nur du siehst dein Gewicht und die Kalorien, auch eine
+        verbundene KI-App nicht. Mit „Gewicht löschen“ widerrufst du die
+        Einwilligung und das Gewicht ist sofort gelöscht; mit deinem Konto
+        ebenso.
+      </p>
+      <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt
         haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
         kannst du jederzeit löschen. Entfernt die planende Person das

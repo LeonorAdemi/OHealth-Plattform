@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Stepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils";
 import { createMeetup } from "@/modules/core/actions";
 import { SportDot } from "@/modules/core/components/sport-dot";
@@ -16,15 +17,20 @@ import { berlinDateTimeParts, berlinLocalToDate, type SportCategory } from "@/mo
 
 import { saveActivity } from "../actions";
 import {
+  activityCalories,
   defaultPlanTime,
   durationChoices,
   formatActivityDuration,
+  formatCalories,
   parseDistanceKm,
   parseDurationMinutes,
+  PLAN_MINUTE_CHOICES,
+  PLAN_TIME_CHOICES,
   quickEntryDays,
+  shiftHour,
 } from "../logic";
 
-export type QuickSport = { id: string; name: string; category: SportCategory; hasDistance: boolean };
+export type QuickSport = { id: string; name: string; category: SportCategory; hasDistance: boolean; met: number };
 
 type Mode = "done" | "plan";
 
@@ -41,11 +47,14 @@ export function QuickEntryProvider({
   sports,
   selectedSportId,
   lastDurations,
+  weightKg,
   children,
 }: {
   sports: readonly QuickSport[];
   selectedSportId: string | null;
   lastDurations: Readonly<Record<string, number>>;
+  /** Eigenes Körpergewicht für die Kalorien; ohne Angabe null. */
+  weightKg: number | null;
   children: React.ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -81,6 +90,7 @@ export function QuickEntryProvider({
             sports={sports}
             selectedSportId={selectedSportId}
             lastDurations={lastDurations}
+            weightKg={weightKg}
             onClose={() => dialog.current?.close()}
           />
         )}
@@ -127,6 +137,7 @@ function QuickEntryForm({
   sports,
   selectedSportId,
   lastDurations,
+  weightKg,
   onClose,
 }: {
   mode: Mode;
@@ -136,6 +147,7 @@ function QuickEntryForm({
   sports: readonly QuickSport[];
   selectedSportId: string | null;
   lastDurations: Readonly<Record<string, number>>;
+  weightKg: number | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -162,6 +174,7 @@ function QuickEntryForm({
   const days = quickEntryDays(today, mode, initialDate);
   const durationMinutes = customDuration ? parseDurationMinutes(hours, minutes) : duration;
   const shownError = error ?? planState.error ?? null;
+  const kcal = activityCalories(sport?.met, weightKg, durationMinutes);
 
   function chooseSport(next: string) {
     setSportId(next);
@@ -305,12 +318,8 @@ function QuickEntryForm({
         </div>
       </fieldset>
 
-      {mode === "plan" && (
-        <div className="max-w-40 space-y-2">
-          <Label htmlFor="schnell-zeit">Uhrzeit</Label>
-          <Input id="schnell-zeit" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
-        </div>
-      )}
+      {/* Neu aufgebaut, wenn ein anderer Tag die vorgeschlagene Uhrzeit ändert */}
+      {mode === "plan" && <PlanTimeField key={date} value={time} onChange={setTime} />}
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Dauer</legend>
@@ -360,6 +369,16 @@ function QuickEntryForm({
         {!customDuration && last !== undefined && duration === last && (
           <p className="text-muted-foreground text-sm">Wie beim letzten Mal.</p>
         )}
+        {weightKg === null ? (
+          <p className="text-muted-foreground text-sm">
+            <Link href="/profil/einstellungen#gewicht" className="underline underline-offset-4">
+              Gewicht angeben
+            </Link>
+            , um die Kalorien zu sehen.
+          </p>
+        ) : (
+          kcal !== null && <p className="text-sm">etwa {formatCalories(kcal)}</p>
+        )}
       </fieldset>
 
       {mode === "done" && sport?.hasDistance && (
@@ -406,5 +425,66 @@ function QuickEntryForm({
         </Link>
       </div>
     </form>
+  );
+}
+
+/**
+ * Uhrzeit beim Planen: häufige Zeiten als Chips, mit „Andere“ die Stunde über „− 18 +“ und die
+ * Minute aus 00, 15, 30 und 45. Eine Zeit außerhalb der Chips öffnet gleich die Feinwahl.
+ */
+function PlanTimeField({ value, onChange }: { value: string; onChange: (time: string) => void }) {
+  const [custom, setCustom] = useState(() => !(PLAN_TIME_CHOICES as readonly string[]).includes(value));
+  const hour = Number(value.slice(0, 2));
+  const minute = value.slice(3, 5);
+
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Uhrzeit</legend>
+      <div className="flex flex-wrap gap-2">
+        {PLAN_TIME_CHOICES.map((t) => (
+          <ChoiceChip
+            key={t}
+            selected={!custom && value === t}
+            onClick={() => {
+              setCustom(false);
+              onChange(t);
+            }}
+          >
+            <span className="num">{t}</span>
+          </ChoiceChip>
+        ))}
+        <ChoiceChip selected={custom} onClick={() => setCustom(true)}>
+          Andere
+        </ChoiceChip>
+      </div>
+      {custom && (
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 pt-2">
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-sm">Stunde</p>
+            <Stepper
+              value={hour}
+              onChange={(h) => onChange(shiftHour(value, h - hour))}
+              label="Stunde"
+              min={0}
+              max={23}
+              suffix=""
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-sm">Minute</p>
+            <div className="flex gap-2">
+              {PLAN_MINUTE_CHOICES.map((m) => (
+                <ChoiceChip key={m} selected={minute === m} onClick={() => onChange(`${value.slice(0, 2)}:${m}`)}>
+                  <span className="num">{m}</span>
+                </ChoiceChip>
+              ))}
+            </div>
+          </div>
+          <p className="num w-full text-sm" aria-live="polite">
+            {value}&nbsp;Uhr
+          </p>
+        </div>
+      )}
+    </fieldset>
   );
 }

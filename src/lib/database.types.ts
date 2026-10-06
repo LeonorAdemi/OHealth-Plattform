@@ -51,6 +51,35 @@ export type Database = {
           },
         ]
       }
+      body_weights: {
+        Row: {
+          consented_at: string
+          updated_at: string
+          user_id: string
+          weight_kg: number
+        }
+        Insert: {
+          consented_at?: string
+          updated_at?: string
+          user_id?: string
+          weight_kg: number
+        }
+        Update: {
+          consented_at?: string
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_weights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           body: string
@@ -1079,6 +1108,7 @@ export type Database = {
           has_elevation: boolean
           has_sets: boolean
           id: string
+          met: number
           name: string
           pace_unit: string | null
           position: number
@@ -1090,6 +1120,7 @@ export type Database = {
           has_elevation?: boolean
           has_sets?: boolean
           id: string
+          met: number
           name: string
           pace_unit?: string | null
           position?: number
@@ -1101,6 +1132,7 @@ export type Database = {
           has_elevation?: boolean
           has_sets?: boolean
           id?: string
+          met?: number
           name?: string
           pace_unit?: string | null
           position?: number
@@ -1906,6 +1938,13 @@ export type Database = {
         }[]
       }
       open_direct_chat: { Args: { other: string }; Returns: string }
+      my_weekly_calories: {
+        Args: { p_weeks?: number }
+        Returns: {
+          kcal: number
+          week_start: string
+        }[]
+      }
       my_weekly_summary: {
         Args: { p_weeks?: number }
         Returns: {
@@ -2017,6 +2056,10 @@ export type Database = {
           p_visibility: string
         }
         Returns: string
+      }
+      set_body_weight: {
+        Args: { p_consent: boolean; p_weight_kg: number }
+        Returns: undefined
       }
       set_sport_goals: { Args: { p_goals: Json }; Returns: undefined }
       unblock_person: { Args: { target: string }; Returns: undefined }

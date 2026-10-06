@@ -10,13 +10,22 @@ import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { SportRings } from "@/modules/workouts/components/sport-rings";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
 import { ActivityHeatmap, WeekBests, WeekStats } from "@/modules/workouts/components/today-overview";
-import { describeActivity, describeWeekProgress, isoWeek, quickEntrySports } from "@/modules/workouts/logic";
+import {
+  activityCalories,
+  describeActivity,
+  describeWeekProgress,
+  formatCalories,
+  isoWeek,
+  quickEntrySports,
+} from "@/modules/workouts/logic";
 import {
   getActivityDays,
+  getMyBodyWeight,
   getMyRecentSportDurations,
   getMyWorkoutsBetween,
   getNewBests,
   getWeekSports,
+  getWeeklyCalories,
   getWeeklySummary,
 } from "@/modules/workouts/queries";
 
@@ -40,17 +49,20 @@ export default async function TodayPage({
   const week = berlinWeek(now, offset);
   const thisWeek = berlinWeek(now);
   const overviewStart = berlinWeek(now, -(OVERVIEW_WEEKS - 1)).days[0].date;
-  const [activityDays, planned, done, openAttendance, weekSports, summary, bests, sports, recent] = await Promise.all([
-    getActivityDays(overviewStart),
-    getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
-    getMyWorkoutsBetween(week.from, week.to),
-    getOpenAttendance(),
-    getWeekSports(),
-    getWeeklySummary(STREAK_WEEKS),
-    getNewBests(thisWeek.from),
-    getSports(),
-    getMyRecentSportDurations(),
-  ]);
+  const [activityDays, planned, done, openAttendance, weekSports, summary, bests, sports, recent, weightKg, calories] =
+    await Promise.all([
+      getActivityDays(overviewStart),
+      getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
+      getMyWorkoutsBetween(week.from, week.to),
+      getOpenAttendance(),
+      getWeekSports(),
+      getWeeklySummary(STREAK_WEEKS),
+      getNewBests(thisWeek.from),
+      getSports(),
+      getMyRecentSportDurations(),
+      getMyBodyWeight(),
+      getWeeklyCalories(2),
+    ]);
   const today = berlinDateTimeParts(now).date;
   const monday = thisWeek.days[0].date;
   const thisWeekDays = activityDays.filter((d) => d.day >= monday);
@@ -89,12 +101,16 @@ export default async function TodayPage({
     });
   }
   for (const w of done) {
+    // Kalorien nur mit eigenem Gewicht (docs/bereiche/kalorien.md)
+    const kcal = activityCalories(w.sportMet, weightKg, w.minutes);
     add(berlinDateTimeParts(new Date(w.performedAt)).date, {
       key: `done-${w.id}`,
       href: `/aktivitaet/${w.id}`,
       time: "",
       title: w.title ?? w.sportName,
-      meta: describeActivity({ ...w, sportName: w.title ? w.sportName : "" }),
+      meta: [describeActivity({ ...w, sportName: w.title ? w.sportName : "" }), kcal === null ? null : formatCalories(kcal)]
+        .filter(Boolean)
+        .join(" · "),
       done: true,
       category: w.sportCategory ?? undefined,
     });
@@ -140,9 +156,16 @@ export default async function TodayPage({
       {/* Nach dem Planen kommt die Seite mit neuem ?geplant= zurück; der neue key schließt die Ansicht. */}
       <QuickEntryProvider
         key={geplant ?? "start"}
-        sports={quickSports.map((s) => ({ id: s.id, name: s.name, category: s.category, hasDistance: s.hasDistance }))}
+        sports={quickSports.map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          hasDistance: s.hasDistance,
+          met: s.met,
+        }))}
         selectedSportId={quick.selected}
         lastDurations={recent.lastDurations}
+        weightKg={weightKg}
       >
         <div className="mt-8">
           <QuickEntryButtons />
@@ -200,7 +223,7 @@ export default async function TodayPage({
       )}
 
       <div className="mt-12">
-        <WeekStats weeks={summary} />
+        <WeekStats weeks={summary} calories={weightKg === null ? null : calories.map((c) => c.kcal ?? 0)} />
       </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">

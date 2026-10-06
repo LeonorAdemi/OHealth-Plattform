@@ -1065,3 +1065,43 @@ export function defaultPlanTime(date: string, today: string, now: string): strin
   const nextHour = Number(now.slice(0, 2)) + 1;
   return nextHour <= 18 ? "18:00" : `${String(Math.min(nextHour, 23)).padStart(2, "0")}:00`;
 }
+
+// ---------- Kalorien (docs/bereiche/kalorien.md) ----------
+
+/** Gültiger Bereich für das Körpergewicht in kg, wie in der Datenbank (body_weights). */
+export const BODY_WEIGHT_MIN = 30;
+export const BODY_WEIGHT_MAX = 300;
+
+/** kcal = MET der Sportart × Körpergewicht in kg × Stunden, gerundet. Ohne Gewicht oder Dauer null. */
+export function activityCalories(met: number | null | undefined, weightKg: number | null, minutes: number | null): number | null {
+  if (!met || !weightKg || !minutes || minutes <= 0) return null;
+  return Math.round((met * weightKg * minutes) / 60);
+}
+
+/** „2.150 kcal“ mit geschütztem Leerzeichen. */
+export function formatCalories(kcal: number): string {
+  return `${formatNumber(kcal)} kcal`;
+}
+
+/**
+ * Körpergewicht aus dem Formular: „72,5“ oder „72.5“, eine Nachkommastelle. Leer oder ungültig
+ * (auch außerhalb von 30 bis 300 kg) ergibt null.
+ */
+export function parseBodyWeight(input: string): number | null {
+  const value = parseDecimal(input.trim());
+  if (value === null) return null;
+  const rounded = Math.round(value * 10) / 10;
+  return rounded >= BODY_WEIGHT_MIN && rounded <= BODY_WEIGHT_MAX ? rounded : null;
+}
+
+/** Häufige Uhrzeiten als Chips beim Planen; alles andere über „Andere“. */
+export const PLAN_TIME_CHOICES = ["07:00", "12:00", "17:00", "18:00", "19:00", "20:00"] as const;
+
+/** Minuten zur Feinwahl der Uhrzeit. */
+export const PLAN_MINUTE_CHOICES = ["00", "15", "30", "45"] as const;
+
+/** Stunde einer Uhrzeit um delta verschieben, im Bereich 0 bis 23 ohne Umlauf: "18:30", 1 -> "19:30". */
+export function shiftHour(time: string, delta: number): string {
+  const hour = Math.min(23, Math.max(0, Number(time.slice(0, 2)) + delta));
+  return `${String(hour).padStart(2, "0")}${time.slice(2)}`;
+}

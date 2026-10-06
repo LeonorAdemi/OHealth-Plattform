@@ -9,6 +9,7 @@ import type { AgentDataSource } from "./agent";
 
 import {
   buildBestRanking,
+  activityMinutes,
   buildLeaderboard,
   lastDurationBySport,
   toTemplateVisibility,
@@ -123,7 +124,9 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, title, performed_at, duration_minutes, distance_m, meetup_id, sports(name, category), workout_sets(count)")
+    .select(
+      "id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, meetup_id, sports(name, category, met), workout_sets(count)",
+    )
     .eq("user_id", userId)
     .gte("performed_at", from.toISOString())
     .lt("performed_at", to.toISOString())
@@ -141,6 +144,8 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
     distanceM: w.distance_m,
     meetupId: w.meetup_id,
     setCount: w.workout_sets[0]?.count ?? 0,
+    minutes: activityMinutes({ durationMinutes: w.duration_minutes, startedAt: w.started_at, finishedAt: w.finished_at }),
+    sportMet: w.sports ? Number(w.sports.met) : null,
   }));
 }
 
@@ -324,7 +329,7 @@ export async function getWorkout(id: string) {
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, started_at, finished_at, sport_id, duration_minutes, distance_m, elevation_m, feeling, notes, sports(name, has_sets), workout_sets(reps, duration_seconds, distance_m, weight_kg, rest_seconds, position, exercises(id, name, measure))",
+      "id, title, performed_at, started_at, finished_at, sport_id, duration_minutes, distance_m, elevation_m, feeling, notes, sports(name, has_sets, met), workout_sets(reps, duration_seconds, distance_m, weight_kg, rest_seconds, position, exercises(id, name, measure))",
     )
     .eq("id", id)
     .eq("user_id", userId)
@@ -360,6 +365,7 @@ export async function getWorkout(id: string) {
     sportId: data.sport_id,
     sportName: data.sports?.name ?? "Aktivität",
     sportHasSets: data.sports?.has_sets ?? false,
+    sportMet: data.sports ? Number(data.sports.met) : null,
     durationMinutes: data.duration_minutes,
     distanceM: data.distance_m,
     elevationM: data.elevation_m,
@@ -897,4 +903,22 @@ export async function getNewBests(from: Date) {
     e1rm: Number(row.best_e1rm_kg),
     previous: Number(row.previous_e1rm_kg),
   }));
+}
+
+// ---------- Kalorien (docs/bereiche/kalorien.md) ----------
+
+/** Eigenes Körpergewicht in kg; null ohne Angabe (oder für eine KI). */
+export async function getMyBodyWeight(): Promise<number | null> {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.from("body_weights").select("weight_kg").eq("user_id", userId).maybeSingle();
+  if (error || !data) return null;
+  return Number(data.weight_kg);
+}
+
+/** Kalorien je Woche, die laufende zuerst (my_weekly_calories). kcal null ohne Gewicht. */
+export async function getWeeklyCalories(weeks = 2): Promise<{ weekStart: string; kcal: number | null }[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_weekly_calories", { p_weeks: weeks });
+  if (error) return [];
+  return data.map((w) => ({ weekStart: w.week_start, kcal: w.kcal ?? null }));
 }

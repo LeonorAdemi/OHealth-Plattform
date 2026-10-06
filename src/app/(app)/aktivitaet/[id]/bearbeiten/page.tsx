@@ -6,7 +6,7 @@ import { getExercises, getSports } from "@/modules/core/queries";
 import { ActivityForm } from "@/modules/workouts/components/activity-form";
 import { WorkoutForm } from "@/modules/workouts/components/workout-form";
 import { toDraftEntries } from "@/modules/workouts/logic";
-import { getMyRecentSportIds, getWorkout } from "@/modules/workouts/queries";
+import { getMyBodyWeight, getMyRecentSportIds, getWorkout } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Aktivität korrigieren" };
 
@@ -41,7 +41,7 @@ export default async function EditWorkoutPage({
     );
   }
 
-  const [sports, recentSportIds] = await Promise.all([getSports(), getMyRecentSportIds()]);
+  const [sports, recentSportIds, weightKg] = await Promise.all([getSports(), getMyRecentSportIds(), getMyBodyWeight()]);
   return (
     <>
       <h1 className="text-titel font-semibold">Aktivität korrigieren</h1>
@@ -49,6 +49,7 @@ export default async function EditWorkoutPage({
         <ActivityForm
           sports={sports}
           recentSportIds={recentSportIds}
+          weightKg={weightKg}
           existing={{
             id: workout.id,
             sportId: workout.sportId,

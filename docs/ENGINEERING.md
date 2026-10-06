@@ -92,12 +92,13 @@ Regeln, die diese Ziele sichern:
   | `docs/bereiche/ki-zugriff.md` | Verbundene KI-Apps über `/api/mcp`: was eine KI lesen und schreiben darf. |
   | `docs/bereiche/heute.md` | Seite „Heute“: Vorhaben je Sportart als Kreise mit Animation, Kennzahlen der Woche, Als Nächstes, Kalender mit Wochenstreifen, neue Bestwerte, Heatmap. |
   | `docs/bereiche/uebungen.md` | Figurensprache, Icons je Muskelgruppe, Skizzen je Übung, neue Übung anlegen. |
+  | `docs/bereiche/kalorien.md` | Kalorienfaktor je Sportart, Körpergewicht mit Einwilligung, Kalorien je Aktivität und Woche. |
 
 - Es werden nur Daten gespeichert, die eine Funktion brauchen.
 - Ändert sich die Datenverarbeitung, wird die Datenschutzseite im selben Schritt angepasst (siehe `docs/LEGAL.md`).
 - Jeder Nutzer kann sein Konto samt allen eigenen Daten selbst löschen. Neue Tabellen mit Nutzerdaten hängen deshalb per Fremdschlüssel mit Kaskade am Profil, und der Datenbanktest zum Konto-Löschen wird um sie ergänzt.
 - KI-Werkzeuge mit Datenbankzugriff (Supabase MCP) werden nur mit einem Entwicklungsprojekt verbunden, nie mit Produktionsdaten.
-- Sobald Gesundheitsdaten dazukommen (Schmerz, Stimmung, Ernährung): eigene Freigabe pro Datenart, protokollierte Einwilligung, Export und Löschung. Das wird vor dem ersten solchen Modul hier ergänzt.
+- **Gesundheitsdaten** (zuerst das Körpergewicht für Kalorien, später Schmerz, Stimmung, Ernährung): je Datenart eine eigene Tabelle mit eigener, ausdrücklicher Einwilligung, deren Zeitpunkt mitgespeichert wird; geschrieben nur über eine Funktion, die die Einwilligung prüft. Lesen nur die Person selbst, nie andere Mitglieder und nie eine verbundene KI (einschränkende Regel mit `private.is_agent()`). Jederzeit löschbar, was zugleich die Einwilligung widerruft, und mit dem Konto gelöscht. Die Datenschutzseite nennt Zweck und Rechtsgrundlage (Art. 9 Abs. 2 Buchstabe a DSGVO). Export folgt, sobald es einen Datenexport gibt.
 
 ## 6. Zuverlässigkeit
 

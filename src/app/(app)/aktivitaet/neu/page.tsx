@@ -3,12 +3,17 @@ import Link from "next/link";
 
 import { getSports } from "@/modules/core/queries";
 import { ActivityForm } from "@/modules/workouts/components/activity-form";
-import { getMyRecentSportIds, getMyTemplates } from "@/modules/workouts/queries";
+import { getMyBodyWeight, getMyRecentSportIds, getMyTemplates } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Aktivität eintragen" };
 
 export default async function NewActivityPage() {
-  const [sports, recentSportIds, templates] = await Promise.all([getSports(), getMyRecentSportIds(), getMyTemplates()]);
+  const [sports, recentSportIds, templates, weightKg] = await Promise.all([
+    getSports(),
+    getMyRecentSportIds(),
+    getMyTemplates(),
+    getMyBodyWeight(),
+  ]);
 
   return (
     <>
@@ -22,6 +27,7 @@ export default async function NewActivityPage() {
         <ActivityForm
           sports={sports}
           recentSportIds={recentSportIds}
+          weightKg={weightKg}
           templates={templates.map((t) => ({ id: t.id, name: t.name, exerciseCount: t.exerciseCount }))}
         />
       </div>

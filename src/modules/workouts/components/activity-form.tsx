@@ -14,7 +14,7 @@ import { berlinDateTimeParts, berlinLocalToDate } from "@/modules/core/logic";
 import type { Sport } from "@/modules/core/queries";
 
 import { saveActivity, updateActivity } from "../actions";
-import { FEELING_LABEL, parseDistanceKm, parseDurationMinutes } from "../logic";
+import { activityCalories, FEELING_LABEL, formatCalories, parseDistanceKm, parseDurationMinutes } from "../logic";
 
 export type ActivityValues = {
   id: string;
@@ -38,12 +38,15 @@ export function ActivityForm({
   recentSportIds,
   templates = [],
   existing,
+  weightKg = null,
 }: {
   sports: readonly Sport[];
   recentSportIds: readonly string[];
   /** Eigene Vorlagen, für Sportarten mit Übungen und Sätzen */
   templates?: readonly { id: string; name: string; exerciseCount: number }[];
   existing?: ActivityValues;
+  /** Eigenes Körpergewicht für die Kalorien; ohne Angabe null. */
+  weightKg?: number | null;
 }) {
   const router = useRouter();
   // Die ID entsteht einmal je Formular: Ein erneutes Senden nach einem Abbruch legt nichts doppelt an.
@@ -66,6 +69,7 @@ export function ActivityForm({
   const [failedToSend, setFailedToSend] = useState(false);
 
   const sport = sports.find((s) => s.id === sportId) ?? null;
+  const kcal = activityCalories(sport?.met, weightKg, parseDurationMinutes(hours, minutes));
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -148,6 +152,11 @@ export function ActivityForm({
             autoFocus={!existing && Boolean(sportId)}
           />
         </div>
+        {kcal !== null && (
+          <p className="col-span-2 text-sm" aria-live="polite">
+            etwa {formatCalories(kcal)}
+          </p>
+        )}
         {sport?.hasDistance && (
           <div className="space-y-2">
             <Label htmlFor="distance">Distanz in km (optional)</Label>

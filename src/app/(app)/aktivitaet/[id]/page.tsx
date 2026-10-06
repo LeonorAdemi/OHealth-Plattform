@@ -6,17 +6,19 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { DeleteWorkout } from "@/modules/workouts/components/delete-workout";
 import {
+  activityCalories,
   activityMinutes,
   APP_TIME_ZONE,
   FEELING_LABEL,
   formatActivityDuration,
+  formatCalories,
   formatClock,
   formatDistance,
   formatNumber,
   formatSetLine,
   groupSetsIntoBlocks,
 } from "@/modules/workouts/logic";
-import { getWorkout } from "@/modules/workouts/queries";
+import { getMyBodyWeight, getWorkout } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Aktivität" };
 
@@ -36,15 +38,18 @@ export default async function WorkoutPage({
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const workout = await getWorkout(id);
+  const [workout, weightKg] = await Promise.all([getWorkout(id), getMyBodyWeight()]);
   if (!workout) notFound();
 
   const minutes = activityMinutes(workout);
+  // Kalorien nur mit eigenem Gewicht (docs/bereiche/kalorien.md)
+  const kcal = activityCalories(workout.sportMet, weightKg, minutes);
   const distance = workout.distanceM ? formatDistance(workout.distanceM) : null;
   const facts = [
     { label: "Dauer", value: minutes ? formatActivityDuration(minutes) : null },
     { label: "Distanz", value: distance ? `${distance.value} ${distance.unit}` : null },
     { label: "Höhenmeter", value: workout.elevationM ? formatNumber(workout.elevationM) : null },
+    { label: "Kalorien", value: kcal === null ? null : formatCalories(kcal) },
     { label: "Gefühl", value: workout.feeling ? FEELING_LABEL[workout.feeling] : null },
   ].filter((f): f is { label: string; value: string } => Boolean(f.value));
 

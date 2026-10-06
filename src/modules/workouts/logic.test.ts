@@ -58,6 +58,10 @@ import {
   lastDurationBySport,
   durationChoices,
   defaultPlanTime,
+  activityCalories,
+  formatCalories,
+  parseBodyWeight,
+  shiftHour,
   type WeekSummary,
 } from "./logic";
 
@@ -953,5 +957,42 @@ describe("Schnell eintragen", () => {
     expect(defaultPlanTime("2026-10-06", "2026-10-06", "09:15")).toBe("18:00");
     expect(defaultPlanTime("2026-10-06", "2026-10-06", "18:05")).toBe("19:00");
     expect(defaultPlanTime("2026-10-06", "2026-10-06", "23:30")).toBe("23:00");
+  });
+});
+
+describe("Kalorien", () => {
+  it("rechnet MET × kg × Stunden und rundet", () => {
+    expect(activityCalories(9.8, 70, 30)).toBe(343);
+    expect(activityCalories(5, 70, 45)).toBe(263);
+    expect(activityCalories(7.5, 72.5, 60)).toBe(544);
+  });
+
+  it("liefert ohne Gewicht, Dauer oder Faktor keine Kalorien", () => {
+    expect(activityCalories(9.8, null, 30)).toBeNull();
+    expect(activityCalories(9.8, 70, null)).toBeNull();
+    expect(activityCalories(9.8, 70, 0)).toBeNull();
+    expect(activityCalories(undefined, 70, 30)).toBeNull();
+  });
+
+  it("schreibt Kalorien mit Tausenderpunkt und geschütztem Leerzeichen", () => {
+    expect(formatCalories(2150)).toBe("2.150\u00a0kcal");
+  });
+
+  it("liest das Körpergewicht mit Komma oder Punkt und prüft den Bereich", () => {
+    expect(parseBodyWeight("72,5")).toBe(72.5);
+    expect(parseBodyWeight(" 80 ")).toBe(80);
+    expect(parseBodyWeight("70.04")).toBe(70);
+    expect(parseBodyWeight("29,9")).toBeNull();
+    expect(parseBodyWeight("301")).toBeNull();
+    expect(parseBodyWeight("")).toBeNull();
+    expect(parseBodyWeight("abc")).toBeNull();
+  });
+});
+
+describe("Uhrzeit beim Planen", () => {
+  it("verschiebt die Stunde und bleibt zwischen 0 und 23 Uhr", () => {
+    expect(shiftHour("18:30", 1)).toBe("19:30");
+    expect(shiftHour("00:15", -1)).toBe("00:15");
+    expect(shiftHour("23:45", 1)).toBe("23:45");
   });
 });
