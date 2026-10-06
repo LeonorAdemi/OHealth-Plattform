@@ -907,6 +907,13 @@ describe("Schnell eintragen", () => {
     expect(days[6]).toMatchObject({ date: "2026-11-03", weekday: "Di", day: 3, isToday: false });
   });
 
+  it("beginnt beim Planen mit dem gewählten Tag, wenn er mehr als sechs Tage voraus liegt", () => {
+    expect(quickEntryDays("2026-10-06", "plan", "2026-10-09")[0].date).toBe("2026-10-06");
+    const later = quickEntryDays("2026-10-06", "plan", "2026-10-15");
+    expect(later[0]).toMatchObject({ date: "2026-10-15", weekday: "Do" });
+    expect(later.some((d) => d.isToday)).toBe(false);
+  });
+
   it("bietet erst die Vorhaben, dann zuletzt Genutztes an und wählt das erste offene Vorhaben", () => {
     const week = [goal("laufen", 2, 2), goal("krafttraining", 2, 1), goal("yoga", null, 1)];
     expect(quickEntrySports(week, ["yoga", "laufen", "bouldern"])).toEqual({

@@ -998,11 +998,20 @@ const QUICK_WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"] as const;
 
 /**
  * Sieben Tage zur Auswahl: Gemachtes reicht sechs Tage zurück bis heute, Geplantes von heute sechs
- * Tage voraus. today ist der Kalendertag in deutscher Zeit ("JJJJ-MM-TT").
+ * Tage voraus. Liegt der gewählte Tag beim Planen weiter voraus (aus einer späteren Woche), beginnen
+ * die sieben Tage mit ihm. Tage als "JJJJ-MM-TT" in deutscher Zeit.
  */
-export function quickEntryDays(today: string, mode: "done" | "plan"): QuickDay[] {
-  const [y, m, d] = today.split("-").map(Number);
-  const start = Date.UTC(y, m - 1, d) + (mode === "done" ? -6 : 0) * DAY_MS;
+export function quickEntryDays(today: string, mode: "done" | "plan", selected: string = today): QuickDay[] {
+  const utc = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const start =
+    mode === "done"
+      ? utc(today) - 6 * DAY_MS
+      : utc(selected) > utc(today) + 6 * DAY_MS
+        ? utc(selected)
+        : utc(today);
   return Array.from({ length: 7 }, (_, i) => {
     const at = new Date(start + i * DAY_MS);
     const date = at.toISOString().slice(0, 10);
