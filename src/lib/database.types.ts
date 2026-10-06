@@ -1641,6 +1641,7 @@ export type Database = {
           duration_minutes: number
           id: string
           is_joined: boolean
+          is_member: boolean
           level: string
           max_participants: number
           participant_count: number
@@ -1890,6 +1891,10 @@ export type Database = {
       }
       respond_follow_request: {
         Args: { accept: boolean; follower: string }
+        Returns: undefined
+      }
+      save_onboarding: {
+        Args: { p_city: string; p_sports: string[] }
         Returns: undefined
       }
       save_push_subscription: {

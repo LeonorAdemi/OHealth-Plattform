@@ -48,7 +48,7 @@ export function OnboardingForm({
       <fieldset className="space-y-4">
         <legend className="text-xl font-semibold">Was machst du gern?</legend>
         <p className="text-muted-foreground text-sm">
-          Bis zu {MAX_SPORTS} Sportarten. Danach siehst du passende Trainings und Communities.
+          Bis zu {MAX_SPORTS} Sportarten. Sie stehen in deinem Profil, damit dich andere finden.
         </p>
         {groups.map((g) => (
           <div key={g.category} role="group" aria-label={SPORT_CATEGORY_LABEL[g.category]} className="space-y-2">
@@ -88,7 +88,7 @@ export function OnboardingForm({
         </p>
       )}
       <Button type="submit" className="w-full md:w-auto" disabled={pending}>
-        Weiter
+        Speichern und entdecken
       </Button>
     </form>
   );

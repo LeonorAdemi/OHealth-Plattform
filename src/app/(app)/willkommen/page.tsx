@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/modules/core/components/onboarding-form";
 import { DEFAULT_CITY_ID } from "@/modules/core/logic";
-import { getCities, getMyCityChoice, getSports } from "@/modules/core/queries";
+import { getCities, getMyCityChoice, getSports, needsOnboarding } from "@/modules/core/queries";
 
 export const metadata: Metadata = { title: "Willkommen" };
 
 // Einstieg für alle, die sich ohne Einladung registrieren: Sportarten und Stadt, dann „Entdecken“.
+// Wer das schon hat (etwa ein bestehendes Konto über „Konto erstellen“ mit Google), kommt zu „Heute“.
 export default async function WelcomePage() {
+  if (!(await needsOnboarding())) redirect("/");
   const [sports, cities, choice] = await Promise.all([getSports(), getCities(), getMyCityChoice()]);
   return (
     <div className="max-w-2xl">

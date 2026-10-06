@@ -106,7 +106,8 @@ export function AuthForm({
         <p className="text-muted-foreground text-sm">
           {isRegister ? "Schon ein Konto? " : "Noch kein Konto? "}
           <Link
-            href={withNext(isRegister ? "/login" : "/registrieren", next)}
+            // Der Einstieg gilt nur für neue Konten, nicht für die Anmeldung
+            href={withNext(isRegister ? "/login" : "/registrieren", next === "/willkommen" ? "/" : next)}
             className="text-foreground underline underline-offset-4"
           >
             {isRegister ? "Anmelden" : "Konto erstellen"}

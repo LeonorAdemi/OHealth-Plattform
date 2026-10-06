@@ -32,18 +32,22 @@ export const metadata: Metadata = { title: "Entdecken" };
 export default async function DiscoverPage({ searchParams }: { searchParams: Promise<{ sport?: string; q?: string }> }) {
   const { sport, q } = await searchParams;
   const query = (q ?? "").trim().slice(0, 60);
-  const [cities, choice] = await Promise.all([getCities(), getMyCityChoice()]);
+  const [cities, choice, found] = await Promise.all([
+    getCities(),
+    getMyCityChoice(),
+    query ? searchCommunities(query, 20) : Promise.resolve(null),
+  ]);
   const cityId = discoverCityId(
     choice.cityId,
     cities.filter((c) => c.live).map((c) => c.id),
   );
   const city = cities.find((c) => c.id === cityId)?.name ?? "München";
-  const waitingFor = cities.find((c) => c.id === (choice.waitingFor ?? choice.cityId) && !c.live)?.name ?? null;
+  // Nur wer wirklich auf der Warteliste steht (city_interest), nicht wer im Profil eine Stadt eingetippt hat
+  const waitingFor = cities.find((c) => c.id === choice.waitingFor && !c.live)?.name ?? null;
 
-  const [meetups, communities, found] = await Promise.all([
+  const [meetups, communities] = await Promise.all([
     getDiscoverMeetups(cityId, DISCOVER_DAYS),
     getDiscoverCommunities(cityId),
-    query ? searchCommunities(query, 20) : Promise.resolve(null),
   ]);
   const options = sportFilterOptions([
     ...meetups,
@@ -58,13 +62,10 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <h1 className="text-titel font-semibold">Entdecken</h1>
-      <p className="text-muted-foreground mt-1">
-        {city} · nächste {DISCOVER_DAYS} Tage
-      </p>
+      <p className="text-muted-foreground mt-1">Trainings und Communities in {city}</p>
       {waitingFor && (
         <p className="mt-3 max-w-2xl text-sm">
-          In {waitingFor} gibt es OHealth noch nicht. Du stehst auf der Warteliste und erfährst es, sobald es losgeht.
-          Bis dahin siehst du {city}.
+          In {waitingFor} gibt es OHealth noch nicht. Du stehst auf der Warteliste. Bis dahin siehst du {city}.
         </p>
       )}
 
@@ -78,6 +79,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
         <h2 id="trainings" className="text-xl font-semibold">
           Trainings
         </h2>
+        <p className="text-muted-foreground mt-1 text-sm">Die nächsten {DISCOVER_DAYS} Tage</p>
         {shownMeetups.length === 0 ? (
           <div className="mt-2 space-y-4">
             <p className="text-muted-foreground">
@@ -95,7 +97,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
             {shownMeetups.map((m) => (
               <li key={m.id} className="border-b">
                 <Link
-                  href={m.isJoined ? `/plan/${m.id}` : `/e/${m.id}`}
+                  href={m.isJoined || m.isMember ? `/plan/${m.id}` : `/e/${m.id}`}
                   className="hover:bg-accent -mx-2 flex min-h-16 items-center gap-4 rounded-lg px-2 py-3 transition-colors duration-150 ease-out"
                 >
                   <MeetupDate startsAt={m.startsAt} />
@@ -126,6 +128,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
           Communities
         </h2>
         <form action="/entdecken" method="get" className="mt-3 space-y-2" role="search">
+          {selected && <input type="hidden" name="sport" value={selected} />}
           <Label htmlFor="q">Öffentliche Communities suchen</Label>
           <div className="flex gap-3">
             <Input

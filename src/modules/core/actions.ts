@@ -27,6 +27,7 @@ import {
   parsePace,
   parseSpeed,
 } from "./logic";
+import { needsOnboarding } from "./queries";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -153,6 +154,7 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
   }
 
   revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data.id}`);
 }
 
@@ -176,6 +178,7 @@ export async function joinPublicCommunity(_prev: FormState, formData: FormData):
   if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
 
   revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${id.data}`);
 }
 
@@ -190,6 +193,7 @@ export async function joinWithCode(_prev: FormState, formData: FormData): Promis
   if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
 
   revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data}`);
 }
 
@@ -207,6 +211,7 @@ export async function leaveCommunity(_prev: FormState, formData: FormData): Prom
   if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
 
   revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect("/gruppen");
 }
 
@@ -278,7 +283,8 @@ export async function acceptTerms(_prev: FormState, formData: FormData): Promise
   if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
 
   revalidatePath("/", "layout");
-  redirect("/");
+  // Neue Konten (etwa über Google) haben noch keine Sportarten und Stadt: weiter zum Einstieg
+  redirect((await needsOnboarding()) ? "/willkommen" : "/");
 }
 
 // ---------- Geplante Trainings ----------
@@ -905,7 +911,8 @@ const onboardingSchema = z.object({
 
 /**
  * Einstieg ohne Einladung: Sportarten und Stadt ins Profil. Läuft OHealth in der Stadt noch nicht,
- * kommt die Person auf die Warteliste (city_interest). Danach geht es zu „Entdecken“.
+ * kommt die Person auf die Warteliste (save_onboarding, beides in einem Schritt). Danach geht es zu
+ * „Entdecken“.
  */
 export async function saveOnboarding(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = onboardingSchema.safeParse({
@@ -915,29 +922,11 @@ export async function saveOnboarding(_prev: FormState, formData: FormData): Prom
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims?.sub;
-  if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
-
-  const { data: city } = await supabase
-    .from("cities")
-    .select("id, name, status")
-    .eq("id", parsed.data.cityId)
-    .maybeSingle();
-  if (!city) return { error: "Wähl deine Stadt." };
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({ sports: normalizeSports(parsed.data.sports), city: city.name, city_id: city.id })
-    .eq("id", userId);
-  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
-
-  // Warteliste nur für Städte, in denen es OHealth noch nicht gibt; sonst eine alte Eintragung löschen.
-  const waitlist =
-    city.status === "live"
-      ? await supabase.from("city_interest").delete().eq("user_id", userId)
-      : await supabase.from("city_interest").upsert({ user_id: userId, city_id: city.id });
-  if (waitlist.error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+  const { error } = await supabase.rpc("save_onboarding", {
+    p_sports: normalizeSports(parsed.data.sports),
+    p_city: parsed.data.cityId,
+  });
+  if (error) return { error: error.code === "22023" ? "Wähl deine Stadt." : "Das hat nicht geklappt. Versuch es erneut." };
 
   revalidatePath("/", "layout");
   redirect("/entdecken");
@@ -1137,6 +1126,7 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
   });
 
   revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data}`);
 }
 

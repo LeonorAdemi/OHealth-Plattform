@@ -830,6 +830,8 @@ export async function getDiscoverMeetups(cityId: string, days = 14) {
     weekly: m.weekly,
     communityName: m.community_name,
     isJoined: m.is_joined,
+    // Mitglied der Community: sieht das Event in der App, nicht nur über den öffentlichen Link
+    isMember: m.is_member,
   }));
 }
 
@@ -848,4 +850,10 @@ export async function getDiscoverCommunities(cityId: string) {
     memberCount: c.member_count,
     isMember: c.is_member,
   }));
+}
+
+/** Noch keine Sportarten, keine Stadt und keine Warteliste: Einstieg (/willkommen) steht noch aus. */
+export async function needsOnboarding() {
+  const choice = await getMyCityChoice();
+  return choice.sports.length === 0 && choice.cityId === null && choice.waitingFor === null;
 }

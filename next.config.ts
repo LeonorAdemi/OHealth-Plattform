@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       { source: "/workouts/:id([0-9a-fA-F\\-]{36})", destination: "/aktivitaet/:id", permanent: true },
+      // Die Suche nach Communities steht jetzt unter „Entdecken“
+      {
+        source: "/community",
+        has: [{ type: "query", key: "q" }],
+        destination: "/entdecken",
+        permanent: true,
+      },
       { source: "/community", destination: "/gruppen", permanent: true },
       {
         source: "/gruppe",
