@@ -19,7 +19,7 @@ test("Aktivität eintragen: zählt sofort im Wochenraster und in der Rangliste d
 
   await expect(page).toHaveURL(/\/$/);
   await expect(weekGrid(page, 1)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Letzte Aktivitäten" })).toContainText("Laufen");
+  await expect(page.getByRole("region", { name: "Deine Woche" })).toContainText("Laufen");
 
   const board = await openLeaderboard(page, crew.id);
   const row = board.getByRole("listitem").filter({ hasText: "Du" });

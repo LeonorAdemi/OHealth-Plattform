@@ -14,7 +14,7 @@ import {
   weekGrid,
 } from "./support";
 
-test("„Warst du dabei?“: Ja macht das Training zum Trainingstag in Wochenraster und Rangliste", async ({ page }) => {
+test("„Warst du dabei?“: Abhaken in der Woche macht das Training zum Trainingstag in Wochenraster und Rangliste", async ({ page }) => {
   const anna = await createUser("Anna");
   const ben = await createUser("Ben");
   const crew = await createCommunity(anna, { name: `Crew ${suffix()}`, type: "friends" });
@@ -31,16 +31,18 @@ test("„Warst du dabei?“: Ja macht das Training zum Trainingstag in Wochenras
   await moveMeetup(meetup.id, minutesFromNow(-5));
 
   await login(page, ben);
-  const question = page.getByRole("region", { name: "Warst du dabei?" });
-  await expect(question).toBeVisible();
+  // Das Training ist vorbei und steht in der Woche mit einem Kreis zum Abhaken
+  const week = page.getByRole("region", { name: "Deine Woche" });
+  const check = week.getByRole("button", { name: "Morgenlauf als erledigt eintragen" });
+  await expect(check).toBeVisible();
   await expect(weekGrid(page, 0)).toBeVisible();
 
-  await question.getByRole("button", { name: "Ja, war dabei: Morgenlauf" }).click();
+  await check.click();
 
   await expect(page.getByText("Gespeichert. Das Training zählt als Trainingstag.")).toBeVisible();
-  await expect(question).toHaveCount(0);
+  await expect(check).toHaveCount(0);
   await expect(weekGrid(page, 1)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Letzte Aktivitäten" })).toContainText("Morgenlauf");
+  await expect(week).toContainText("Morgenlauf");
 
   const board = await openLeaderboard(page, crew.id);
   const row = board.getByRole("listitem").filter({ hasText: "Du" });

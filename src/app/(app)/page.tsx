@@ -1,29 +1,21 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { AttendanceQuestion } from "@/modules/core/components/meetup-forms";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
-import { SportDot } from "@/modules/core/components/sport-dot";
-import { type PlanDayStat, type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
-import {
-  berlinDateTimeParts,
-  berlinWeek,
-  describeMeetupCount,
-  formatMeetupWhen,
-  SPORT_CATEGORY_LABEL,
-} from "@/modules/core/logic";
-import { getMeetups, getOpenAttendance } from "@/modules/core/queries";
+import { type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
+import { berlinDateTimeParts, berlinWeek, describeMeetupCount, formatMeetupWhen } from "@/modules/core/logic";
+import { getMeetups, getOpenAttendance, getSports } from "@/modules/core/queries";
+import { QuickEntry } from "@/modules/workouts/components/quick-entry";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { SportRings } from "@/modules/workouts/components/sport-rings";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
 import { ActivityHeatmap, WeekBests, WeekStats } from "@/modules/workouts/components/today-overview";
-import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
-import { describeActivity, describeWeekProgress, isoWeek } from "@/modules/workouts/logic";
+import { describeActivity, describeWeekProgress, isoWeek, quickEntrySports } from "@/modules/workouts/logic";
 import {
   getActivityDays,
+  getMyRecentSportDurations,
   getMyWorkoutsBetween,
   getNewBests,
-  getRecentWorkouts,
   getWeekSports,
   getWeeklySummary,
 } from "@/modules/workouts/queries";
@@ -34,11 +26,13 @@ const MAX_WEEKS_AHEAD = 8;
 // Wochen in der Übersicht; die Serie zählt bis zu einem Jahr zurück
 const OVERVIEW_WEEKS = 12;
 const STREAK_WEEKS = 53;
-// „Als Nächstes“ schaut eine Woche voraus
-const NEXT_DAYS = 7;
 
-export default async function TodayPage({ searchParams }: { searchParams: Promise<{ woche?: string; dabei?: string }> }) {
-  const { woche, dabei } = await searchParams;
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ woche?: string; dabei?: string; geplant?: string }>;
+}) {
+  const { woche, dabei, geplant } = await searchParams;
   const parsed = Number.parseInt(woche ?? "0", 10);
   const offset = Number.isFinite(parsed) ? Math.min(Math.max(parsed, -MAX_WEEKS_BACK), MAX_WEEKS_AHEAD) : 0;
 
@@ -46,16 +40,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const week = berlinWeek(now, offset);
   const thisWeek = berlinWeek(now);
   const overviewStart = berlinWeek(now, -(OVERVIEW_WEEKS - 1)).days[0].date;
-  const [activityDays, recent, planned, done, openAttendance, weekSports, summary, upcoming, bests] = await Promise.all([
+  const [activityDays, planned, done, openAttendance, weekSports, summary, bests, sports, recent] = await Promise.all([
     getActivityDays(overviewStart),
-    getRecentWorkouts(5),
     getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
     getMyWorkoutsBetween(week.from, week.to),
     getOpenAttendance(),
     getWeekSports(),
     getWeeklySummary(STREAK_WEEKS),
-    getMeetups("mine", { from: now, to: new Date(now.getTime() + NEXT_DAYS * 86400000), limit: 1 }),
     getNewBests(thisWeek.from),
+    getSports(),
+    getMyRecentSportDurations(),
   ]);
   const today = berlinDateTimeParts(now).date;
   const monday = thisWeek.days[0].date;
@@ -66,15 +60,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const hasGoals = weekSports.some((s) => s.times !== null);
   const overview = summary.slice(0, OVERVIEW_WEEKS);
   const minutesByDay = Object.fromEntries(activityDays.map((d) => [d.day, d.minutes]));
-  const dayStats: Record<string, PlanDayStat> = Object.fromEntries(
-    activityDays.map((d) => [d.day, { minutes: d.minutes, category: d.category }]),
-  );
-  const next = upcoming[0];
+  // Schnell eintragen: Vorhaben und zuletzt Genutztes, vorgewählt das erste offene Vorhaben
+  const quick = quickEntrySports(weekSports, recent.sportIds);
+  const quickSports = quick.sportIds.flatMap((id) => sports.filter((s) => s.id === id));
 
   const items: Record<string, PlanItem[]> = {};
   const add = (date: string, item: PlanItem) => (items[date] ??= []).push(item);
   // Ein bestätigtes Training steht als erledigte Aktivität im Plan, nicht noch einmal als geplant.
   const confirmed = new Set(done.map((w) => w.meetupId).filter(Boolean));
+  // Vorbei und noch ohne Antwort: lässt sich in der Woche abhaken
+  const open = new Set(openAttendance.map((a) => a.meetupId));
   for (const m of planned.filter((p) => !confirmed.has(p.id))) {
     const meta = m.isMine
       ? m.shareCount === 0
@@ -90,6 +85,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       meta: [m.sportName !== m.title ? m.sportName : null, meta, m.place].filter(Boolean).join(" · "),
       done: false,
       category: m.sportCategory ?? undefined,
+      confirmMeetupId: open.has(m.id) ? m.id : undefined,
     });
   }
   for (const w of done) {
@@ -108,6 +104,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const planTitle =
     offset === 0 ? "Deine Woche" : offset === 1 ? "Nächste Woche" : offset === -1 ? "Letzte Woche" : `Woche ${isoWeek(week.from)}`;
+  // „Warst du dabei?“ nur für Trainings, die nicht schon in der gezeigten Woche abzuhaken sind
+  const shown = new Set(planned.map((m) => m.id));
+  const otherAttendance = openAttendance.filter((a) => !shown.has(a.meetupId));
 
   return (
     <>
@@ -138,31 +137,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
-      <div className="mt-10">
-        <WeekStats weeks={summary} />
+      <div className="mt-8">
+        {/* Nach dem Planen kommt die Seite mit neuem ?geplant= zurück; der neue key schließt die Ansicht. */}
+        <QuickEntry
+          key={geplant ?? "start"}
+          sports={quickSports.map((s) => ({ id: s.id, name: s.name, category: s.category, hasDistance: s.hasDistance }))}
+          selectedSportId={quick.selected}
+          lastDurations={recent.lastDurations}
+        />
       </div>
-
-      {next && (
-        <section className="mt-10 max-w-2xl" aria-labelledby="als-naechstes">
-          <h2 id="als-naechstes" className="text-xl font-semibold">
-            Als Nächstes
-          </h2>
-          <Link href={`/plan/${next.id}`} className="group mt-2 flex min-h-16 items-center gap-4 border-b py-3">
-            <MeetupDate startsAt={next.startsAt} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2 font-medium break-words group-hover:underline group-hover:underline-offset-4">
-                <SportDot category={next.sportCategory} />
-                {next.title}
-              </span>
-              <span className="text-muted-foreground block text-sm">
-                {[formatMeetupWhen(next.startsAt), next.sportName !== next.title ? next.sportName : null, next.place]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            </span>
-          </Link>
-        </section>
-      )}
 
       <ResumeTraining className="mt-8" />
 
@@ -171,15 +154,31 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           Gespeichert. Das Training zählt als Trainingstag.
         </p>
       )}
+      {geplant && (
+        <p role="status" className="mt-8 max-w-2xl">
+          Geplant. Das Training steht in deiner Woche.
+        </p>
+      )}
 
-      {openAttendance.length > 0 && (
-        <section className="mt-8 max-w-2xl" aria-labelledby="dabei-frage">
+      <div className="mt-8 max-w-2xl">
+        <WeekPlan
+          title={planTitle}
+          days={week.days}
+          items={items}
+          prevHref={offset > -MAX_WEEKS_BACK ? `/?woche=${offset - 1}` : null}
+          nextHref={offset < MAX_WEEKS_AHEAD ? `/?woche=${offset + 1}` : null}
+          minDate={today}
+        />
+      </div>
+
+      {otherAttendance.length > 0 && (
+        <section className="mt-10 max-w-2xl" aria-labelledby="dabei-frage">
           <h2 id="dabei-frage" className="text-xl font-semibold">
             Warst du dabei?
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">Wer dabei war, bekommt das Training als Trainingstag.</p>
           <ul className="mt-2">
-            {openAttendance.map((a) => (
+            {otherAttendance.map((a) => (
               <li key={a.meetupId} className="flex min-h-16 items-start gap-4 border-b py-3">
                 <MeetupDate startsAt={a.startsAt} />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -197,65 +196,19 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </section>
       )}
 
+      <div className="mt-12">
+        <WeekStats weeks={summary} />
+      </div>
+
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
-        <div className="min-w-0 space-y-10">
-          <WeekPlan
-            title={planTitle}
-            days={week.days}
-            items={items}
-            prevHref={offset > -MAX_WEEKS_BACK ? `/?woche=${offset - 1}` : null}
-            nextHref={offset < MAX_WEEKS_AHEAD ? `/?woche=${offset + 1}` : null}
-            minDate={today}
-            dayStats={dayStats}
-          />
-
-          {recent.length > 0 && (
-            <section aria-labelledby="recent">
-              <h2 id="recent" className="text-xl font-semibold">
-                Letzte Aktivitäten
-              </h2>
-              <div className="mt-2">
-                <WorkoutFeed
-                  label="Letzte Aktivitäten"
-                  now={now}
-                  workouts={recent.map((workout) => ({
-                    id: workout.id,
-                    isMe: true,
-                    title: workout.title,
-                    sportName: workout.sportName,
-                    performedAt: workout.performed_at,
-                    startedAt: workout.started_at,
-                    finishedAt: workout.finished_at,
-                    durationMinutes: workout.duration_minutes,
-                    distanceM: workout.distance_m,
-                    setCount: workout.workout_sets.length,
-                    sportCategory: workout.sportCategory,
-                  }))}
-                />
-              </div>
-            </section>
-          )}
-        </div>
-
-        <div className="min-w-0 space-y-10">
-          <WeekBests bests={bests} />
-          {overview.some((w) => w.trainingDays > 0) && (
-            <ActivityHeatmap weeks={overview} minutesByDay={minutesByDay} today={today} />
-          )}
-        </div>
+        <WeekBests bests={bests} />
+        {overview.some((w) => w.trainingDays > 0) && (
+          <ActivityHeatmap weeks={overview} minutesByDay={minutesByDay} today={today} />
+        )}
       </div>
 
-      <div className="mt-10 flex flex-col gap-3 md:flex-row">
-        <Button asChild className="w-full md:w-auto">
-          <Link href="/aktivitaet/neu">Aktivität eintragen</Link>
-        </Button>
-        <Button asChild variant="outline" className="w-full md:w-auto">
-          <Link href="/training">Mit Vorlage trainieren</Link>
-        </Button>
-        <Button asChild variant="outline" className="w-full md:w-auto">
-          <Link href="/plan/neu">Training planen</Link>
-        </Button>
-      </div>
+      {/* Platz für die feste Leiste mit „Eintragen“ und „Planen“ über der Tab-Leiste */}
+      <div className="h-20 md:hidden" aria-hidden />
     </>
   );
 }

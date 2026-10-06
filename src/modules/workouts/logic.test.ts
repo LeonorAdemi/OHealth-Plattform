@@ -53,6 +53,11 @@ import {
   weekProgress,
   type WeekSport,
   isoWeekOf,
+  quickEntryDays,
+  quickEntrySports,
+  lastDurationBySport,
+  durationChoices,
+  defaultPlanTime,
   type WeekSummary,
 } from "./logic";
 
@@ -869,5 +874,77 @@ describe("Kreise je Sportart", () => {
     expect(describeWeekProgress(week)).toBe("3 von 4 Trainings geschafft. Noch 1.");
     expect(describeWeekProgress([sport(2, 2)])).toBe("Vorhaben dieser Woche geschafft.");
     expect(describeWeekProgress([sport(null, 1)])).toBeNull();
+  });
+});
+
+describe("Schnell eintragen", () => {
+  const goal = (sportId: string, times: number | null, done: number): WeekSport => ({
+    sportId,
+    name: sportId,
+    category: "ausdauer",
+    times,
+    done,
+  });
+
+  it("zeigt für Gemachtes die letzten sieben Tage bis heute, heute zuletzt", () => {
+    const days = quickEntryDays("2026-10-06", "done");
+    expect(days.map((d) => d.date)).toEqual([
+      "2026-09-30",
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-05",
+      "2026-10-06",
+    ]);
+    expect(days[6]).toEqual({ date: "2026-10-06", weekday: "Di", day: 6, isToday: true });
+    expect(days.filter((d) => d.isToday)).toHaveLength(1);
+  });
+
+  it("zeigt fürs Planen heute und die sechs Tage danach, auch über den Monatswechsel", () => {
+    const days = quickEntryDays("2026-10-28", "plan");
+    expect(days[0]).toMatchObject({ date: "2026-10-28", weekday: "Mi", isToday: true });
+    expect(days[6]).toMatchObject({ date: "2026-11-03", weekday: "Di", day: 3, isToday: false });
+  });
+
+  it("bietet erst die Vorhaben, dann zuletzt Genutztes an und wählt das erste offene Vorhaben", () => {
+    const week = [goal("laufen", 2, 2), goal("krafttraining", 2, 1), goal("yoga", null, 1)];
+    expect(quickEntrySports(week, ["yoga", "laufen", "bouldern"])).toEqual({
+      sportIds: ["laufen", "krafttraining", "yoga", "bouldern"],
+      selected: "krafttraining",
+    });
+  });
+
+  it("wählt ohne offenes Vorhaben die zuletzt genutzte Sportart und begrenzt die Auswahl", () => {
+    expect(quickEntrySports([goal("laufen", 1, 1)], ["bouldern"])).toEqual({
+      sportIds: ["laufen", "bouldern"],
+      selected: "bouldern",
+    });
+    expect(quickEntrySports([], [])).toEqual({ sportIds: [], selected: null });
+    expect(quickEntrySports([], ["a", "b", "c"], 2).sportIds).toEqual(["a", "b"]);
+  });
+
+  it("merkt sich je Sportart die jüngste Dauer und überspringt Einträge ohne Dauer", () => {
+    expect(
+      lastDurationBySport([
+        { sportId: "laufen", durationMinutes: null },
+        { sportId: "laufen", durationMinutes: 42 },
+        { sportId: "bouldern", durationMinutes: 90 },
+        { sportId: "laufen", durationMinutes: 60 },
+      ]),
+    ).toEqual({ laufen: 42, bouldern: 90 });
+  });
+
+  it("nimmt die zuletzt genutzte Dauer in die Chips auf", () => {
+    expect(durationChoices(undefined)).toEqual([30, 45, 60, 90]);
+    expect(durationChoices(60)).toEqual([30, 45, 60, 90]);
+    expect(durationChoices(42)).toEqual([30, 42, 45, 60, 90]);
+  });
+
+  it("schlägt 18:00 Uhr vor, heute nach 17 Uhr die nächste volle Stunde", () => {
+    expect(defaultPlanTime("2026-10-07", "2026-10-06", "21:10")).toBe("18:00");
+    expect(defaultPlanTime("2026-10-06", "2026-10-06", "09:15")).toBe("18:00");
+    expect(defaultPlanTime("2026-10-06", "2026-10-06", "18:05")).toBe("19:00");
+    expect(defaultPlanTime("2026-10-06", "2026-10-06", "23:30")).toBe("23:00");
   });
 });
