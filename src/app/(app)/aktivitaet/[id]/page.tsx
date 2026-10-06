@@ -100,7 +100,7 @@ export default async function WorkoutPage({
 
       <div className="mt-10 space-y-4">
         <Button asChild variant="outline" className="w-full md:w-auto">
-          <Link href={`/workouts/${workout.id}/bearbeiten`}>
+          <Link href={`/aktivitaet/${workout.id}/bearbeiten`}>
             Aktivität korrigieren
           </Link>
         </Button>

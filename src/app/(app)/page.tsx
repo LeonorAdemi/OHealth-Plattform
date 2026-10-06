@@ -56,7 +56,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   for (const w of done) {
     add(berlinDateTimeParts(new Date(w.performedAt)).date, {
       key: `done-${w.id}`,
-      href: `/workouts/${w.id}`,
+      href: `/aktivitaet/${w.id}`,
       time: "",
       title: w.title ?? w.sportName,
       meta: describeActivity({ ...w, sportName: w.title ? w.sportName : "" }),

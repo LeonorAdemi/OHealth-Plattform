@@ -212,7 +212,7 @@ export default async function PlanPage({
           {counted ? (
             <p className="mt-2">
               Als Trainingstag gezählt.{" "}
-              <Link href={`/workouts/${attendance.workoutId}`} className="underline underline-offset-4">
+              <Link href={`/aktivitaet/${attendance.workoutId}`} className="underline underline-offset-4">
                 Aktivität ansehen oder ergänzen
               </Link>
             </p>

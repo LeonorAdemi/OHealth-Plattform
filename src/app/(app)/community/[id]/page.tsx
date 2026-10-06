@@ -54,10 +54,10 @@ export default async function CommunityDetailPage({
     <>
       <p className="text-sm">
         <Link
-          href="/community"
+          href="/gruppen"
           className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4"
         >
-          Alle Communities
+          Gruppen
         </Link>
       </p>
       <div className="mt-2 flex max-w-2xl items-start justify-between gap-4">

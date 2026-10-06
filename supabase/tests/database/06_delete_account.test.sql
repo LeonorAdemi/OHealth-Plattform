@@ -62,6 +62,7 @@ insert into public.meetup_attendance (meetup_id, user_id, attended) values
   ('60000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a', false);
 -- Anna hat den Nutzungsbedingungen zugestimmt und wurde aus der Crew einmal entfernt.
 insert into public.terms_acceptances (user_id, version) values ('00000000-0000-0000-0000-00000000000a', '2026-10-06');
+insert into public.city_interest (user_id, city_id) values ('00000000-0000-0000-0000-00000000000a', 'berlin');
 insert into public.group_bans (group_id, user_id, until)
 values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', now() - interval '1 day');
 -- Anna hat eine wöchentliche Reihe.
@@ -106,6 +107,7 @@ select is(
   + (select count(*)::int from private.signup_sources where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_attendance where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.terms_acceptances where user_id = '00000000-0000-0000-0000-00000000000a')
+  + (select count(*)::int from public.city_interest where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.group_bans where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.meetup_messages where user_id = '00000000-0000-0000-0000-00000000000a')
   + (select count(*)::int from public.chat_messages where user_id = '00000000-0000-0000-0000-00000000000a')

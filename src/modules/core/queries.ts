@@ -785,3 +785,65 @@ export async function getAgentAuthorization(authorizationId: string) {
     email: data.user.email,
   };
 }
+
+// ---------- Entdecken ----------
+
+/** Städte mit Stand (live oder geplant), live zuerst. */
+export const getCities = cache(async () => {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("cities").select("id, name, status").order("status").order("name");
+  if (error) throw new Error("Die Städte konnten nicht geladen werden.");
+  return data.map((c) => ({ id: c.id, name: c.name, live: c.status === "live" }));
+});
+
+/** Die eigene Stadt aus dem Profil (Katalog) und ob ich auf einer Warteliste stehe. */
+export async function getMyCityChoice() {
+  const { supabase, userId } = await requireUser();
+  const [profile, waiting] = await Promise.all([
+    supabase.from("profiles").select("city_id, sports").eq("id", userId).single(),
+    supabase.from("city_interest").select("city_id").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (profile.error || waiting.error) throw new Error("Deine Stadt konnte nicht geladen werden.");
+  return { cityId: profile.data.city_id, sports: profile.data.sports, waitingFor: waiting.data?.city_id ?? null };
+}
+
+/**
+ * Kommende Events öffentlicher Communities einer Stadt, ohne Namen von Personen
+ * (discover_meetups). Höchstens 100, die nächsten zuerst.
+ */
+export async function getDiscoverMeetups(cityId: string, days = 14) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("discover_meetups", { p_city: cityId, p_days: days });
+  if (error) throw new Error("Die Trainings konnten nicht geladen werden.");
+  return data.map((m) => ({
+    id: m.id,
+    title: m.title,
+    startsAt: m.starts_at,
+    place: m.place,
+    durationMinutes: m.duration_minutes,
+    sportId: m.sport_id,
+    sportName: m.sport_name,
+    count: m.participant_count,
+    maxParticipants: m.max_participants,
+    weekly: m.weekly,
+    communityName: m.community_name,
+    isJoined: m.is_joined,
+  }));
+}
+
+/** Öffentliche Communities einer Stadt, die größten zuerst (discover_communities). */
+export async function getDiscoverCommunities(cityId: string) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("discover_communities", { p_city: cityId, max_rows: 30 });
+  if (error) throw new Error("Die Communities konnten nicht geladen werden.");
+  return data.map((c) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    sportId: c.sport_id,
+    sport: c.sport,
+    city: c.city,
+    memberCount: c.member_count,
+    isMember: c.is_member,
+  }));
+}

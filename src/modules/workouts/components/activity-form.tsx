@@ -110,7 +110,7 @@ export function ActivityForm({
       return setError("Das hat nicht geklappt. Deine Angaben sind noch da. Prüf deine Verbindung und sende erneut.");
     }
     if (!result.ok) return setError(result.error);
-    router.push(existing ? `/workouts/${result.data.id}` : "/");
+    router.push(existing ? `/aktivitaet/${result.data.id}` : "/");
     router.refresh();
   }
 

@@ -73,7 +73,7 @@ export default async function ExerciseHistoryPage({ params }: { params: Promise<
           {history.sessions.map((session) => (
             <li key={session.workoutId} className="border-b">
               <Link
-                href={`/workouts/${session.workoutId}`}
+                href={`/aktivitaet/${session.workoutId}`}
                 className="hover:bg-accent -mx-2 block rounded-lg px-2 py-4 transition-colors duration-150 ease-out"
               >
                 <span className="text-muted-foreground block text-sm">

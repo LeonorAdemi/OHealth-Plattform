@@ -41,7 +41,7 @@ export default async function HistoryPage() {
           {workouts.map((workout) => (
             <li key={workout.id} className="border-b">
               <Link
-                href={`/workouts/${workout.id}`}
+                href={`/aktivitaet/${workout.id}`}
                 className="hover:bg-accent -mx-2 block rounded-lg px-2 py-4 transition-colors duration-150 ease-out"
               >
                 <span className="text-muted-foreground block text-sm">

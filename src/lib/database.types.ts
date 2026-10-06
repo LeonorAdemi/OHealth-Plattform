@@ -228,6 +228,39 @@ export type Database = {
         }
         Relationships: []
       }
+      city_interest: {
+        Row: {
+          city_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          user_id?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_interest_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_interest_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           aliases: string[]
@@ -1587,6 +1620,38 @@ export type Database = {
         Returns: string
       }
       delete_own_account: { Args: never; Returns: undefined }
+      discover_communities: {
+        Args: { max_rows?: number; p_city: string }
+        Returns: {
+          city: string
+          description: string
+          id: string
+          is_member: boolean
+          member_count: number
+          name: string
+          sport: string
+          sport_id: string
+        }[]
+      }
+      discover_meetups: {
+        Args: { p_city: string; p_days?: number }
+        Returns: {
+          community_id: string
+          community_name: string
+          duration_minutes: number
+          id: string
+          is_joined: boolean
+          level: string
+          max_participants: number
+          participant_count: number
+          place: string
+          sport_id: string
+          sport_name: string
+          starts_at: string
+          title: string
+          weekly: boolean
+        }[]
+      }
       follow_person: { Args: { target: string }; Returns: string }
       group_invite_preview: {
         Args: { code: string }

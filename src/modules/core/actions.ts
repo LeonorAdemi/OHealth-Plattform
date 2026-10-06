@@ -152,7 +152,7 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
     return { error: COMMUNITY_SAVE_FAILED };
   }
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
   redirect(`/community/${data.id}`);
 }
 
@@ -175,7 +175,7 @@ export async function joinPublicCommunity(_prev: FormState, formData: FormData):
   // 23505: schon Mitglied, das ist kein Fehler.
   if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
   redirect(`/community/${id.data}`);
 }
 
@@ -189,7 +189,7 @@ export async function joinWithCode(_prev: FormState, formData: FormData): Promis
   if (isBanned(error)) return { error: BANNED };
   if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
   redirect(`/community/${data}`);
 }
 
@@ -206,8 +206,8 @@ export async function leaveCommunity(_prev: FormState, formData: FormData): Prom
   const { error } = await supabase.rpc("leave_group", { gid: id.data });
   if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
 
-  revalidatePath("/community");
-  redirect("/community");
+  revalidatePath("/gruppen");
+  redirect("/gruppen");
 }
 
 const reportSchema = z.object({
@@ -1091,7 +1091,7 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
     p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
   });
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
   redirect(`/community/${data}`);
 }
 
