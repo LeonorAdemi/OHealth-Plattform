@@ -31,6 +31,7 @@ export function WeekPlan({
   prevHref,
   nextHref,
   minDate,
+  renderPlan,
 }: {
   title: string;
   days: readonly PlanDay[];
@@ -39,6 +40,8 @@ export function WeekPlan({
   nextHref: string | null;
   /** Vor diesem Tag lässt sich nichts mehr planen. */
   minDate: string;
+  /** „Planen“ an einem freien Tag; ohne führt der Link zum Formular „Training planen“. */
+  renderPlan?: (day: PlanDay) => React.ReactNode;
 }) {
   return (
     <section aria-labelledby="wochenplan">
@@ -91,15 +94,18 @@ export function WeekPlan({
               {entries.length === 0 ? (
                 <span className="flex min-h-12 flex-1 items-center justify-between gap-3">
                   <span className="text-muted-foreground text-sm">frei</span>
-                  {day.date >= minDate && (
-                    <Link
-                      href={`/plan/neu?tag=${day.date}`}
-                      aria-label={`Training am ${day.label} planen`}
-                      className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-                    >
-                      Planen
-                    </Link>
-                  )}
+                  {day.date >= minDate &&
+                    (renderPlan ? (
+                      renderPlan(day)
+                    ) : (
+                      <Link
+                        href={`/plan/neu?tag=${day.date}`}
+                        aria-label={`Training am ${day.label} planen`}
+                        className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+                      >
+                        Planen
+                      </Link>
+                    ))}
                 </span>
               ) : (
                 <ul className="min-w-0 flex-1 divide-y">

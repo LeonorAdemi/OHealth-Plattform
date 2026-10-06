@@ -5,7 +5,7 @@ import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
 import { berlinDateTimeParts, berlinWeek, describeMeetupCount, formatMeetupWhen } from "@/modules/core/logic";
 import { getMeetups, getOpenAttendance, getSports } from "@/modules/core/queries";
-import { QuickEntry } from "@/modules/workouts/components/quick-entry";
+import { QuickEntryButtons, QuickEntryProvider, QuickPlanLink } from "@/modules/workouts/components/quick-entry";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
 import { SportRings } from "@/modules/workouts/components/sport-rings";
 import { WeekGrid } from "@/modules/workouts/components/week-grid";
@@ -137,39 +137,42 @@ export default async function TodayPage({
         )}
       </section>
 
-      <div className="mt-8">
-        {/* Nach dem Planen kommt die Seite mit neuem ?geplant= zurück; der neue key schließt die Ansicht. */}
-        <QuickEntry
-          key={geplant ?? "start"}
-          sports={quickSports.map((s) => ({ id: s.id, name: s.name, category: s.category, hasDistance: s.hasDistance }))}
-          selectedSportId={quick.selected}
-          lastDurations={recent.lastDurations}
-        />
-      </div>
+      {/* Nach dem Planen kommt die Seite mit neuem ?geplant= zurück; der neue key schließt die Ansicht. */}
+      <QuickEntryProvider
+        key={geplant ?? "start"}
+        sports={quickSports.map((s) => ({ id: s.id, name: s.name, category: s.category, hasDistance: s.hasDistance }))}
+        selectedSportId={quick.selected}
+        lastDurations={recent.lastDurations}
+      >
+        <div className="mt-8">
+          <QuickEntryButtons />
+        </div>
 
-      <ResumeTraining className="mt-8" />
+        <ResumeTraining className="mt-8" />
 
-      {dabei === "1" && (
-        <p role="status" className="mt-8 max-w-2xl">
-          Gespeichert. Das Training zählt als Trainingstag.
-        </p>
-      )}
-      {geplant && (
-        <p role="status" className="mt-8 max-w-2xl">
-          Geplant. Das Training steht in deiner Woche.
-        </p>
-      )}
+        {dabei === "1" && (
+          <p role="status" className="mt-8 max-w-2xl">
+            Gespeichert. Das Training zählt als Trainingstag.
+          </p>
+        )}
+        {geplant && (
+          <p role="status" className="mt-8 max-w-2xl">
+            Geplant. Das Training steht in deiner Woche.
+          </p>
+        )}
 
-      <div className="mt-8 max-w-2xl">
-        <WeekPlan
-          title={planTitle}
-          days={week.days}
-          items={items}
-          prevHref={offset > -MAX_WEEKS_BACK ? `/?woche=${offset - 1}` : null}
-          nextHref={offset < MAX_WEEKS_AHEAD ? `/?woche=${offset + 1}` : null}
-          minDate={today}
-        />
-      </div>
+        <div className="mt-8 max-w-2xl">
+          <WeekPlan
+            title={planTitle}
+            days={week.days}
+            items={items}
+            prevHref={offset > -MAX_WEEKS_BACK ? `/?woche=${offset - 1}` : null}
+            nextHref={offset < MAX_WEEKS_AHEAD ? `/?woche=${offset + 1}` : null}
+            minDate={today}
+            renderPlan={(day) => <QuickPlanLink date={day.date} label={day.label} />}
+          />
+        </div>
+      </QuickEntryProvider>
 
       {otherAttendance.length > 0 && (
         <section className="mt-10 max-w-2xl" aria-labelledby="dabei-frage">

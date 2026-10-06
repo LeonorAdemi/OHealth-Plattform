@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useRef, useState } from "react";
+import { createContext, use, useActionState, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -28,41 +28,42 @@ export type QuickSport = { id: string; name: string; category: SportCategory; ha
 
 type Mode = "done" | "plan";
 
+type Open = (mode: Mode, date?: string) => void;
+
+const QuickEntryContext = createContext<Open | null>(null);
+
 /**
- * Hauptaktion auf „Heute“: „Eintragen“ und „Planen“ öffnen dieselbe Ansicht. Sportart und Dauer sind
- * vorbelegt (offenes Vorhaben, Dauer vom letzten Mal), der Tag ist heute. Am Handy stehen die
- * Buttons fest über der Tab-Leiste.
+ * Hauptaktion auf „Heute“: „Eintragen“ und „Planen“ (QuickEntryButtons) und „Planen“ an einem
+ * freien Tag der Woche (QuickPlanLink) öffnen dieselbe Ansicht. Sportart und Dauer sind vorbelegt
+ * (offenes Vorhaben, Dauer vom letzten Mal), der Tag ist heute oder der angetippte.
  */
-export function QuickEntry({
+export function QuickEntryProvider({
   sports,
   selectedSportId,
   lastDurations,
+  children,
 }: {
   sports: readonly QuickSport[];
   selectedSportId: string | null;
   lastDurations: Readonly<Record<string, number>>;
+  children: React.ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<Mode>("done");
+  const [date, setDate] = useState<string | undefined>(undefined);
   // Bei jedem Öffnen neu aufgebaut, damit Tag und Vorbelegung stimmen
   const [openCount, setOpenCount] = useState(0);
 
-  function open(next: Mode) {
+  function open(next: Mode, day?: string) {
     setMode(next);
+    setDate(day);
     setOpenCount((n) => n + 1);
     dialog.current?.showModal();
   }
 
   return (
-    <>
-      <div className="bg-background fixed inset-x-0 bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-10 grid grid-cols-2 gap-3 border-t px-5 py-3 md:static md:flex md:border-0 md:p-0">
-        <Button onClick={() => open("done")} className="md:w-auto">
-          Eintragen
-        </Button>
-        <Button variant="outline" onClick={() => open("plan")} className="md:w-auto">
-          Planen
-        </Button>
-      </div>
+    <QuickEntryContext value={open}>
+      {children}
 
       {/* Ein Tipp neben die Ansicht (auf den Hintergrund) schließt sie, Escape ebenso. */}
       <dialog
@@ -75,6 +76,7 @@ export function QuickEntry({
           <QuickEntryForm
             key={openCount}
             mode={mode}
+            initialDate={date}
             onModeChange={setMode}
             sports={sports}
             selectedSportId={selectedSportId}
@@ -83,12 +85,49 @@ export function QuickEntry({
           />
         )}
       </dialog>
-    </>
+    </QuickEntryContext>
+  );
+}
+
+function useOpen(): Open {
+  const open = use(QuickEntryContext);
+  if (!open) throw new Error("QuickEntryProvider fehlt");
+  return open;
+}
+
+/** „Eintragen“ und „Planen“; am Handy fest über der Tab-Leiste. */
+export function QuickEntryButtons() {
+  const open = useOpen();
+  return (
+    <div className="bg-background fixed inset-x-0 bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-10 grid grid-cols-2 gap-3 border-t px-5 py-3 md:static md:flex md:border-0 md:p-0">
+      <Button onClick={() => open("done")} className="md:w-auto">
+        Eintragen
+      </Button>
+      <Button variant="outline" onClick={() => open("plan")} className="md:w-auto">
+        Planen
+      </Button>
+    </div>
+  );
+}
+
+/** „Planen“ an einem freien Tag der Woche: öffnet die Ansicht mit diesem Tag. */
+export function QuickPlanLink({ date, label }: { date: string; label: string }) {
+  const open = useOpen();
+  return (
+    <button
+      type="button"
+      onClick={() => open("plan", date)}
+      aria-label={`Training am ${label} planen`}
+      className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+    >
+      Planen
+    </button>
   );
 }
 
 function QuickEntryForm({
   mode,
+  initialDate,
   onModeChange,
   sports,
   selectedSportId,
@@ -96,6 +135,8 @@ function QuickEntryForm({
   onClose,
 }: {
   mode: Mode;
+  /** Angetippter Tag aus der Woche; sonst heute. */
+  initialDate?: string;
   onModeChange: (mode: Mode) => void;
   sports: readonly QuickSport[];
   selectedSportId: string | null;
@@ -109,8 +150,8 @@ function QuickEntryForm({
   const [id] = useState(() => crypto.randomUUID());
 
   const [sportId, setSportId] = useState(selectedSportId ?? sports[0]?.id ?? null);
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState(() => defaultPlanTime(today, today, now.time));
+  const [date, setDate] = useState(initialDate ?? today);
+  const [time, setTime] = useState(() => defaultPlanTime(initialDate ?? today, today, now.time));
   const [duration, setDuration] = useState(lastDurations[sportId ?? ""] ?? 60);
   const [customDuration, setCustomDuration] = useState(false);
   const [hours, setHours] = useState("");
@@ -122,7 +163,8 @@ function QuickEntryForm({
 
   const sport = sports.find((s) => s.id === sportId) ?? null;
   const last = sportId ? lastDurations[sportId] : undefined;
-  const days = quickEntryDays(today, mode);
+  // Das Fenster hängt am angetippten Tag, nicht an der Auswahl, damit es beim Wählen nicht springt.
+  const days = quickEntryDays(today, mode, initialDate);
   const durationMinutes = customDuration ? parseDurationMinutes(hours, minutes) : duration;
   const shownError = error ?? planState.error ?? null;
 
@@ -134,8 +176,8 @@ function QuickEntryForm({
   function chooseMode(next: Mode) {
     onModeChange(next);
     setError(null);
-    // Heute passt in beide Auswahlen, ein anderer Tag nicht.
-    chooseDate(today);
+    // Heute passt in beide Auswahlen; beim Planen bleibt ein angetippter Tag gewählt.
+    chooseDate(next === "plan" && initialDate ? initialDate : today);
   }
 
   function chooseDate(next: string) {
