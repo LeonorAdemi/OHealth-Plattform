@@ -90,6 +90,7 @@ Regeln, die diese Ziele sichern:
   | `docs/bereiche/mitteilungen.md` | Push-Versand über `pg_net` und `/api/push`, Erinnerungen per `pg_cron`. |
   | `docs/bereiche/kennzahlen.md` | `private.pilot_metrics` für die wöchentliche Auswertung. |
   | `docs/bereiche/ki-zugriff.md` | Verbundene KI-Apps über `/api/mcp`: was eine KI lesen und schreiben darf. |
+  | `docs/bereiche/heute.md` | Seite „Heute“: Wochenziel, Kennzahlen der Woche, Als Nächstes, Kalender mit Wochenstreifen, neue Bestwerte, letzte 12 Wochen. |
   | `docs/bereiche/uebungen.md` | Figurensprache, Icons je Muskelgruppe, Skizzen je Übung, neue Übung anlegen. |
 
 - Es werden nur Daten gespeichert, die eine Funktion brauchen.

@@ -89,6 +89,8 @@ Diese zwei Elemente machen OHealth wiedererkennbar. Sie werden überall gleich g
 
 **Das Wochenraster.** Sieben Quadrate für Montag bis Sonntag, 10 px groß, 4 px Abstand, 2 px Eckenradius. Trainiert: Eisen gefüllt. Nicht trainiert: Nebel. Eigene Zeile: Moos statt Eisen. Es ersetzt Flammen, Streak-Abzeichen und Fortschrittsringe und zeigt Konstanz auf einen Blick, im Leaderboard für jede Person in derselben Form.
 
+**Das Wochenraster mit Ziel.** Hat sich jemand ein Wochenziel gesetzt, zeigt „Heute“ dieselben sieben Quadrate als Füllstand statt als Wochentage: von links die Trainingstage in Moos, dann bis zum Ziel offene Felder mit 1,5 px Rahmen in Eisen, danach Nebel. Es füllt sich mit jedem Trainingstag und ersetzt den Fortschrittsring. Die Wochentage zeigt darunter der Wochenstreifen des Kalenders (`docs/bereiche/heute.md`).
+
 ## 7. Logo
 
 Das Logo besteht aus der Bildmarke (das O mit Kirchturm, Welle und Schilf) und dem Schriftzug „OHealth". Es steht in Logo-Grün `#284238` und wird nie umgefärbt, verzerrt oder mit Effekten versehen.
@@ -150,7 +152,7 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Icons:** Nur in Navigation und an Bedienelementen, nie als Schmuck neben Überschriften. Strichstärke 1,5, Größe 20 px, Farbe wie der zugehörige Text. Die Icons der Muskelgruppen folgen derselben Regel (Abschnitt 15).
 - **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie.
 - **Leere Zustände:** Ein Satz, der sagt, was hier erscheinen wird, und ein Button. Keine Illustrationen.
-- **Bereiche:** Die Ansichten einzelner Funktionen (Profil und Folgen, Aktivität eintragen, Events, Chats, Melden) sind in den Dateien unter `docs/bereiche/` beschrieben, Index in `docs/ENGINEERING.md`, Abschnitt 5. Der Chat ist die einzige Stelle mit Flächen statt Linien (`docs/bereiche/chats.md`).
+- **Bereiche:** Die Ansichten einzelner Funktionen („Heute“, Profil und Folgen, Aktivität eintragen, Events, Chats, Melden) sind in den Dateien unter `docs/bereiche/` beschrieben, Index in `docs/ENGINEERING.md`, Abschnitt 5. Der Chat ist die einzige Stelle mit Flächen statt Linien (`docs/bereiche/chats.md`).
 
 ## 10. Sprache
 

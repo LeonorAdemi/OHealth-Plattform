@@ -379,3 +379,24 @@ export async function deleteTemplate(_prev: FormState, formData: FormData): Prom
   revalidateTemplateViews();
   redirect("/vorlagen");
 }
+
+const weeklyGoalSchema = z.coerce
+  .number({ error: "Wähl dein Wochenziel." })
+  .int("Wähl dein Wochenziel.")
+  .min(1, "Wähl dein Wochenziel.")
+  .max(7, "Wähl dein Wochenziel.");
+
+/** Speichert das eigene Wochenziel in Trainingstagen (1 bis 7). Nur die Person selbst sieht es. */
+export async function saveWeeklyGoal(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = weeklyGoalSchema.safeParse(formData.get("days"));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Wähl dein Wochenziel." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("weekly_goals")
+    .upsert({ days: parsed.data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/");
+  return { message: "Wochenziel gespeichert." };
+}

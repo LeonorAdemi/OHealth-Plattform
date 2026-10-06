@@ -904,3 +904,70 @@ export function formatWorkoutWhen(performedAt: string, now: Date): string {
   if (day === dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000))) return `Gestern, ${time}`;
   return `${whenDay.format(date)}, ${time}`;
 }
+
+// ---------- Wochenziel und Überblick („Heute“) ----------
+
+/** Wählbare Wochenziele in Trainingstagen; vorbelegt im Einstieg ist 3. */
+export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const DEFAULT_WEEKLY_GOAL = 3;
+
+/** Eine Woche aus my_weekly_summary, die laufende zuerst. */
+export type WeekSummary = { weekStart: string; trainingDays: number; minutes: number; distanceM: number };
+
+/** „1 Tag“, „3 Tage“ */
+export function describeDays(n: number): string {
+  return `${n} ${n === 1 ? "Tag" : "Tage"}`;
+}
+
+/** Stand zum Wochenziel. Prozent abgerundet und höchstens 100, damit nichts geschönt wird. */
+export function goalProgress(count: number, goal: number): { percent: number; remaining: number; reached: boolean } {
+  return {
+    percent: Math.min(100, Math.floor((count / goal) * 100)),
+    remaining: Math.max(0, goal - count),
+    reached: count >= goal,
+  };
+}
+
+/** Satz unter der Großzahl: „75 % deines Wochenziels. Noch 1 Tag.“ oder „Wochenziel erreicht.“ */
+export function describeGoal(count: number, goal: number): string {
+  const { percent, remaining, reached } = goalProgress(count, goal);
+  if (!reached) return `${percent} % deines Wochenziels. Noch ${describeDays(remaining)}.`;
+  if (count === goal) return "Wochenziel erreicht.";
+  return `Wochenziel erreicht, ${describeDays(count - goal)} mehr.`;
+}
+
+/**
+ * Felder des Wochenrasters mit Ziel: zuerst die Trainingstage (gefüllt), dann die bis zum Ziel
+ * offenen (umrandet), danach leer. Immer sieben Felder wie das Wochenraster.
+ */
+export function goalSlots(count: number, goal: number): ("done" | "open" | "rest")[] {
+  return Array.from({ length: 7 }, (_, i) => (i < count ? "done" : i < goal ? "open" : "rest"));
+}
+
+/**
+ * Wochen in Folge mit mindestens goal Trainingstagen, die laufende zuerst. Ist das Ziel in der
+ * laufenden Woche noch nicht erreicht, zählt die Serie ab der Vorwoche (die Woche läuft noch).
+ */
+export function goalStreak(weeks: readonly WeekSummary[], goal: number): number {
+  const start = weeks.length > 0 && weeks[0].trainingDays < goal ? 1 : 0;
+  let streak = 0;
+  for (let i = start; i < weeks.length && weeks[i].trainingDays >= goal; i++) streak += 1;
+  return streak;
+}
+
+/** Die sieben Kalendertage einer Woche ab ihrem Montag ("JJJJ-MM-TT"). */
+export function daysOfWeek(monday: string): string[] {
+  const start = keyToUtc(monday);
+  return Array.from({ length: 7 }, (_, i) => utcToKey(start + i * DAY_MS));
+}
+
+/** Für jede Woche (Montag als Schlüssel) das Wochenraster aus den Trainingstagen. */
+export function weekGrids(trainingDays: readonly string[], mondays: readonly string[]): boolean[][] {
+  const trained = new Set(trainingDays);
+  return mondays.map((monday) => daysOfWeek(monday).map((key) => trained.has(key)));
+}
+
+/** Kalenderwoche eines Montags ("JJJJ-MM-TT"). */
+export function isoWeekOf(monday: string): number {
+  return isoWeek(new Date(keyToUtc(monday) + 12 * 60 * 60 * 1000), "UTC");
+}

@@ -907,6 +907,7 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 const onboardingSchema = z.object({
   sports: z.array(z.string().trim().min(1).max(40)).max(5, "Wähl höchstens fünf Sportarten."),
   cityId: z.string().regex(/^[a-z0-9_]{2,40}$/, "Wähl deine Stadt."),
+  weeklyGoal: z.coerce.number().int().min(1, "Wähl dein Wochenziel.").max(7, "Wähl dein Wochenziel."),
 });
 
 /**
@@ -918,6 +919,7 @@ export async function saveOnboarding(_prev: FormState, formData: FormData): Prom
   const parsed = onboardingSchema.safeParse({
     sports: formData.getAll("sports").filter((v) => typeof v === "string"),
     cityId: formData.get("cityId") ?? "",
+    weeklyGoal: formData.get("weeklyGoal") ?? "",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -925,6 +927,7 @@ export async function saveOnboarding(_prev: FormState, formData: FormData): Prom
   const { error } = await supabase.rpc("save_onboarding", {
     p_sports: normalizeSports(parsed.data.sports),
     p_city: parsed.data.cityId,
+    p_weekly_goal: parsed.data.weeklyGoal,
   });
   if (error) return { error: error.code === "22023" ? "Wähl deine Stadt." : "Das hat nicht geklappt. Versuch es erneut." };
 

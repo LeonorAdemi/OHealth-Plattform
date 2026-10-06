@@ -224,6 +224,13 @@ export default function PrivacyPage() {
         wird auch der Eintrag gelöscht.
       </p>
       <p>
+        Dein Wochenziel (an wie vielen Tagen pro Woche du trainieren willst)
+        siehst nur du. Daraus und aus deinen Aktivitäten rechnet die App auf
+        „Heute“ deinen Stand, Minuten, Distanz und neue Bestwerte; gespeichert
+        wird davon nur das Ziel. Eine verbundene KI-App kann das Ziel lesen,
+        aber nicht ändern. Mit deinem Konto wird es gelöscht.
+      </p>
+      <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt
         haben. Wer absagt, sieht den Chat nicht mehr. Eigene Nachrichten
         kannst du jederzeit löschen. Entfernt die planende Person das

@@ -32,6 +32,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.template_version_exercises → 20261004111940_workout_templates.sql:47
 - public.template_versions → 20261004111940_workout_templates.sql:36
 - public.terms_acceptances → 20261006210000_trust_and_safety.sql:404
+- public.weekly_goals → 20261008090000_weekly_goal.sql:10
 - public.workout_sets → 20261003084225_core_and_workouts.sql:73; geändert in workout_edit_and_set_order, training_sessions
 - public.workout_templates → 20261004111940_workout_templates.sql:19
 - public.workouts → 20261003084225_core_and_workouts.sql:62; geändert in training_sessions, sports_and_cities, meetup_attendance
@@ -157,7 +158,9 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.my_chats → 20261006210000_trust_and_safety.sql:202; 4 Fassungen
 - public.my_communities → 20261004132801_community_phase_a.sql:15
 - public.my_follows → 20261005140000_follows.sql:274
+- public.my_new_bests → 20261008090000_weekly_goal.sql:118
 - public.my_open_attendance → 20261006180000_meetup_attendance.sql:166
+- public.my_weekly_summary → 20261008090000_weekly_goal.sql:79
 - public.open_direct_chat → 20261005140000_follows.sql:427; 2 Fassungen
 - public.people_search → 20261005140000_follows.sql:295
 - public.plan_meetup → 20261006120000_meetup_series.sql:151
@@ -170,7 +173,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.remove_group_member → 20261006210000_trust_and_safety.sql:370
 - public.respond_chat_request → 20261005140000_follows.sql:457
 - public.respond_follow_request → 20261005140000_follows.sql:228
-- public.save_onboarding → 20261007090000_discover.sql:136
+- public.save_onboarding → 20261008090000_weekly_goal.sql:44; 2 Fassungen
 - public.save_push_subscription → 20261004203926_push_and_reminders.sql:44
 - public.save_template → 20261004124327_agent_write_templates.sql:64; 2 Fassungen
 - public.unblock_person → 20261005100000_friends_and_direct_chats.sql:230
@@ -277,6 +280,13 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.template_versions: versions_select → 20261004111940_workout_templates.sql:109
 - public.terms_acceptances: agent_terms_acceptances_none → 20261006210000_trust_and_safety.sql:417
 - public.terms_acceptances: terms_acceptances_select → 20261006210000_trust_and_safety.sql:415
+- public.weekly_goals: agent_weekly_goals_no_delete → 20261008090000_weekly_goal.sql:35
+- public.weekly_goals: agent_weekly_goals_no_insert → 20261008090000_weekly_goal.sql:29
+- public.weekly_goals: agent_weekly_goals_no_update → 20261008090000_weekly_goal.sql:32
+- public.weekly_goals: weekly_goals_delete → 20261008090000_weekly_goal.sql:25
+- public.weekly_goals: weekly_goals_insert → 20261008090000_weekly_goal.sql:21
+- public.weekly_goals: weekly_goals_select → 20261008090000_weekly_goal.sql:19
+- public.weekly_goals: weekly_goals_update → 20261008090000_weekly_goal.sql:23
 - public.workout_sets: agent_sets_no_delete → 20261003171441_agent_read_only.sql:90
 - public.workout_sets: agent_sets_no_insert → 20261003171441_agent_read_only.sql:84
 - public.workout_sets: agent_sets_no_update → 20261003171441_agent_read_only.sql:87

@@ -45,6 +45,14 @@ import {
   formatActivityDuration,
   parseDistanceKm,
   parseDurationMinutes,
+  daysOfWeek,
+  describeGoal,
+  goalProgress,
+  goalSlots,
+  goalStreak,
+  isoWeekOf,
+  weekGrids,
+  type WeekSummary,
 } from "./logic";
 
 // Samstag, 3. Oktober 2026, 12:00 Uhr deutscher Zeit
@@ -796,5 +804,58 @@ describe("Aktivität", () => {
       "Deine Anmeldung ist abgelaufen. Melde dich neu an.",
     );
     expect(activityErrorMessage(null)).toBe("Speichern fehlgeschlagen. Prüf deine Verbindung und versuch es erneut.");
+  });
+});
+
+describe("Wochenziel", () => {
+  it("rechnet den Anteil abgerundet und höchstens 100 Prozent", () => {
+    expect(goalProgress(1, 3)).toEqual({ percent: 33, remaining: 2, reached: false });
+    expect(goalProgress(2, 4)).toEqual({ percent: 50, remaining: 2, reached: false });
+    expect(goalProgress(5, 4)).toEqual({ percent: 100, remaining: 0, reached: true });
+  });
+
+  it("sagt genau, wie viel noch fehlt oder dass das Ziel erreicht ist", () => {
+    expect(describeGoal(0, 3)).toBe("0\u00a0% deines Wochenziels. Noch 3\u00a0Tage.");
+    expect(describeGoal(3, 4)).toBe("75\u00a0% deines Wochenziels. Noch 1\u00a0Tag.");
+    expect(describeGoal(4, 4)).toBe("Wochenziel erreicht.");
+    expect(describeGoal(5, 4)).toBe("Wochenziel erreicht, 1\u00a0Tag mehr.");
+  });
+
+  it("füllt das Wochenraster mit Ziel von links: erledigt, offen bis zum Ziel, leer", () => {
+    expect(goalSlots(2, 4)).toEqual(["done", "done", "open", "open", "rest", "rest", "rest"]);
+    expect(goalSlots(5, 3)).toEqual(["done", "done", "done", "done", "done", "rest", "rest"]);
+  });
+});
+
+describe("Serie mit Wochenziel", () => {
+  const week = (trainingDays: number): WeekSummary => ({ weekStart: "", trainingDays, minutes: 0, distanceM: 0 });
+
+  it("zählt Wochen in Folge mit erreichtem Ziel", () => {
+    expect(goalStreak([week(3), week(4), week(3), week(1), week(5)], 3)).toBe(3);
+  });
+
+  it("lässt die laufende Woche aus, solange ihr Ziel noch offen ist", () => {
+    expect(goalStreak([week(1), week(3), week(3)], 3)).toBe(2);
+    expect(goalStreak([week(0), week(2)], 3)).toBe(0);
+  });
+});
+
+describe("Wochen im Überblick", () => {
+  it("liefert die sieben Tage einer Woche, auch über den Monatswechsel", () => {
+    expect(daysOfWeek("2026-09-28")).toEqual([
+      "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+    ]);
+  });
+
+  it("baut je Woche das Wochenraster aus den Trainingstagen", () => {
+    expect(weekGrids(["2026-10-05", "2026-10-07", "2026-09-28"], ["2026-10-05", "2026-09-28"])).toEqual([
+      [true, false, true, false, false, false, false],
+      [true, false, false, false, false, false, false],
+    ]);
+  });
+
+  it("nennt die Kalenderwoche eines Montags", () => {
+    expect(isoWeekOf("2026-10-05")).toBe(41);
+    expect(isoWeekOf("2026-12-28")).toBe(53);
   });
 });

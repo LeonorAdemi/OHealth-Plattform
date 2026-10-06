@@ -11,6 +11,8 @@ import { PasskeySetup } from "@/modules/core/components/passkey-setup";
 import { NotificationPrefsForm } from "@/modules/core/components/notification-actions";
 import { passkeysEnabled } from "@/modules/core/logic";
 import { getAgentGrants, getNotificationPrefs } from "@/modules/core/queries";
+import { WeeklyGoalForm } from "@/modules/workouts/components/weekly-goal-form";
+import { getWeeklyGoal } from "@/modules/workouts/queries";
 
 export const metadata: Metadata = { title: "Einstellungen" };
 
@@ -25,10 +27,11 @@ async function appOrigin() {
 }
 
 export default async function SettingsPage() {
-  const [grants, origin, prefs] = await Promise.all([
+  const [grants, origin, prefs, goal] = await Promise.all([
     getAgentGrants(),
     appOrigin(),
     getNotificationPrefs(),
+    getWeeklyGoal(),
   ]);
 
   return (
@@ -43,7 +46,17 @@ export default async function SettingsPage() {
       </p>
       <h1 className="text-titel mt-2 font-semibold">Einstellungen</h1>
 
-      <section className="mt-8 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">
+      <section className="mt-8 max-w-xl scroll-mt-8" id="wochenziel" aria-labelledby="wochenziel-titel">
+        <h2 id="wochenziel-titel" className="text-xl font-semibold">
+          Wochenziel
+        </h2>
+        <p className="text-muted-foreground mt-1 mb-3 text-sm">
+          An wie vielen Tagen pro Woche du trainieren willst. Jede Sportart zählt. Nur du siehst dein Ziel.
+        </p>
+        <WeeklyGoalForm goal={goal} />
+      </section>
+
+      <section className="mt-10 max-w-xl scroll-mt-8" id="mitteilungen" aria-labelledby="mitteilungen-titel">
         <h2 id="mitteilungen-titel" className="text-xl font-semibold">
           Mitteilungen
         </h2>

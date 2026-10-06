@@ -12,6 +12,7 @@ import {
   toTemplateVisibility,
   weekKeys,
   type BestRow,
+  type WeekSummary,
   type ExerciseSessionRow,
   type StoredSet,
   type StoredTemplateExercise,
@@ -799,4 +800,53 @@ export async function getExerciseHistory(exerciseId: string) {
         }
       : null,
   };
+}
+
+// ---------- Wochenziel und Überblick („Heute“) ----------
+
+/** Eigenes Wochenziel in Trainingstagen, null ohne Ziel. */
+export async function getWeeklyGoal(): Promise<number | null> {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase.from("weekly_goals").select("days").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error("Das Wochenziel konnte nicht geladen werden.");
+  return data?.days ?? null;
+}
+
+/** Die letzten Wochen mit Trainingstagen, Minuten und Distanz, die laufende zuerst (my_weekly_summary). */
+export async function getWeeklySummary(weeks: number): Promise<WeekSummary[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_weekly_summary", { p_weeks: weeks });
+  if (error) throw new Error("Der Wochenüberblick konnte nicht geladen werden.");
+  return data.map((row) => ({
+    weekStart: row.week_start,
+    trainingDays: row.training_days,
+    minutes: row.minutes,
+    distanceM: row.distance_m,
+  }));
+}
+
+/** Eigene Trainingstage ab einem Tag ("JJJJ-MM-TT"), höchstens maxDays. */
+export async function getMyTrainingDaysSince(from: string, maxDays: number) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("v_training_days")
+    .select("day")
+    .eq("user_id", userId)
+    .gte("day", from)
+    .limit(maxDays);
+  if (error) throw new Error("Trainingstage konnten nicht geladen werden.");
+  return data.flatMap((row) => (row.day ? [row.day] : []));
+}
+
+/** Übungen mit neuem geschätztem Maximum seit einem Zeitpunkt (my_new_bests, höchstens fünf). */
+export async function getNewBests(from: Date) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_new_bests", { p_from: from.toISOString() });
+  if (error) throw new Error("Die Bestwerte konnten nicht geladen werden.");
+  return data.map((row) => ({
+    exerciseId: row.exercise_id,
+    exercise: row.exercise_name,
+    e1rm: Number(row.best_e1rm_kg),
+    previous: Number(row.previous_e1rm_kg),
+  }));
 }

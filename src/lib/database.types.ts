@@ -1219,6 +1219,32 @@ export type Database = {
           },
         ]
       }
+      weekly_goals: {
+        Row: {
+          days: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          days: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          days?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sets: {
         Row: {
           created_at: string
@@ -1803,6 +1829,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      my_new_bests: {
+        Args: { p_from: string }
+        Returns: {
+          best_e1rm_kg: number
+          exercise_id: string
+          exercise_name: string
+          previous_e1rm_kg: number
+        }[]
+      }
       my_open_attendance: {
         Args: never
         Returns: {
@@ -1814,6 +1849,15 @@ export type Database = {
         }[]
       }
       open_direct_chat: { Args: { other: string }; Returns: string }
+      my_weekly_summary: {
+        Args: { p_weeks?: number }
+        Returns: {
+          distance_m: number
+          minutes: number
+          training_days: number
+          week_start: string
+        }[]
+      }
       people_search: {
         Args: { max_rows?: number; search?: string }
         Returns: {
@@ -1894,7 +1938,7 @@ export type Database = {
         Returns: undefined
       }
       save_onboarding: {
-        Args: { p_city: string; p_sports: string[] }
+        Args: { p_city: string; p_sports: string[]; p_weekly_goal?: number }
         Returns: undefined
       }
       save_push_subscription: {
