@@ -204,7 +204,14 @@ export default function PrivacyPage() {
         Distanz, Höhenmeter, Tempo, Niveau, ob es jede Woche stattfindet, die
         Zahl der Zusagen und den Namen der Community, aber nie die Notiz, wer es
         plant oder wer zugesagt hat. Wer über den Link zusagt, tritt damit auch der
-        öffentlichen Community bei.
+        öffentlichen Community bei. Dieselben Angaben sehen angemeldete Personen
+        unter „Entdecken“, wenn die Community in ihrer Stadt ist.
+      </p>
+      <p>
+        Wählst du beim Einstieg eine Stadt, in der es OHealth noch nicht gibt,
+        speichern wir sie auf einer Warteliste, um zu sehen, wo wir als Nächstes
+        starten. Ausgewertet wird sie nur zusammengefasst. Mit deinem Konto
+        wird auch der Eintrag gelöscht.
       </p>
       <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt
