@@ -73,6 +73,7 @@ Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_best
 | `npm run lint` | Lint |
 | `npm test` | Logik-Tests (Vitest) |
 | `npm run test:db` | Datenbanktests (pgTAP, braucht `supabase start`) |
+| `npm run test:e2e` | Ende-zu-Ende-Tests (Playwright, braucht `supabase start`, siehe `e2e/README.md`) |
 | `npm run build` | Produktions-Build |
 
 ## Dokumente
@@ -89,6 +90,7 @@ Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_best
 ```
 supabase/migrations/   Datenmodell
 supabase/tests/        Datenbanktests
+e2e/                   Ende-zu-Ende-Tests (Playwright)
 src/app/               Seiten und Routen
 src/modules/core/      Profile, Gruppen, Anmeldung
 src/modules/workouts/  Workouts, Trainingstage, Rangliste

@@ -127,6 +127,16 @@ export default function PrivacyPage() {
         Buchstabe b DSGVO). Protokolldaten dienen dem sicheren und stabilen
         Betrieb (Art. 6 Abs. 1 Buchstabe f DSGVO).
       </p>
+      <p>
+        Um zu sehen, ob OHealth Gruppen beim gemeinsamen Training hilft, zählen
+        wir einmal pro Woche aus diesen Daten zusammengefasst, etwa wie viele
+        Gruppen Trainings haben, wie viele Zusagen ein Training im Schnitt
+        bekommt, wie viele neue Mitglieder über einen Link kommen und wie
+        viele Aktive Push eingeschaltet haben. Dabei entstehen nur Summen und
+        Anteile, keine Auswertung einzelner Personen, und wir nutzen dafür
+        keine Tracking-Dienste. Rechtsgrundlage ist unser berechtigtes
+        Interesse, die App zu verbessern (Art. 6 Abs. 1 Buchstabe f DSGVO).
+      </p>
 
       <h2>Wer deine Daten sieht</h2>
       <ul>

@@ -29,7 +29,7 @@ export const operator: Operator = {
   email: "",
   phone: "",
   supervisoryAuthority: "",
-  lastUpdated: "2026-10-05",
+  lastUpdated: "2026-10-06",
   reviewed: false,
 };
 
