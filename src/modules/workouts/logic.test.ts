@@ -48,10 +48,12 @@ import {
   daysOfWeek,
   describeGoal,
   goalProgress,
-  goalSlots,
   goalStreak,
+  heatLevel,
+  categoryCounts,
+  ringSegments,
+  type ActivityDay,
   isoWeekOf,
-  weekGrids,
   type WeekSummary,
 } from "./logic";
 
@@ -820,11 +822,6 @@ describe("Wochenziel", () => {
     expect(describeGoal(4, 4)).toBe("Wochenziel erreicht.");
     expect(describeGoal(5, 4)).toBe("Wochenziel erreicht, 1\u00a0Tag mehr.");
   });
-
-  it("füllt das Wochenraster mit Ziel von links: erledigt, offen bis zum Ziel, leer", () => {
-    expect(goalSlots(2, 4)).toEqual(["done", "done", "open", "open", "rest", "rest", "rest"]);
-    expect(goalSlots(5, 3)).toEqual(["done", "done", "done", "done", "done", "rest", "rest"]);
-  });
 });
 
 describe("Serie mit Wochenziel", () => {
@@ -847,15 +844,35 @@ describe("Wochen im Überblick", () => {
     ]);
   });
 
-  it("baut je Woche das Wochenraster aus den Trainingstagen", () => {
-    expect(weekGrids(["2026-10-05", "2026-10-07", "2026-09-28"], ["2026-10-05", "2026-09-28"])).toEqual([
-      [true, false, true, false, false, false, false],
-      [true, false, false, false, false, false, false],
-    ]);
-  });
-
   it("nennt die Kalenderwoche eines Montags", () => {
     expect(isoWeekOf("2026-10-05")).toBe(41);
     expect(isoWeekOf("2026-12-28")).toBe(53);
+  });
+});
+
+describe("Ring und Heatmap", () => {
+  const day = (d: string, category: ActivityDay["category"], minutes = 30): ActivityDay => ({ day: d, minutes, category });
+
+  it("legt die Trainingstage in zeitlicher Reihenfolge in die Segmente, offene bis zum Ziel", () => {
+    expect(ringSegments([day("2026-10-07", "klettern"), day("2026-10-05", "ausdauer")], 4)).toEqual([
+      "ausdauer", "klettern", null, null,
+    ]);
+  });
+
+  it("zeigt ohne Ziel sieben Segmente und mehr als das Ziel, aber höchstens sieben", () => {
+    expect(ringSegments([], null)).toHaveLength(7);
+    const five = ["05", "06", "07", "08", "09"].map((d) => day(`2026-10-${d}`, "kraft"));
+    expect(ringSegments(five, 3)).toEqual(["kraft", "kraft", "kraft", "kraft", "kraft"]);
+  });
+
+  it("zählt Tage je Gruppe, häufigste zuerst", () => {
+    expect(categoryCounts([day("a", "ausdauer"), day("b", "kraft"), day("c", "kraft")])).toEqual([
+      { category: "kraft", days: 2 },
+      { category: "ausdauer", days: 1 },
+    ]);
+  });
+
+  it("stuft Minuten für die Heatmap ein", () => {
+    expect([undefined, 0, 1, 29, 30, 59, 60, 89, 90, 300].map(heatLevel)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
   });
 });

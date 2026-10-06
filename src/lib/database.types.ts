@@ -1785,6 +1785,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      my_activity_days: {
+        Args: { p_from: string }
+        Returns: {
+          category: string
+          day: string
+          minutes: number
+        }[]
+      }
       my_chats: {
         Args: { max_rows?: number }
         Returns: {

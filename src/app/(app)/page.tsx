@@ -3,16 +3,31 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AttendanceQuestion } from "@/modules/core/components/meetup-forms";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
-import { type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
-import { berlinDateTimeParts, berlinWeek, describeMeetupCount, formatMeetupWhen } from "@/modules/core/logic";
+import { SportDot } from "@/modules/core/components/sport-dot";
+import { type PlanDayStat, type PlanItem, WeekPlan } from "@/modules/core/components/week-plan";
+import {
+  berlinDateTimeParts,
+  berlinWeek,
+  describeMeetupCount,
+  formatMeetupWhen,
+  SPORT_CATEGORY_LABEL,
+} from "@/modules/core/logic";
 import { getMeetups, getOpenAttendance } from "@/modules/core/queries";
 import { ResumeTraining } from "@/modules/workouts/components/resume-training";
-import { WeekBests, WeekStats, WeeksOverview } from "@/modules/workouts/components/today-overview";
+import { GoalRing } from "@/modules/workouts/components/goal-ring";
+import { ActivityHeatmap, WeekBests, WeekStats } from "@/modules/workouts/components/today-overview";
 import { WorkoutFeed } from "@/modules/workouts/components/workout-feed";
-import { GoalGrid, WeekGrid } from "@/modules/workouts/components/week-grid";
-import { describeActivity, describeGoal, isoWeek, weekGrid, weekGrids } from "@/modules/workouts/logic";
 import {
-  getMyTrainingDaysSince,
+  categoryCounts,
+  describeActivity,
+  describeDays,
+  describeGoal,
+  goalStreak,
+  isoWeek,
+  ringSegments,
+} from "@/modules/workouts/logic";
+import {
+  getActivityDays,
   getMyWorkoutsBetween,
   getNewBests,
   getRecentWorkouts,
@@ -38,8 +53,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const week = berlinWeek(now, offset);
   const thisWeek = berlinWeek(now);
   const overviewStart = berlinWeek(now, -(OVERVIEW_WEEKS - 1)).days[0].date;
-  const [trainingDays, recent, planned, done, openAttendance, goal, summary, upcoming, bests] = await Promise.all([
-    getMyTrainingDaysSince(overviewStart, OVERVIEW_WEEKS * 7),
+  const [activityDays, recent, planned, done, openAttendance, goal, summary, upcoming, bests] = await Promise.all([
+    getActivityDays(overviewStart),
     getRecentWorkouts(5),
     getMeetups("mine", { from: week.from, to: week.to, limit: 100 }),
     getMyWorkoutsBetween(week.from, week.to),
@@ -49,10 +64,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     getMeetups("mine", { from: now, to: new Date(now.getTime() + NEXT_DAYS * 86400000), limit: 1 }),
     getNewBests(thisWeek.from),
   ]);
-  const days = weekGrid(trainingDays, now);
-  const count = days.filter(Boolean).length;
+  const today = berlinDateTimeParts(now).date;
+  const monday = thisWeek.days[0].date;
+  const thisWeekDays = activityDays.filter((d) => d.day >= monday);
+  const count = thisWeekDays.length;
   const overview = summary.slice(0, OVERVIEW_WEEKS);
-  const grids = weekGrids(trainingDays, overview.map((w) => w.weekStart));
+  const minutesByDay = Object.fromEntries(activityDays.map((d) => [d.day, d.minutes]));
+  const dayStats: Record<string, PlanDayStat> = Object.fromEntries(
+    activityDays.map((d) => [d.day, { minutes: d.minutes, category: d.category }]),
+  );
+  const ringLabel = goal ? `${count} von ${goal} Trainingstagen, Wochenziel ${goal}` : `${count} von 7 Tagen trainiert`;
   const next = upcoming[0];
 
   const items: Record<string, PlanItem[]> = {};
@@ -73,6 +94,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       // Sportart nur, wenn der Titel sie nicht schon nennt
       meta: [m.sportName !== m.title ? m.sportName : null, meta, m.place].filter(Boolean).join(" · "),
       done: false,
+      category: m.sportCategory ?? undefined,
     });
   }
   for (const w of done) {
@@ -83,6 +105,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       title: w.title ?? w.sportName,
       meta: describeActivity({ ...w, sportName: w.title ? w.sportName : "" }),
       done: true,
+      category: w.sportCategory ?? undefined,
     });
   }
   // Erledigtes vor Geplantem, sonst nach Uhrzeit
@@ -93,20 +116,33 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="flex flex-wrap items-end gap-x-12 gap-y-8">
-        <div>
-          <h1 className="text-muted-foreground text-sm">Woche {isoWeek(now)}</h1>
-          <p className="num-display text-grosszahl mt-2">{count}</p>
-          {goal ? (
-            <p className="mt-1">von {goal} Trainingstagen</p>
-          ) : (
-            <p className="mt-1">{count === 1 ? "Trainingstag" : "Trainingstage"} diese Woche</p>
+      <h1 className="text-muted-foreground text-sm">Woche {isoWeek(now)}</h1>
+      <div className="mt-4 flex flex-wrap items-center gap-x-10 gap-y-6">
+        <GoalRing
+          segments={ringSegments(thisWeekDays, goal)}
+          count={count}
+          goal={goal}
+          week={monday}
+          label={ringLabel}
+          streak={goal ? goalStreak(summary, goal) : 0}
+        />
+        <div className="min-w-0 space-y-4">
+          <p className="text-xl font-semibold">
+            {goal ? describeGoal(count, goal) : `${count === 1 ? "Trainingstag" : "Trainingstage"} diese Woche`}
+          </p>
+          {count > 0 && (
+            <ul className="space-y-1.5" aria-label="Sportarten diese Woche">
+              {categoryCounts(thisWeekDays).map((c) => (
+                <li key={c.category} className="flex items-center gap-2 text-sm">
+                  <SportDot category={c.category} className="size-3" />
+                  <span>{SPORT_CATEGORY_LABEL[c.category]}</span>
+                  <span className="text-muted-foreground num">{describeDays(c.days)}</span>
+                </li>
+              ))}
+            </ul>
           )}
-          <div className="mt-4">{goal ? <GoalGrid count={count} goal={goal} /> : <WeekGrid days={days} own size="lg" />}</div>
-          {goal ? (
-            <p className="mt-3 text-sm">{describeGoal(count, goal)}</p>
-          ) : (
-            <p className="mt-3 text-sm">
+          {!goal && (
+            <p className="text-sm">
               <Link
                 href="/profil/einstellungen#wochenziel"
                 className="inline-flex min-h-11 items-center underline underline-offset-4"
@@ -116,6 +152,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             </p>
           )}
         </div>
+      </div>
+
+      <div className="mt-10">
         <WeekStats weeks={summary} goal={goal} />
       </div>
 
@@ -127,7 +166,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <Link href={`/plan/${next.id}`} className="group mt-2 flex min-h-16 items-center gap-4 border-b py-3">
             <MeetupDate startsAt={next.startsAt} />
             <span className="min-w-0 flex-1">
-              <span className="block font-medium break-words group-hover:underline group-hover:underline-offset-4">
+              <span className="flex items-center gap-2 font-medium break-words group-hover:underline group-hover:underline-offset-4">
+                <SportDot category={next.sportCategory} />
                 {next.title}
               </span>
               <span className="text-muted-foreground block text-sm">
@@ -181,7 +221,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             items={items}
             prevHref={offset > -MAX_WEEKS_BACK ? `/?woche=${offset - 1}` : null}
             nextHref={offset < MAX_WEEKS_AHEAD ? `/?woche=${offset + 1}` : null}
-            minDate={berlinDateTimeParts(now).date}
+            minDate={today}
+            dayStats={dayStats}
           />
 
           {recent.length > 0 && (
@@ -204,6 +245,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                     durationMinutes: workout.duration_minutes,
                     distanceM: workout.distance_m,
                     setCount: workout.workout_sets.length,
+                    sportCategory: workout.sportCategory,
                   }))}
                 />
               </div>
@@ -213,7 +255,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
         <div className="min-w-0 space-y-10">
           <WeekBests bests={bests} />
-          {overview.some((w) => w.trainingDays > 0) && <WeeksOverview weeks={overview} grids={grids} goal={goal} />}
+          {overview.some((w) => w.trainingDays > 0) && (
+            <ActivityHeatmap weeks={overview} minutesByDay={minutesByDay} today={today} goal={goal} />
+          )}
         </div>
       </div>
 

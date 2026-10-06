@@ -16,6 +16,7 @@ import {
   toNotificationKind,
   toPaceUnit,
   toSportCategory,
+  type SportCategory,
 } from "./logic";
 
 /** Angemeldeter Nutzer oder Umleitung zur Anmeldung. Je Anfrage nur einmal ermittelt. */
@@ -186,6 +187,15 @@ export const getSports = cache(async () => {
     aliases: s.aliases,
   }));
 });
+
+/** Gruppe je Sportart aus dem Katalog, für die Sportfarben in Listen (je Anfrage einmal geladen). */
+const getSportCategories = cache(async () => new Map((await getSports()).map((s) => [s.id, s.category])));
+
+/** Ergänzt Einträge mit sportId um die Gruppe ihrer Sportart (ohne Sportart null). */
+async function withSportCategory<T extends { sportId: string | null }>(items: T[]) {
+  const categories = await getSportCategories();
+  return items.map((item) => ({ ...item, sportCategory: item.sportId ? (categories.get(item.sportId) ?? null) : null }));
+}
 
 export type Sport = Awaited<ReturnType<typeof getSports>>[number];
 
@@ -586,7 +596,8 @@ function toMeetup(row: FeedRow) {
   };
 }
 
-export type Meetup = ReturnType<typeof toMeetup>;
+/** Ein Training aus meetup_feed; in Listen mit der Gruppe seiner Sportart für die Sportfarbe. */
+export type Meetup = ReturnType<typeof toMeetup> & { sportCategory?: SportCategory | null };
 
 /**
  * Geplante Trainings, nächstes zuerst (meetup_feed):
@@ -606,7 +617,7 @@ export async function getMeetups(
     max_rows: limit,
   });
   if (error) throw new Error("Trainings konnten nicht geladen werden.");
-  return data.map(toMeetup);
+  return withSportCategory(data.map(toMeetup));
 }
 
 /**
@@ -817,7 +828,7 @@ export async function getDiscoverMeetups(cityId: string, days = 14) {
   const { supabase } = await requireUser();
   const { data, error } = await supabase.rpc("discover_meetups", { p_city: cityId, p_days: days });
   if (error) throw new Error("Die Trainings konnten nicht geladen werden.");
-  return data.map((m) => ({
+  return withSportCategory(data.map((m) => ({
     id: m.id,
     title: m.title,
     startsAt: m.starts_at,
@@ -832,7 +843,7 @@ export async function getDiscoverMeetups(cityId: string, days = 14) {
     isJoined: m.is_joined,
     // Mitglied der Community: sieht das Event in der App, nicht nur über den öffentlichen Link
     isMember: m.is_member,
-  }));
+  })));
 }
 
 /** Öffentliche Communities einer Stadt, die größten zuerst (discover_communities). */

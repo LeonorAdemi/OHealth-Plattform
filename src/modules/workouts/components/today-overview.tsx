@@ -1,15 +1,15 @@
 import { cn } from "@/lib/utils";
 
 import {
-  describeDays,
+  daysOfWeek,
   formatDistance,
   formatNumber,
   formatWeight,
   goalStreak,
+  heatLevel,
   isoWeekOf,
   type WeekSummary,
 } from "../logic";
-import { WeekGrid } from "./week-grid";
 
 /**
  * Kennzahlen der laufenden Woche unter der Großzahl: Minuten, Kilometer (nur wenn es in dieser oder
@@ -62,46 +62,76 @@ function Stat({ value, unit, label, before }: { value: string; unit: string; lab
   );
 }
 
+const HEAT_CLASS = ["bg-muted", "bg-brand/25", "bg-brand/50", "bg-brand/75", "bg-brand"] as const;
+const WEEKDAY_LABELS = ["Mo", "", "Mi", "", "Fr", "", "So"] as const;
+const dayLabel = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "numeric", timeZone: "UTC" });
+
 /**
- * Die letzten Wochen als Wochenraster untereinander, die laufende oben. Rechts die Trainingstage, mit
- * Ziel als „3 von 4“; Wochen mit erreichtem Ziel stehen halbfett in Eisen, die anderen in Stein.
+ * Die letzten Wochen als Heatmap in Moos: Spalten sind Wochen (älteste links), Zeilen Montag bis
+ * Sonntag, je kräftiger, desto mehr Minuten. Darunter, in wie vielen Wochen das Ziel erreicht war.
+ * weeks kommt aus my_weekly_summary (laufende zuerst), minutesByDay aus my_activity_days.
  */
-export function WeeksOverview({
+export function ActivityHeatmap({
   weeks,
-  grids,
+  minutesByDay,
+  today,
   goal,
 }: {
   weeks: readonly WeekSummary[];
-  grids: readonly (readonly boolean[])[];
+  minutesByDay: Readonly<Record<string, number>>;
+  today: string;
   goal: number | null;
 }) {
+  const columns = [...weeks].reverse();
+  const trainingDays = weeks.reduce((sum, w) => sum + w.trainingDays, 0);
+  const reached = goal === null ? 0 : weeks.filter((w) => w.trainingDays >= goal).length;
+
   return (
     <section aria-labelledby="wochen-ueberblick">
       <h2 id="wochen-ueberblick" className="text-xl font-semibold">
         Letzte {weeks.length} Wochen
       </h2>
-      <ol className="mt-3 space-y-1">
-        {weeks.map((week, i) => {
-          const reached = goal !== null && week.trainingDays >= goal;
-          return (
-            <li key={week.weekStart} className="flex h-7 items-center gap-4">
-              <span className="text-muted-foreground num w-14 shrink-0 text-sm">KW {isoWeekOf(week.weekStart)}</span>
-              <WeekGrid days={grids[i] ?? []} decorative />
-              <span
-                className={cn(
-                  "num ml-auto text-sm",
-                  goal === null ? "text-muted-foreground" : reached ? "font-semibold" : "text-muted-foreground",
-                )}
-              >
-                {goal === null ? describeDays(week.trainingDays) : `${week.trainingDays} von ${goal}`}
-                {reached && <span className="sr-only"> (Wochenziel erreicht)</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+      <div
+        role="img"
+        aria-label={`${trainingDays} Trainingstage in ${weeks.length} Wochen`}
+        className="mt-3 flex gap-2"
+      >
+        <div className="text-muted-foreground grid grid-rows-7 gap-1 text-xs leading-4" aria-hidden>
+          {WEEKDAY_LABELS.map((label, i) => (
+            <span key={i} className="h-4">
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-flow-col grid-rows-7 gap-1">
+          {columns.flatMap((week) =>
+            daysOfWeek(week.weekStart).map((day) => {
+              const minutes = minutesByDay[day] ?? 0;
+              const future = day > today;
+              return (
+                <span
+                  key={day}
+                  title={future ? undefined : `${dayLabel.format(new Date(`${day}T12:00:00Z`))}: ${minutes > 0 ? `${minutes} min` : "kein Training"}`}
+                  className={cn("size-4 rounded-[3px]", future ? "bg-transparent" : HEAT_CLASS[heatLevel(minutes)])}
+                />
+              );
+            }),
+          )}
+        </div>
+      </div>
+      <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs" aria-hidden>
+        <span className="mr-1">KW {isoWeekOf(columns[0]?.weekStart ?? today)}</span>
+        <span className="flex-1" />
+        <span className="mr-1">weniger</span>
+        {HEAT_CLASS.map((c) => (
+          <span key={c} className={cn("size-3 rounded-[2px]", c)} />
+        ))}
+        <span className="ml-1">mehr</span>
+      </div>
       {goal !== null && (
-        <p className="text-muted-foreground mt-3 text-sm">Halbfett: Wochenziel erreicht.</p>
+        <p className="mt-3 text-sm">
+          Wochenziel in <span className="num font-semibold">{reached}</span> von {weeks.length} Wochen erreicht.
+        </p>
       )}
     </section>
   );

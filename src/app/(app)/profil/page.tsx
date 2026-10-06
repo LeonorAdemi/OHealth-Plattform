@@ -89,6 +89,7 @@ export default async function ProfilePage() {
                   durationMinutes: workout.duration_minutes,
                   distanceM: workout.distance_m,
                   setCount: workout.workout_sets.length,
+                  sportCategory: workout.sportCategory,
                 }))}
               />
             </div>

@@ -155,6 +155,7 @@ Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand änd
 - public.meetup_chat → 20261004175505_planned_trainings_and_chat.sql:265
 - public.meetup_feed → 20261006120000_meetup_series.sql:453; 3 Fassungen
 - public.meetup_participant_names → 20261004173314_community_search_and_meetups.sql:216
+- public.my_activity_days → 20261008120000_activity_days.sql:7
 - public.my_chats → 20261006210000_trust_and_safety.sql:202; 4 Fassungen
 - public.my_communities → 20261004132801_community_phase_a.sql:15
 - public.my_follows → 20261005140000_follows.sql:274

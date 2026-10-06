@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+import type { SportCategory } from "@/modules/core/logic";
+import { SportDot } from "@/modules/core/components/sport-dot";
 
 import { activityMinutes, describeActivity, formatWorkoutWhen } from "../logic";
 
@@ -11,6 +13,8 @@ export type FeedWorkout = {
   isMe: boolean;
   title: string | null;
   sportName: string;
+  /** Gruppe der Sportart für den Farbpunkt */
+  sportCategory?: SportCategory | null;
   performedAt: string;
   startedAt: string | null;
   finishedAt: string | null;
@@ -42,9 +46,10 @@ export function WorkoutFeed({ workouts, now, label }: { workouts: readonly FeedW
 
         const content = (
           <>
-            <span className={cn("block font-medium", workout.isMe && workout.name !== undefined && "text-brand")}>
+            <span className={cn("flex items-center gap-2 font-medium", workout.isMe && workout.name !== undefined && "text-brand")}>
+              <SportDot category={workout.sportCategory} />
               {workout.name !== undefined && <>{workout.isMe ? "Du" : workout.name} · </>}
-              {workout.title ?? workout.sportName}
+              <span className="min-w-0">{workout.title ?? workout.sportName}</span>
             </span>
             <span className="text-muted-foreground mt-1 block text-sm">{detail}</span>
           </>

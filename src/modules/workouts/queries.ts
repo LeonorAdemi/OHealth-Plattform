@@ -2,6 +2,7 @@ import "server-only";
 
 import { toExerciseMeasure } from "@/lib/domain";
 import type { AgentClient } from "@/lib/supabase/agent";
+import { toSportCategory } from "@/modules/core/logic";
 import { getGroupMembers, getProfileForAgent, requireUser } from "@/modules/core/queries";
 
 import type { AgentDataSource } from "./agent";
@@ -11,12 +12,18 @@ import {
   buildLeaderboard,
   toTemplateVisibility,
   weekKeys,
+  type ActivityDay,
   type BestRow,
   type WeekSummary,
   type ExerciseSessionRow,
   type StoredSet,
   type StoredTemplateExercise,
 } from "./logic";
+
+/** Gruppe der Sportart aus einem eingebetteten Katalogeintrag, ohne Sportart null. */
+function sportCategoryOf(sport: { category: string } | null | undefined) {
+  return sport ? toSportCategory(sport.category) : null;
+}
 
 /** Eigene Trainingstage der laufenden Woche als "JJJJ-MM-TT". */
 export async function getMyTrainingDays(now: Date) {
@@ -65,7 +72,7 @@ export async function getRecentWorkouts(limit = 20) {
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      "id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, elevation_m, sports(name), workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
+      "id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, elevation_m, sports(name, category), workout_sets(set_number, reps, duration_seconds, distance_m, weight_kg, exercises(name))",
     )
     .eq("user_id", userId)
     .order("performed_at", { ascending: false })
@@ -73,7 +80,7 @@ export async function getRecentWorkouts(limit = 20) {
     .limit(limit);
 
   if (error) throw new Error("Aktivitäten konnten nicht geladen werden.");
-  return data.map((w) => ({ ...w, sportName: w.sports?.name ?? "Aktivität" }));
+  return data.map((w) => ({ ...w, sportName: w.sports?.name ?? "Aktivität", sportCategory: sportCategoryOf(w.sports) }));
 }
 
 /** Die zuletzt genutzten eigenen Sportarten, neueste zuerst, ohne Doppelte. */
@@ -94,7 +101,7 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
   const { supabase, userId } = await requireUser();
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, title, performed_at, duration_minutes, distance_m, meetup_id, sports(name), workout_sets(count)")
+    .select("id, title, performed_at, duration_minutes, distance_m, meetup_id, sports(name, category), workout_sets(count)")
     .eq("user_id", userId)
     .gte("performed_at", from.toISOString())
     .lt("performed_at", to.toISOString())
@@ -107,6 +114,7 @@ export async function getMyWorkoutsBetween(from: Date, to: Date) {
     title: w.title,
     performedAt: w.performed_at,
     sportName: w.sports?.name ?? "Aktivität",
+    sportCategory: sportCategoryOf(w.sports),
     durationMinutes: w.duration_minutes,
     distanceM: w.distance_m,
     meetupId: w.meetup_id,
@@ -203,7 +211,7 @@ export async function getGroupActivity(groupId: string, limit = 10) {
 
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, user_id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, sports(name), workout_sets(count)")
+    .select("id, user_id, title, performed_at, started_at, finished_at, duration_minutes, distance_m, sports(name, category), workout_sets(count)")
     .in("user_id", members.map((m) => m.userId))
     .order("performed_at", { ascending: false })
     .limit(limit);
@@ -215,6 +223,7 @@ export async function getGroupActivity(groupId: string, limit = 10) {
     name: names.get(workout.user_id) ?? "Unbekannt",
     title: workout.title,
     sportName: workout.sports?.name ?? "Aktivität",
+    sportCategory: sportCategoryOf(workout.sports),
     performedAt: workout.performed_at,
     startedAt: workout.started_at,
     finishedAt: workout.finished_at,
@@ -825,17 +834,12 @@ export async function getWeeklySummary(weeks: number): Promise<WeekSummary[]> {
   }));
 }
 
-/** Eigene Trainingstage ab einem Tag ("JJJJ-MM-TT"), höchstens maxDays. */
-export async function getMyTrainingDaysSince(from: string, maxDays: number) {
-  const { supabase, userId } = await requireUser();
-  const { data, error } = await supabase
-    .from("v_training_days")
-    .select("day")
-    .eq("user_id", userId)
-    .gte("day", from)
-    .limit(maxDays);
+/** Eigene Trainingstage ab einem Tag ("JJJJ-MM-TT") mit Minuten und Gruppe der Hauptsportart. */
+export async function getActivityDays(from: string): Promise<ActivityDay[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("my_activity_days", { p_from: from });
   if (error) throw new Error("Trainingstage konnten nicht geladen werden.");
-  return data.flatMap((row) => (row.day ? [row.day] : []));
+  return data.map((row) => ({ day: row.day, minutes: row.minutes, category: toSportCategory(row.category) }));
 }
 
 /** Übungen mit neuem geschätztem Maximum seit einem Zeitpunkt (my_new_bests, höchstens fünf). */

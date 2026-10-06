@@ -113,6 +113,20 @@ export const SPORT_CATEGORY_LABEL: Record<SportCategory, string> = {
   sonstiges: "Sonstiges",
 };
 
+/**
+ * Farbe je Gruppe als CSS-Variable (Tokens in globals.css). Für Flächen, Punkte und Linien, nie als
+ * einziger Träger der Bedeutung: Der Name der Sportart steht immer dabei.
+ */
+export const SPORT_CATEGORY_COLOR: Record<SportCategory, string> = {
+  ausdauer: "var(--color-sport-ausdauer)",
+  outdoor: "var(--color-sport-outdoor)",
+  kraft: "var(--color-sport-kraft)",
+  klettern: "var(--color-sport-klettern)",
+  ballsport: "var(--color-sport-ballsport)",
+  koerper: "var(--color-sport-koerper)",
+  sonstiges: "var(--color-sport-sonstiges)",
+};
+
 export function toSportCategory(value: string): SportCategory {
   return value in SPORT_CATEGORY_LABEL ? (value as SportCategory) : "sonstiges";
 }

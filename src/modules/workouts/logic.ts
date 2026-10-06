@@ -2,6 +2,7 @@
 
 import type { ExerciseMeasure } from "@/lib/domain";
 import {
+  type SportCategory,
   formatActivityDuration,
   formatDistance,
   formatNumber,
@@ -937,14 +938,6 @@ export function describeGoal(count: number, goal: number): string {
 }
 
 /**
- * Felder des Wochenrasters mit Ziel: zuerst die Trainingstage (gefüllt), dann die bis zum Ziel
- * offenen (umrandet), danach leer. Immer sieben Felder wie das Wochenraster.
- */
-export function goalSlots(count: number, goal: number): ("done" | "open" | "rest")[] {
-  return Array.from({ length: 7 }, (_, i) => (i < count ? "done" : i < goal ? "open" : "rest"));
-}
-
-/**
  * Wochen in Folge mit mindestens goal Trainingstagen, die laufende zuerst. Ist das Ziel in der
  * laufenden Woche noch nicht erreicht, zählt die Serie ab der Vorwoche (die Woche läuft noch).
  */
@@ -961,13 +954,38 @@ export function daysOfWeek(monday: string): string[] {
   return Array.from({ length: 7 }, (_, i) => utcToKey(start + i * DAY_MS));
 }
 
-/** Für jede Woche (Montag als Schlüssel) das Wochenraster aus den Trainingstagen. */
-export function weekGrids(trainingDays: readonly string[], mondays: readonly string[]): boolean[][] {
-  const trained = new Set(trainingDays);
-  return mondays.map((monday) => daysOfWeek(monday).map((key) => trained.has(key)));
-}
-
 /** Kalenderwoche eines Montags ("JJJJ-MM-TT"). */
 export function isoWeekOf(monday: string): number {
   return isoWeek(new Date(keyToUtc(monday) + 12 * 60 * 60 * 1000), "UTC");
+}
+
+// ---------- Farbige Ansicht („Heute“): Ring, Heatmap, Balken ----------
+
+/** Ein Trainingstag aus my_activity_days: Minuten und Gruppe der Hauptsportart. */
+export type ActivityDay = { day: string; minutes: number; category: SportCategory };
+
+/**
+ * Segmente des Rings: so viele wie das Ziel (ohne Ziel sieben), mehr, wenn mehr trainiert wurde,
+ * höchstens sieben. Die ersten tragen die Sportart der Trainingstage in zeitlicher Reihenfolge.
+ */
+export function ringSegments(days: readonly ActivityDay[], goal: number | null): (SportCategory | null)[] {
+  const sorted = [...days].sort((a, b) => a.day.localeCompare(b.day));
+  const total = Math.min(7, Math.max(goal ?? 7, sorted.length));
+  return Array.from({ length: total }, (_, i) => sorted[i]?.category ?? null);
+}
+
+/** Wie viele Tage je Gruppe, häufigste zuerst (Legende neben dem Ring). */
+export function categoryCounts(days: readonly ActivityDay[]): { category: SportCategory; days: number }[] {
+  const counts = new Map<SportCategory, number>();
+  for (const d of days) counts.set(d.category, (counts.get(d.category) ?? 0) + 1);
+  return [...counts].map(([category, n]) => ({ category, days: n })).sort((a, b) => b.days - a.days);
+}
+
+/** Stufe in der Heatmap: 0 ohne Training, dann bis 29, 59, 89 und ab 90 Minuten. */
+export function heatLevel(minutes: number | undefined): 0 | 1 | 2 | 3 | 4 {
+  if (!minutes || minutes <= 0) return 0;
+  if (minutes < 30) return 1;
+  if (minutes < 60) return 2;
+  if (minutes < 90) return 3;
+  return 4;
 }

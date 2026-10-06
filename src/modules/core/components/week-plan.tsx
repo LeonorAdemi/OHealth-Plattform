@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
-import type { PlanDay } from "../logic";
+import { SPORT_CATEGORY_COLOR, type PlanDay, type SportCategory } from "../logic";
+import { SportDot } from "./sport-dot";
 
 export type PlanItem = {
   key: string;
@@ -12,11 +13,20 @@ export type PlanItem = {
   title: string;
   meta: string;
   done: boolean;
+  category?: SportCategory;
 };
 
+/** Trainingstag im Streifen: Minuten und Gruppe der Hauptsportart (my_activity_days). */
+export type PlanDayStat = { minutes: number; category: SportCategory };
+
+/** Höhe des Balkens in Pixeln: 6 bis 24, voll ab zwei Stunden. */
+export function barHeight(minutes: number): number {
+  return Math.round(6 + 18 * Math.min(1, Math.max(0, minutes) / 120));
+}
+
 /**
- * Wochenplan: oben ein Streifen Montag bis Sonntag mit Datum und je Tag einem Feld (gefüllt: erledigt,
- * Rahmen: geplant). Ein Tipp auf einen Tag mit Einträgen springt zu ihm, auf einen freien Tag ab heute
+ * Wochenplan: oben ein Streifen Montag bis Sonntag mit Datum und je Tag einer Markierung: erledigt
+ * ein Balken in der Farbe der Sportart, so hoch wie die Minuten; geplant ein Rahmen in ihrer Farbe. Ein Tipp auf einen Tag mit Einträgen springt zu ihm, auf einen freien Tag ab heute
  * plant ein Training. Darunter nur die Tage mit Einträgen und heute; unter dem Titel steht die
  * Uhrzeit oder „Erledigt“. Heute ist fett.
  */
@@ -27,10 +37,12 @@ export function WeekPlan({
   prevHref,
   nextHref,
   minDate,
+  dayStats = {},
 }: {
   title: string;
   days: readonly PlanDay[];
   items: Readonly<Record<string, readonly PlanItem[]>>;
+  dayStats?: Readonly<Record<string, PlanDayStat>>;
   prevHref: string | null;
   nextHref: string | null;
   /** Vor diesem Tag lässt sich nichts mehr planen. */
@@ -75,13 +87,13 @@ export function WeekPlan({
       <ol className="mt-2 grid grid-cols-7 border-b pb-2" aria-label="Tage der Woche">
         {days.map((day) => (
           <li key={day.date} className="flex justify-center">
-            <StripDay day={day} entries={items[day.date] ?? []} canPlan={day.date >= minDate} />
+            <StripDay day={day} entries={items[day.date] ?? []} stat={dayStats[day.date]} canPlan={day.date >= minDate} />
           </li>
         ))}
       </ol>
       <p className="text-muted-foreground mt-2 flex gap-4 text-xs font-medium" aria-hidden>
         <span className="inline-flex items-center gap-1.5">
-          <span className="bg-foreground size-2.5 rounded-[2px]" /> Erledigt
+          <span className="bg-foreground h-3 w-2 rounded-[2px]" /> Erledigt, Höhe nach Minuten
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="border-foreground size-2.5 rounded-[2px] border-[1.5px]" /> Geplant
@@ -107,7 +119,8 @@ export function WeekPlan({
                       {entries.map((item) => (
                         <li key={item.key}>
                           <Link href={item.href} className="group block py-1.5">
-                            <span className="block break-words group-hover:underline group-hover:underline-offset-4">
+                            <span className="flex items-center gap-2 break-words group-hover:underline group-hover:underline-offset-4">
+                              <SportDot category={item.category} />
                               {item.title}
                             </span>
                             <span className="text-muted-foreground block text-sm">
@@ -139,14 +152,28 @@ export function WeekPlan({
   );
 }
 
-/** Ein Tag im Wochenstreifen: Wochentag, Datum und ein Feld für erledigt, geplant oder frei. */
-function StripDay({ day, entries, canPlan }: { day: PlanDay; entries: readonly PlanItem[]; canPlan: boolean }) {
+/** Ein Tag im Wochenstreifen: Wochentag, Datum und Balken (erledigt), Rahmen (geplant) oder frei. */
+function StripDay({
+  day,
+  entries,
+  stat,
+  canPlan,
+}: {
+  day: PlanDay;
+  entries: readonly PlanItem[];
+  stat: PlanDayStat | undefined;
+  canPlan: boolean;
+}) {
   const done = entries.filter((e) => e.done).length;
-  const planned = entries.length - done;
+  const planned = entries.filter((e) => !e.done);
   const dayNumber = Number(day.date.slice(8, 10));
-  const status = [done > 0 ? `${done} erledigt` : null, planned > 0 ? `${planned} geplant` : null]
+  const status = [
+    stat ? `${stat.minutes} min trainiert` : done > 0 ? `${done} erledigt` : null,
+    planned.length > 0 ? `${planned.length} geplant` : null,
+  ]
     .filter(Boolean)
     .join(", ");
+  const plannedColor = planned[0]?.category ? SPORT_CATEGORY_COLOR[planned[0].category] : "var(--color-foreground)";
 
   const content = (
     <>
@@ -154,15 +181,23 @@ function StripDay({ day, entries, canPlan }: { day: PlanDay; entries: readonly P
         {day.weekday}
       </span>
       <span className={cn("num text-base", day.isToday && "font-semibold underline underline-offset-4")}>{dayNumber}</span>
-      <span
-        className={cn(
-          "size-2.5 rounded-[2px]",
-          done > 0 ? "bg-foreground" : planned > 0 ? "border-foreground border-[1.5px]" : "bg-muted",
+      <span className="flex h-6 items-end gap-0.5">
+        {stat ? (
+          <span
+            className="w-2.5 rounded-[3px]"
+            style={{ height: barHeight(stat.minutes), backgroundColor: SPORT_CATEGORY_COLOR[stat.category] }}
+          />
+        ) : done > 0 ? (
+          <span className="bg-foreground h-1.5 w-2.5 rounded-[3px]" />
+        ) : null}
+        {planned.length > 0 && (
+          <span className="size-2.5 rounded-[3px] border-[1.5px]" style={{ borderColor: plannedColor }} />
         )}
-      />
+        {!stat && done === 0 && planned.length === 0 && <span className="bg-muted size-2.5 rounded-[3px]" />}
+      </span>
     </>
   );
-  const className = "flex min-h-16 w-11 flex-col items-center justify-center gap-1 rounded-lg";
+  const className = "flex min-h-20 w-11 flex-col items-center justify-end gap-1 rounded-lg pb-1";
 
   if (entries.length > 0) {
     return (

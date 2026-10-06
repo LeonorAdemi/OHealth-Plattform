@@ -13,7 +13,7 @@ Fitness-Apps sind fast alle dunkel, laut und verspielt: Neonfarben, Abzeichen, K
 | Üblich im Markt | OHealth |
 | --- | --- |
 | Dunkler Hintergrund, Neon-Akzente | Weißes Blatt, eine ruhige Akzentfarbe |
-| Abzeichen, Flammen, Konfetti | Rang und Fortschritt zeigen sich in Zahl und Typografie |
+| Abzeichen, Flammen, Konfetti | Fortschritt zeigt sich in Zahl, Typografie und einem Ring, der sich füllt |
 | Motivationssprüche | Nüchterne, genaue Sätze |
 | Karten, Schatten, Verläufe | Weißraum und feine Linien |
 
@@ -29,14 +29,14 @@ Diese Ruhe trägt auch die späteren Ausbaustufen: Eine Physio- oder Gesundheits
 
 1. **Weiß ist die Fläche.** Der Hintergrund ist reines Weiß. Gliederung entsteht durch Abstand, erst danach durch eine feine Linie, nie durch graue Flächen, Kästen oder Schatten.
 2. **Zahlen sind die Hauptdarsteller.** Die wichtigste Zahl einer Ansicht ist groß und schmal gesetzt. Alles andere ordnet sich unter.
-3. **Schwarz handelt, Grün bedeutet.** Buttons und Bedienelemente sind in Eisen (fast schwarz). Moos (Grün) ist ausschließlich für Bedeutung reserviert: „das bist du" und „das ist Fortschritt".
+3. **Schwarz handelt, Farbe bedeutet.** Buttons und Bedienelemente sind in Eisen (fast schwarz). Farbe ist ausschließlich für Bedeutung reserviert: die Sportfarben für „was du gemacht hast“, Moos für „das bist du" und „das ist Fortschritt".
 4. **Eine Schriftfamilie.** Ausdruck entsteht über Breite, Gewicht und Größe, nicht über weitere Schriften.
 5. **Listen statt Karten.** Inhalte stehen als Zeilen untereinander. Karten nur dort, wo ein Element wirklich einzeln bewegt oder ausgewählt wird.
 6. **Bewegung antwortet.** Animation gibt es nur als Reaktion auf eine Handlung.
 
 ## 4. Farben
 
-Sechs Farben, mehr gibt es nicht. Werte stehen als Tokens in `src/app/globals.css`; in Komponenten werden nie Hex-Werte geschrieben.
+Sechs Grundfarben und die Sportfarben, mehr gibt es nicht. Werte stehen als Tokens in `src/app/globals.css`; in Komponenten werden nie Hex-Werte geschrieben.
 
 | Name | Hex | Token | Einsatz |
 | --- | --- | --- | --- |
@@ -47,11 +47,26 @@ Sechs Farben, mehr gibt es nicht. Werte stehen als Tokens in `src/app/globals.cs
 | Nebel | `#F3F6F4` | `muted`, `secondary` | Hover, gedrückter Zustand, leere Rasterpunkte |
 | Moos | `#156B4A` | `brand` | Eigene Zeile, eigener Fortschritt, neuer Bestwert |
 
-Dazu Signal `#BE2323` (`destructive`) nur für Fehler und Löschen, sowie Moos hell `#DFF7EA` (`brand-subtle`) als Markierung hinter einem neuen Bestwert.
+Dazu Signal `#BE2323` (`destructive`) nur für Fehler und Löschen, sowie Moos hell `#DFF7EA` (`brand-subtle`) als Markierung hinter einem neuen Bestwert und dem erreichten Wochenziel.
+
+**Sportfarben.** Jede Gruppe des Sportarten-Katalogs hat eine Farbe (Token `sport-<gruppe>`). Sie zeigt, was jemand gemacht hat oder vorhat, und ist dadurch auf einen Blick lesbar: im Wochenring, in den Balken des Wochenstreifens, als Punkt vor Aktivitäten und Events.
+
+| Gruppe | Hex | Token | Kontrast auf Weiß |
+| --- | --- | --- | --- |
+| Ausdauer | `#2563EB` | `sport-ausdauer` | 5,2:1 |
+| Outdoor | `#0E7490` | `sport-outdoor` | 5,4:1 |
+| Kraft und Fitness | `#EA580C` | `sport-kraft` | 3,6:1 |
+| Klettern | `#7C3AED` | `sport-klettern` | 5,7:1 |
+| Ballsport | `#B45309` | `sport-ballsport` | 5,0:1 |
+| Körper und Geist | `#DB2777` | `sport-koerper` | 4,6:1 |
+| Sonstiges | `#64748B` | `sport-sonstiges` | 4,8:1 |
+
+Eine neue Gruppe im Katalog braucht eine neue Farbe hier und in `globals.css`; eine neue Sportart in einer bestehenden Gruppe nicht.
 
 Regeln:
 
-- Moos erscheint pro Ansicht an höchstens zwei Stellen. Wenn alles grün ist, bedeutet Grün nichts mehr.
+- Moos erscheint pro Ansicht an höchstens zwei Stellen. Wenn alles grün ist, bedeutet Grün nichts mehr. Ausnahme „Heute“: dazu die Heatmap der letzten Wochen, die nur den eigenen Fortschritt zeigt.
+- Sportfarben nur als Fläche, Punkt oder Linie, nie als Textfarbe und nie für Buttons. Der Name der Sportart steht immer dabei, Farbe trägt Bedeutung nie allein.
 - Moos ist nie die Farbe eines Buttons.
 - Achtung bei shadcn/Origin UI: Das Token `accent` ist dort die Hover-Fläche (bei uns Nebel), nicht die Markenfarbe. Die Markenfarbe heißt `brand`.
 - Kontraste auf Weiß: Eisen 16,6:1, Moos 6,5:1, Stein 5,5:1. Text in Linie oder Nebel ist verboten.
@@ -87,9 +102,9 @@ Diese zwei Elemente machen OHealth wiedererkennbar. Sie werden überall gleich g
 
 **Die Großzahl.** Jede Hauptansicht beginnt mit einer einzigen großen, schmal gesetzten Zahl und einer Zeile darunter, die sagt, was sie bedeutet. Beispiel: `3`, darunter „Workouts diese Woche".
 
-**Das Wochenraster.** Sieben Quadrate für Montag bis Sonntag, 10 px groß, 4 px Abstand, 2 px Eckenradius. Trainiert: Eisen gefüllt. Nicht trainiert: Nebel. Eigene Zeile: Moos statt Eisen. Es ersetzt Flammen, Streak-Abzeichen und Fortschrittsringe und zeigt Konstanz auf einen Blick, im Leaderboard für jede Person in derselben Form.
+**Das Wochenraster.** Sieben Quadrate für Montag bis Sonntag, 10 px groß, 4 px Abstand, 2 px Eckenradius. Trainiert: Eisen gefüllt. Nicht trainiert: Nebel. Eigene Zeile: Moos statt Eisen. Es ersetzt Flammen und Streak-Abzeichen und zeigt Konstanz auf einen Blick, im Leaderboard für jede Person in derselben Form.
 
-**Das Wochenraster mit Ziel.** Hat sich jemand ein Wochenziel gesetzt, zeigt „Heute“ dieselben sieben Quadrate als Füllstand statt als Wochentage: von links die Trainingstage in Moos, dann bis zum Ziel offene Felder mit 1,5 px Rahmen in Eisen, danach Nebel. Es füllt sich mit jedem Trainingstag und ersetzt den Fortschrittsring. Die Wochentage zeigt darunter der Wochenstreifen des Kalenders (`docs/bereiche/heute.md`).
+**Der Wochenring.** Oben auf „Heute“ steht statt des Wochenrasters ein Ring (176 px, Strich 16 px, runde Enden) mit der Großzahl der Trainingstage in der Mitte und „von 4“ darunter. Er hat so viele Segmente wie das Wochenziel (ohne Ziel sieben, mehr, wenn mehr trainiert wurde, höchstens sieben). Jeder Trainingstag füllt ein Segment in der Sportfarbe des Tages, in zeitlicher Reihenfolge; offene Segmente sind Nebel. Daneben die Sportgruppen der Woche mit Punkt und Zahl der Tage. Er zeigt den Fortschritt zum selbst gewählten Ziel, nie einen vorgefüllten oder geschönten Stand. Überall sonst bleibt das Wochenraster.
 
 ## 7. Logo
 
@@ -150,7 +165,7 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Leaderboard:** Eine gesetzte Tabelle: Rang, Name, Wochenraster, Zahl. Die eigene Zeile hat Namen und Zahl in Moos, sonst keine Hervorhebung. Keine Medaillen, keine Podeste, keine Avatare als Schmuck.
 - **Bestwert:** Ein neuer Bestwert wird einmalig mit Moos hell hinterlegt und mit dem Wort „Bestwert" in Klein gekennzeichnet.
 - **Icons:** Nur in Navigation und an Bedienelementen, nie als Schmuck neben Überschriften. Strichstärke 1,5, Größe 20 px, Farbe wie der zugehörige Text. Die Icons der Muskelgruppen folgen derselben Regel (Abschnitt 15).
-- **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie.
+- **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie. Die Heatmap auf „Heute“ zeigt Minuten je Tag in fünf Stufen von Nebel bis Moos, mit Legende „weniger … mehr“.
 - **Leere Zustände:** Ein Satz, der sagt, was hier erscheinen wird, und ein Button. Keine Illustrationen.
 - **Bereiche:** Die Ansichten einzelner Funktionen („Heute“, Profil und Folgen, Aktivität eintragen, Events, Chats, Melden) sind in den Dateien unter `docs/bereiche/` beschrieben, Index in `docs/ENGINEERING.md`, Abschnitt 5. Der Chat ist die einzige Stelle mit Flächen statt Linien (`docs/bereiche/chats.md`).
 
@@ -174,6 +189,7 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 
 - Dauer 150 ms, bei Overlays 200 ms, immer `ease-out`.
 - Erlaubt: Ein- und Ausblenden von Overlays, Zustandswechsel von Bedienelementen, das einmalige Hinterlegen eines Bestwerts.
+- Der Erfolgsmoment auf „Heute“: Neue Segmente des Wochenrings füllen sich nach einem Training nacheinander (600 ms je Segment, 120 ms versetzt). Ist das Wochenziel neu erreicht, wächst der Ring einmal kurz (700 ms, höchstens 4 %) und darunter erscheint ein Hinweis in Moos hell mit der Serie. Beides einmal je neuem Stand, gemerkt auf dem Gerät, nicht bei jedem Besuch.
 - Nicht erlaubt: Einblend-Animationen beim Laden oder Scrollen, hüpfende oder federnde Bewegungen, Konfetti, hochzählende Zahlen.
 - `prefers-reduced-motion` wird respektiert.
 
@@ -190,7 +206,7 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 - Verläufe, Glas-Effekte, Unschärfe, Leuchten
 - Graue oder farbige Seitenhintergründe
 - Karten in Karten, Schatten unter Karten
-- Mehr als eine Akzentfarbe, farbige Buttons
+- Akzentfarben außer Moos und den Sportfarben, farbige Buttons
 - Emojis, Illustrationen, Maskottchen, Stockfotos. Einzige Ausnahme sind die Übungsskizzen nach Abschnitt 15.
 - Versalien-Beschriftungen und Kleinst-Etiketten über Überschriften
 - Abzeichen, Medaillen, Flammen, Konfetti
@@ -200,7 +216,7 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 
 - [ ] Hintergrund ist Weiß, Gliederung kommt aus Abstand und Linie
 - [ ] Die Ansicht hat genau eine Hauptaussage und höchstens einen gefüllten Button
-- [ ] Moos kommt höchstens zweimal vor und nur mit Bedeutung
+- [ ] Moos kommt höchstens zweimal vor und nur mit Bedeutung; Sportfarben nur mit dem Namen der Sportart
 - [ ] Alle Zahlen haben Tabellenziffern, Einheit und deutsches Format
 - [ ] Keine Hex-Werte, festen Schriftgrößen oder Schatten außerhalb der Tokens
 - [ ] Texte folgen Abschnitt 10
