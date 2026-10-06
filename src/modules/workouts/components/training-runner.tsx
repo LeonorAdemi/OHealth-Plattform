@@ -228,7 +228,7 @@ export function TrainingRunner({
         const result = await saveTraining(input);
         if (result.ok) {
           writeSession(null);
-          router.push(`/workouts/${result.data.id}`);
+          router.push(`/aktivitaet/${result.data.id}`);
           router.refresh();
           return;
         }

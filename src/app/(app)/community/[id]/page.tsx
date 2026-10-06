@@ -10,6 +10,7 @@ import { LeaveCommunity, ReportCommunity } from "@/modules/core/components/commu
 import { ChatRow } from "@/modules/core/components/chat-link";
 import { InviteShare } from "@/modules/core/components/invite-share";
 import { MeetupList } from "@/modules/core/components/meetup-list";
+import { RemoveMember } from "@/modules/core/components/report-form";
 import { COMMUNITY_KIND_HINT, COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
 import {
   type ChatSummary,
@@ -53,10 +54,10 @@ export default async function CommunityDetailPage({
     <>
       <p className="text-sm">
         <Link
-          href="/community"
+          href="/gruppen"
           className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4"
         >
-          Alle Communities
+          Gruppen
         </Link>
       </p>
       <div className="mt-2 flex max-w-2xl items-start justify-between gap-4">
@@ -192,6 +193,30 @@ async function InfoTab({
           Oder als Code zum Eintippen: <span className="text-foreground num select-all">{community.inviteCode}</span>
         </p>
       </section>
+
+      {isManager && members.length > 1 && (
+        <section className="mt-10" aria-labelledby="mitglieder">
+          <h2 id="mitglieder" className="text-xl font-semibold">
+            Mitglieder
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Wer entfernt wird, kann 30 Tage lang nicht wieder beitreten.
+          </p>
+          <ul className="mt-2" aria-label="Mitglieder">
+            {members
+              .filter((m) => m.userId !== userId)
+              .map((m) => (
+                <li key={m.userId} className="flex min-h-14 items-center justify-between gap-4 border-b py-2">
+                  <span className="min-w-0 break-words">
+                    {m.name}
+                    {m.role !== "member" && <span className="text-muted-foreground text-sm"> · verwaltet</span>}
+                  </span>
+                  {m.role === "member" && <RemoveMember groupId={community.id} userId={m.userId} name={m.name} />}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-12 space-y-2" aria-label="Verwalten">
         {!isManager && <ReportCommunity id={community.id} />}

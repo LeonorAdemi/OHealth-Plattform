@@ -29,13 +29,16 @@ export default function LegalLayout({
 
       <nav
         aria-label="Rechtliches"
-        className="text-muted-foreground mt-12 flex gap-4 text-sm"
+        className="text-muted-foreground mt-12 flex flex-wrap gap-x-4 gap-y-2 text-sm"
       >
         <Link href="/impressum" className="underline underline-offset-4">
           Impressum
         </Link>
         <Link href="/datenschutz" className="underline underline-offset-4">
           Datenschutz
+        </Link>
+        <Link href="/nutzungsbedingungen" className="underline underline-offset-4">
+          Nutzungsbedingungen
         </Link>
       </nav>
     </main>

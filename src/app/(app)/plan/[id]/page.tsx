@@ -17,6 +17,7 @@ import {
 import { ChatRow } from "@/modules/core/components/chat-link";
 import { MeetupDate } from "@/modules/core/components/meetup-list";
 import { MarkMeetupRead } from "@/modules/core/components/notification-actions";
+import { ReportForm } from "@/modules/core/components/report-form";
 import {
   COMMUNITY_KIND_LABEL,
   describeMeetupCount,
@@ -211,7 +212,7 @@ export default async function PlanPage({
           {counted ? (
             <p className="mt-2">
               Als Trainingstag gezählt.{" "}
-              <Link href={`/workouts/${attendance.workoutId}`} className="underline underline-offset-4">
+              <Link href={`/aktivitaet/${attendance.workoutId}`} className="underline underline-offset-4">
                 Aktivität ansehen oder ergänzen
               </Link>
             </p>
@@ -313,16 +314,16 @@ export default async function PlanPage({
         </section>
       )}
 
-      {(meetup.isMine || managed.length > 0) && (
-        <section className="mt-12 max-w-2xl space-y-2" aria-label="Verwalten">
-          {managed.map((c) => (
-            <RemoveFromCommunity key={c.id} meetupId={meetup.id} groupId={c.id} name={c.name} />
-          ))}
-          {meetup.isMine && (
-            <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null && !isPast} />
-          )}
-        </section>
-      )}
+      <section className="mt-12 max-w-2xl space-y-2" aria-label="Verwalten">
+        {managed.map((c) => (
+          <RemoveFromCommunity key={c.id} meetupId={meetup.id} groupId={c.id} name={c.name} />
+        ))}
+        {meetup.isMine ? (
+          <DeleteMeetup meetupId={meetup.id} shared={hasCompany} inSeries={meetup.seriesId !== null && !isPast} />
+        ) : (
+          <ReportForm target="meetup" id={meetup.id} label="Training melden" />
+        )}
+      </section>
     </>
   );
 }

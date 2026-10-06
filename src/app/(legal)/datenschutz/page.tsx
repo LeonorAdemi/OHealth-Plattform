@@ -165,8 +165,18 @@ export default function PrivacyPage() {
         Öffentliche Communities mit Name, Beschreibung, Sportart, Ort und
         Mitgliederzahl kann jede angemeldete Person finden. Wer den Teilen-Link
         einer Community hat, sieht diese Angaben auch ohne Konto, aber nie die
-        Namen der Mitglieder. Wenn du eine Community meldest, speichern wir
-        deine Meldung mit deinem Konto, damit wir sie prüfen können.
+        Namen der Mitglieder.
+      </p>
+      <p>
+        Wenn du eine Nachricht, ein Training, eine Person oder eine Community
+        meldest, speichern wir die Meldung mit Art, deinem Text und deinem
+        Konto, damit wir sie prüfen können. Wen du gemeldet hast, erfährt die
+        gemeldete Person nicht. Haben drei Personen dieselbe Nachricht
+        gemeldet, sehen ihren Text nur noch die Person, die sie geschrieben
+        hat, und die Verwaltung der Community. Wirst du aus einer Community entfernt, speichern
+        wir für 30 Tage, dass du ihr nicht wieder beitreten kannst. Wann du
+        welcher Fassung der Nutzungsbedingungen zugestimmt hast, speichern wir,
+        solange dein Konto besteht.
       </p>
       <p>
         Ein geplantes Training siehst nur du, solange du es mit keiner
@@ -194,7 +204,14 @@ export default function PrivacyPage() {
         Distanz, Höhenmeter, Tempo, Niveau, ob es jede Woche stattfindet, die
         Zahl der Zusagen und den Namen der Community, aber nie die Notiz, wer es
         plant oder wer zugesagt hat. Wer über den Link zusagt, tritt damit auch der
-        öffentlichen Community bei.
+        öffentlichen Community bei. Dieselben Angaben sehen angemeldete Personen
+        unter „Entdecken“, wenn die Community in ihrer Stadt ist.
+      </p>
+      <p>
+        Wählst du beim Einstieg eine Stadt, in der es OHealth noch nicht gibt,
+        speichern wir sie auf einer Warteliste, um zu sehen, wo wir als Nächstes
+        starten. Ausgewertet wird sie nur zusammengefasst. Mit deinem Konto
+        wird auch der Eintrag gelöscht.
       </p>
       <p>
         Den Chat eines Trainings lesen und schreiben nur die, die zugesagt

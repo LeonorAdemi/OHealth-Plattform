@@ -18,7 +18,8 @@ export default async function RegisterPage({
       <div className="mt-8">
         <AuthForm
           mode="register"
-          next={safeNextPath(next)}
+          // Ohne Einladung oder Event-Link geht es nach der Registrierung zum Einstieg
+          next={safeNextPath(next) === "/" ? "/willkommen" : safeNextPath(next)}
         />
       </div>
     </>

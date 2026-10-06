@@ -122,9 +122,12 @@ export default async function SettingsPage() {
             Abmelden
           </button>
         </form>
-        <p className="text-muted-foreground mt-2 flex gap-4 text-sm">
+        <p className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 text-sm">
           <Link href="/datenschutz" className="inline-flex min-h-11 items-center underline underline-offset-4">
             Datenschutz
+          </Link>
+          <Link href="/nutzungsbedingungen" className="inline-flex min-h-11 items-center underline underline-offset-4">
+            Nutzungsbedingungen
           </Link>
           <Link href="/impressum" className="inline-flex min-h-11 items-center underline underline-offset-4">
             Impressum

@@ -134,7 +134,7 @@ export function WorkoutForm({
         const result = existing ? await updateWorkout(input) : await saveWorkout(input);
         if (result.ok) {
           writeDraft(draftKey, null);
-          router.push(existing ? `/workouts/${existing.id}` : "/");
+          router.push(existing ? `/aktivitaet/${existing.id}` : "/");
           router.refresh();
           return;
         }

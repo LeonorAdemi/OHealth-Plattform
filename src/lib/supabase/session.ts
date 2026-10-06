@@ -12,6 +12,7 @@ const PUBLIC_PATHS = [
   "/auth",
   "/impressum",
   "/datenschutz",
+  "/nutzungsbedingungen",
   // Teilen-Link einer Community: Vorschau auch ohne Konto
   "/beitreten",
   // Öffentlicher Link eines Events (nur Events in öffentlichen Communities, prüft die Datenbank)

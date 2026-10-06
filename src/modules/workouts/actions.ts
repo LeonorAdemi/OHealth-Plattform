@@ -169,7 +169,7 @@ function revalidateWorkoutViews(id?: string) {
   revalidatePath("/");
   revalidatePath("/verlauf");
   revalidatePath("/community", "layout");
-  if (id) revalidatePath(`/workouts/${id}`);
+  if (id) revalidatePath(`/aktivitaet/${id}`);
 }
 
 /**

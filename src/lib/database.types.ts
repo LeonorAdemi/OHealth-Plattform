@@ -56,6 +56,7 @@ export type Database = {
           body: string
           chat_id: string
           created_at: string
+          hidden_at: string | null
           id: string
           user_id: string
         }
@@ -63,6 +64,7 @@ export type Database = {
           body: string
           chat_id: string
           created_at?: string
+          hidden_at?: string | null
           id?: string
           user_id?: string
         }
@@ -70,6 +72,7 @@ export type Database = {
           body?: string
           chat_id?: string
           created_at?: string
+          hidden_at?: string | null
           id?: string
           user_id?: string
         }
@@ -225,6 +228,39 @@ export type Database = {
         }
         Relationships: []
       }
+      city_interest: {
+        Row: {
+          city_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          user_id?: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_interest_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_interest_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           aliases: string[]
@@ -302,6 +338,52 @@ export type Database = {
           {
             foreignKeyName: "follows_follower_id_fkey"
             columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_bans: {
+        Row: {
+          banned_by: string | null
+          created_at: string
+          group_id: string
+          until: string
+          user_id: string
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string
+          group_id: string
+          until: string
+          user_id: string
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string
+          group_id?: string
+          until?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bans_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bans_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -919,26 +1001,35 @@ export type Database = {
       }
       reports: {
         Row: {
+          category: string
           created_at: string
           group_id: string | null
           id: string
-          reason: string
+          meetup_id: string | null
+          message_id: string | null
+          reason: string | null
           reported_user_id: string | null
           reporter_id: string
         }
         Insert: {
+          category?: string
           created_at?: string
           group_id?: string | null
           id?: string
-          reason: string
+          meetup_id?: string | null
+          message_id?: string | null
+          reason?: string | null
           reported_user_id?: string | null
           reporter_id?: string
         }
         Update: {
+          category?: string
           created_at?: string
           group_id?: string | null
           id?: string
-          reason?: string
+          meetup_id?: string | null
+          message_id?: string | null
+          reason?: string | null
           reported_user_id?: string | null
           reporter_id?: string
         }
@@ -948,6 +1039,20 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_meetup_id_fkey"
+            columns: ["meetup_id"]
+            isOneToOne: false
+            referencedRelation: "meetups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
             referencedColumns: ["id"]
           },
           {
@@ -1084,6 +1189,32 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workout_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      terms_acceptances: {
+        Row: {
+          accepted_at: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted_at?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terms_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1407,6 +1538,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_terms: { Args: { p_version: string }; Returns: undefined }
       block_person: { Args: { target: string }; Returns: undefined }
       cancel_meetup_series: { Args: { p_id: string }; Returns: number }
       chat_messages_page: {
@@ -1416,6 +1548,7 @@ export type Database = {
           body: string
           created_at: string
           display_name: string
+          hidden: boolean
           id: string
           user_id: string
         }[]
@@ -1487,6 +1620,39 @@ export type Database = {
         Returns: string
       }
       delete_own_account: { Args: never; Returns: undefined }
+      discover_communities: {
+        Args: { max_rows?: number; p_city: string }
+        Returns: {
+          city: string
+          description: string
+          id: string
+          is_member: boolean
+          member_count: number
+          name: string
+          sport: string
+          sport_id: string
+        }[]
+      }
+      discover_meetups: {
+        Args: { p_city: string; p_days?: number }
+        Returns: {
+          community_id: string
+          community_name: string
+          duration_minutes: number
+          id: string
+          is_joined: boolean
+          is_member: boolean
+          level: string
+          max_participants: number
+          participant_count: number
+          place: string
+          sport_id: string
+          sport_name: string
+          starts_at: string
+          title: string
+          weekly: boolean
+        }[]
+      }
       follow_person: { Args: { target: string }; Returns: string }
       group_invite_preview: {
         Args: { code: string }
@@ -1715,12 +1881,20 @@ export type Database = {
         Returns: boolean
       }
       remove_follower: { Args: { follower: string }; Returns: undefined }
+      remove_group_member: {
+        Args: { gid: string; uid: string }
+        Returns: undefined
+      }
       respond_chat_request: {
         Args: { accept: boolean; cid: string }
         Returns: undefined
       }
       respond_follow_request: {
         Args: { accept: boolean; follower: string }
+        Returns: undefined
+      }
+      save_onboarding: {
+        Args: { p_city: string; p_sports: string[] }
         Returns: undefined
       }
       save_push_subscription: {

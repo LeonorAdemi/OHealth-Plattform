@@ -51,7 +51,7 @@ export default async function ChatsPage() {
             und über das Profil einer Person kannst du ihr privat schreiben.
           </p>
           <Button asChild className="mt-6 w-full md:w-auto">
-            <Link href="/community">Communities ansehen</Link>
+            <Link href="/gruppen">Communities ansehen</Link>
           </Button>
         </div>
       ) : chats.length === 0 ? null : (

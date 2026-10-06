@@ -1,16 +1,27 @@
+import { redirect } from "next/navigation";
+
 import { AppNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { NotificationBell } from "@/modules/core/components/notification-bell";
 import { ProfileLink } from "@/modules/core/components/profile-link";
 import { UnreadChatsBadge } from "@/modules/core/components/unread-chats-badge";
-import { getProfile, getUnreadChatCount, getUnreadNotificationCount } from "@/modules/core/queries";
+import { TERMS_VERSION } from "@/lib/legal";
+import {
+  getAcceptedTermsVersion,
+  getProfile,
+  getUnreadChatCount,
+  getUnreadNotificationCount,
+} from "@/modules/core/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [profile, unread, unreadChats] = await Promise.all([
+  const [profile, unread, unreadChats, termsVersion] = await Promise.all([
     getProfile(),
     getUnreadNotificationCount(),
     getUnreadChatCount(),
+    getAcceptedTermsVersion(),
   ]);
+  // Ohne Zustimmung zur aktuellen Fassung der Nutzungsbedingungen geht es erst dorthin
+  if (termsVersion !== TERMS_VERSION) redirect("/zustimmung");
   const badges = { "/chats": <UnreadChatsBadge initialCount={unreadChats} /> };
 
   return (

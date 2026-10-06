@@ -117,8 +117,8 @@ Handy (bis 767 px)            Desktop (ab 1024 px)
 │             🔔  (A)│        │ OHealth  │                     🔔  (A)│
 │ Titel              │        │          │ Titel                     │
 │                    │        │ Heute    │                           │
-│ 3                  │        │ Vorlagen │ 3                         │
-│ Trainingstage      │        │ Communit.│ Trainingstage diese Woche │
+│ 3                  │        │ Entdecken│ 3                         │
+│ Trainingstage      │        │ Gruppen  │ Trainingstage diese Woche │
 │ ■ ■ □ ■ □ □ □      │        │ Chats    │ ■ ■ □ ■ □ □ □             │
 │                    │        │          │                           │
 │ Zeile ──────────── │        │          │ Zeile ─────────── Zeile   │
@@ -126,13 +126,13 @@ Handy (bis 767 px)            Desktop (ab 1024 px)
 │                    │        │          │                           │
 │ [Aktivität eintr.] │        │          │                           │
 ├────────────────────┤        └──────────┴───────────────────────────┘
-│Heute Vorl Comm Chat│         240 px      Inhalt max. 960 px
+│Heute Entd Grup Chat│         240 px      Inhalt max. 960 px
 └────────────────────┘
 ```
 
 - Handy: Seitenrand 20 px, Tab-Leiste unten mit höchstens vier Einträgen, Hauptaktion als Button in voller Breite über der Tab-Leiste.
 - Desktop: Seitenleiste links 240 px, weiß, durch eine Linie getrennt. Inhalt höchstens 960 px breit, Textspalten höchstens 640 px. Zusätzliche Breite wird für eine zweite Spalte genutzt, nicht für größere Elemente.
-- Oben rechts stehen auf jeder Ansicht, am Handy und am Desktop, die Glocke und das eigene Profilbild (A). Das Profilbild führt zum Profil; dort liegen der Verlauf und die Einstellungen. Ein eigener Tab für den Verlauf entfällt. Der vierte Tab ist „Chats“; er zeigt in einem Kreis in Eisen, in wie vielen Chats neue Nachrichten sind. Die Glocke zählt nur Zusagen, neue Trainings, Absagen und Erinnerungen, keine Chat-Nachrichten.
+- Oben rechts stehen auf jeder Ansicht, am Handy und am Desktop, die Glocke und das eigene Profilbild (A). Das Profilbild führt zum Profil; dort liegen der Verlauf und die Einstellungen. Ein eigener Tab für den Verlauf entfällt. Die vier Tabs sind „Heute“ (eigener Plan, Aktivitäten und der Kraft-Modus mit Vorlagen und Training), „Entdecken“ (Trainings der nächsten 14 Tage und öffentliche Communities der eigenen Stadt, Filter nach Sportart als `ChoiceChip`), „Gruppen“ (eigene Communities, Menschen finden, gründen und mit Code beitreten) und „Chats“. Vorlagen haben keinen eigenen Tab mehr; man erreicht sie über „Mit Vorlage trainieren“ und bei Sportarten mit Sätzen. Der Tab „Chats“ zeigt in einem Kreis in Eisen, in wie vielen Chats neue Nachrichten sind. Die Glocke zählt nur Zusagen, neue Trainings, Absagen und Erinnerungen, keine Chat-Nachrichten.
 - Listenzeilen sind mindestens 56 px hoch, mit Linie darunter, ohne Rahmen und ohne Hintergrund.
 
 ## 9. Komponenten
@@ -183,6 +183,12 @@ Der Chat eines Trainings oder einer Community folgt bewusst dem Muster bekannter
 - Uhrzeit klein in der Blase, bei eigenen Nachrichten mit Uhr (wird gesendet) oder Häkchen (gesendet).
 - Tagestrenner („Heute“, „Gestern“, „Do, 1. Okt.“) als kleine Fläche in Nebel, mittig.
 - Eingabe unten fest, rundes Feld und runder Senden-Button in Eisen. Am Rechner sendet Enter.
+- Ein Tipp auf eine Nachricht zeigt darunter die möglichen Aktionen als Textlinks: „Nachricht löschen“ (eigene, oder als Verwaltung) und „Melden“ (fremde). „Melden“ klappt die Arten als Umriss-Buttons auf, ein Tipp sendet.
+- Ausgeblendete Nachrichten bleiben als Blase stehen, kursiv und gedämpft: „Ausgeblendet nach Meldungen“. Wer sie geschrieben hat oder die Community verwaltet, sieht den Text mit dem Hinweis „Für andere ausgeblendet nach Meldungen“.
+
+### Melden
+
+Melden steht immer unten auf der Seite als gedämpfter Textlink („Training melden“, „Name melden“, „Community melden“) und klappt auf: Art als `ChoiceChip`, ein freiwilliger Satz, „Meldung senden“ als Umriss-Button. Nach dem Senden bleibt nur die Bestätigung stehen. Entfernen eines Mitglieds fragt einmal nach („Wirklich entfernen“, „Abbrechen“).
 
 ## 10. Sprache
 

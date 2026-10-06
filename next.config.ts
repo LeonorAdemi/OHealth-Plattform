@@ -1,16 +1,31 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Früher hieß der Bereich „Gruppe". Alte Links und Lesezeichen führen zur Community.
+  // Alte Adressen: „Gruppe“ und die Community-Übersicht heißen jetzt „Gruppen“, eine Aktivität liegt
+  // unter /aktivitaet statt /workouts (N5). Detailseiten der Communities bleiben unter /community/[id].
   async redirects() {
     return [
+      {
+        source: "/workouts/:id([0-9a-fA-F\\-]{36})/bearbeiten",
+        destination: "/aktivitaet/:id/bearbeiten",
+        permanent: true,
+      },
+      { source: "/workouts/:id([0-9a-fA-F\\-]{36})", destination: "/aktivitaet/:id", permanent: true },
+      // Die Suche nach Communities steht jetzt unter „Entdecken“
+      {
+        source: "/community",
+        has: [{ type: "query", key: "q" }],
+        destination: "/entdecken",
+        permanent: true,
+      },
+      { source: "/community", destination: "/gruppen", permanent: true },
       {
         source: "/gruppe",
         has: [{ type: "query", key: "g", value: "(?<id>[0-9a-fA-F-]{36})" }],
         destination: "/community/:id",
         permanent: true,
       },
-      { source: "/gruppe", destination: "/community", permanent: true },
+      { source: "/gruppe", destination: "/gruppen", permanent: true },
     ];
   },
 };

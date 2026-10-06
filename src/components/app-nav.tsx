@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardList, MessageCircle, Users } from "lucide-react";
+import { CalendarDays, Compass, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,16 +8,21 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Heute", icon: CalendarDays },
-  { href: "/vorlagen", label: "Vorlagen", icon: ClipboardList },
-  { href: "/community", label: "Community", icon: Users },
+  { href: "/entdecken", label: "Entdecken", icon: Compass },
+  { href: "/gruppen", label: "Gruppen", icon: Users },
   { href: "/chats", label: "Chats", icon: MessageCircle },
 ] as const;
 
-function isActive(pathname: string, href: string) {
-  if (href === "/") {
-    return pathname === "/" || ["/workouts", "/training", "/uebungen", "/plan"].some((p) => pathname.startsWith(p));
-  }
-  return pathname.startsWith(href);
+// Welche Bereiche zu einem Tab gehören. Vorlagen und Training gehören zum Kraft-Modus unter „Heute“.
+const SECTIONS: Record<(typeof ITEMS)[number]["href"], readonly string[]> = {
+  "/": ["/aktivitaet", "/workouts", "/training", "/uebungen", "/plan", "/vorlagen", "/verlauf"],
+  "/entdecken": ["/entdecken"],
+  "/gruppen": ["/gruppen", "/community", "/menschen"],
+  "/chats": ["/chats"],
+};
+
+function isActive(pathname: string, href: (typeof ITEMS)[number]["href"]) {
+  return (href === "/" && pathname === "/") || SECTIONS[href].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 // Handy: Tab-Leiste unten. Desktop: Einträge der Seitenleiste.

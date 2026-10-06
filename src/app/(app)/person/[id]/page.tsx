@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { FollowActions } from "@/modules/core/components/follow-actions";
+import { ReportForm } from "@/modules/core/components/report-form";
 import { ProfileHeader } from "@/modules/core/components/profile-header";
 import { getFollowState, getPersonProfile, getProfileStats } from "@/modules/core/queries";
 import { ProfileTiles } from "@/modules/workouts/components/profile-tiles";
@@ -32,6 +33,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <div className="mt-10 max-w-2xl">
         <ProfileTiles stats={stats} name={person.display_name} isMe={false} />
       </div>
+
+      <section className="mt-12 max-w-xl" aria-label="Melden">
+        <ReportForm target="person" id={person.id} label={`${person.display_name} melden`} />
+      </section>
     </>
   );
 }

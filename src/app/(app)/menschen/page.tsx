@@ -19,10 +19,10 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
     <>
       <p className="text-sm">
         <Link
-          href="/community"
+          href="/gruppen"
           className="text-muted-foreground inline-flex min-h-11 items-center underline underline-offset-4"
         >
-          Community
+          Gruppen
         </Link>
       </p>
       <h1 className="text-titel mt-2 font-semibold">Menschen finden</h1>

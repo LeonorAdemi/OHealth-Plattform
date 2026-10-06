@@ -45,8 +45,11 @@ export default async function StartTrainingPage() {
         </>
       )}
 
-      <p className="mt-10 text-sm">
-        <Link href="/workouts/neu" className="underline underline-offset-4">
+      <p className="mt-10 flex flex-wrap gap-x-6 text-sm">
+        <Link href="/vorlagen" className="inline-flex min-h-11 items-center underline underline-offset-4">
+          Alle Vorlagen, auch von anderen
+        </Link>
+        <Link href="/workouts/neu" className="inline-flex min-h-11 items-center underline underline-offset-4">
           Ohne Vorlage: Sätze nachtragen
         </Link>
       </p>

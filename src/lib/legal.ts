@@ -46,3 +46,12 @@ export function legalReady(op: Operator = operator): boolean {
 export function orPlaceholder(value: string, label: string): string {
   return value.trim() !== "" ? value : `[${label} fehlt]`;
 }
+
+/**
+ * Fassung der Nutzungsbedingungen (Datum der letzten inhaltlichen Änderung). Wer einer älteren
+ * Fassung zugestimmt hat, bestätigt die neue beim nächsten Öffnen der App (terms_acceptances).
+ */
+export const TERMS_VERSION = "2026-10-06";
+
+/** Mindestalter für ein Konto (Einwilligung nach Art. 8 DSGVO in Deutschland ab 16) */
+export const MIN_AGE = 16;

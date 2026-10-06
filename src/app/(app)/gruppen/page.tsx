@@ -3,30 +3,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { JoinPublicButton, JoinWithCodeForm } from "@/modules/core/components/community-forms";
+import { JoinWithCodeForm } from "@/modules/core/components/community-forms";
 import { MeetupList } from "@/modules/core/components/meetup-list";
 import { COMMUNITY_KIND_LABEL, describeCommunity } from "@/modules/core/logic";
-import { getChatSummaries, getMeetups, getMyCommunities, searchCommunities } from "@/modules/core/queries";
+import { getChatSummaries, getMeetups, getMyCommunities } from "@/modules/core/queries";
 
-export const metadata: Metadata = { title: "Community" };
+export const metadata: Metadata = { title: "Gruppen" };
 
-export default async function CommunityPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q } = await searchParams;
-  const query = (q ?? "").trim().slice(0, 60);
+// Eigene Communities und Gruppen. Öffentliche Communities finden steht unter „Entdecken“.
+export default async function GroupsPage() {
   const now = new Date();
-  const [mine, meetups, found, chats] = await Promise.all([
+  const [mine, meetups, chats] = await Promise.all([
     getMyCommunities(),
     getMeetups("communities", { from: now, limit: 5 }),
-    searchCommunities(query, 20),
     getChatSummaries(),
   ]);
-  const discover = found.filter((c) => !c.isMember);
 
   return (
     <>
-      <h1 className="text-titel font-semibold">Community</h1>
+      <h1 className="text-titel font-semibold">Gruppen</h1>
 
       <p className="mt-4 max-w-2xl border-y">
         <Link
@@ -64,7 +59,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         </h2>
         {mine.length === 0 ? (
           <p className="text-muted-foreground mt-2">
-            Noch in keiner Community. Tritt unten einer bei oder erstelle deine eigene.
+            Noch in keiner Community.{" "}
+            <Link href="/entdecken" className="text-foreground underline underline-offset-4">
+              Entdecke Communities in deiner Stadt
+            </Link>{" "}
+            oder erstelle deine eigene.
           </p>
         ) : (
           <ul className="mt-2" aria-label="Deine Communities">
@@ -82,51 +81,6 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
                   </span>
                   <ChevronRight size={20} strokeWidth={1.5} className="text-muted-foreground shrink-0" aria-hidden />
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-10 max-w-2xl" aria-labelledby="entdecken">
-        <h2 id="entdecken" className="text-xl font-semibold">
-          Entdecken
-        </h2>
-        <form action="/community" method="get" className="mt-3 space-y-2" role="search">
-          <Label htmlFor="q">Öffentliche Communities suchen</Label>
-          <div className="flex gap-3">
-            <Input
-              id="q"
-              name="q"
-              type="search"
-              defaultValue={query}
-              maxLength={60}
-              placeholder="z. B. Laufen München"
-              enterKeyHint="search"
-            />
-            <Button type="submit" variant="outline">
-              Suchen
-            </Button>
-          </div>
-        </form>
-
-        {discover.length === 0 ? (
-          <p className="text-muted-foreground mt-4">
-            {query
-              ? "Keine öffentliche Community gefunden. Erstelle die erste für deine Sportart."
-              : "Noch keine weiteren öffentlichen Communities. Erstelle die erste."}
-          </p>
-        ) : (
-          <ul className="mt-2" aria-label={query ? "Suchergebnis" : "Öffentliche Communities"}>
-            {discover.map((c) => (
-              <li key={c.id} className="flex min-h-16 items-center justify-between gap-4 border-b py-3">
-                <span className="min-w-0">
-                  <span className="block font-medium">{c.name}</span>
-                  <span className="text-muted-foreground mt-0.5 block text-sm">{describeCommunity(c)}</span>
-                </span>
-                <span className="shrink-0">
-                  <JoinPublicButton id={c.id} name={c.name} />
-                </span>
               </li>
             ))}
           </ul>

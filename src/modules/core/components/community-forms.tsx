@@ -13,9 +13,9 @@ import {
   joinPublicCommunity,
   joinWithCode,
   leaveCommunity,
-  reportCommunity,
 } from "../actions";
 import { COMMUNITY_KIND_HINT, SPORT_SUGGESTIONS, type CommunityKind } from "../logic";
+import { ReportForm } from "./report-form";
 
 const initial: FormState = {};
 
@@ -212,32 +212,7 @@ export function LeaveCommunity({ id, managesAlone }: { id: string; managesAlone:
   );
 }
 
-/** Community melden, zum Beispiel wegen eines unpassenden Namens. */
+/** Meldet eine Community, zum Beispiel wegen eines unpassenden Namens. Der Betreiber prüft. */
 export function ReportCommunity({ id }: { id: string }) {
-  const [state, action, pending] = useActionState(reportCommunity, initial);
-
-  if (state.message) {
-    return (
-      <p role="status" className="text-sm">
-        {state.message}
-      </p>
-    );
-  }
-
-  return (
-    <details>
-      <summary className="text-muted-foreground min-h-11 cursor-pointer py-2 text-sm underline underline-offset-4">
-        Community melden
-      </summary>
-      <form action={action} className="mt-2 max-w-xl space-y-2">
-        <input type="hidden" name="id" value={id} />
-        <Label htmlFor="reason">Was passt nicht?</Label>
-        <Input id="reason" name="reason" maxLength={500} required />
-        <Feedback state={state} />
-        <Button type="submit" variant="outline" disabled={pending}>
-          Meldung senden
-        </Button>
-      </form>
-    </details>
-  );
+  return <ReportForm target="community" id={id} label="Community melden" />;
 }

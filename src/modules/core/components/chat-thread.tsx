@@ -4,17 +4,20 @@ import { ArrowUp, Check, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useLayoutEffect, useOptimistic, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import type { FormState } from "@/lib/result";
 import { cn } from "@/lib/utils";
 
-import { deleteChatMessage, sendChatMessage } from "../actions";
-import { chatTime, layoutChat } from "../logic";
+import { deleteChatMessage, report, sendChatMessage } from "../actions";
+import { chatTime, layoutChat, REPORT_CATEGORIES, REPORT_CATEGORY_LABEL, type ReportCategory } from "../logic";
 
 export type ChatMessage = {
   id: string;
   userId: string;
   name: string;
   body: string;
+  /** Nach Meldungen ausgeblendet; Text nur für die Person, die schrieb, und die Verwaltung */
+  hidden?: boolean;
   createdAt: string;
   isMe: boolean;
 };
@@ -27,6 +30,7 @@ const initial: FormState = {};
  * Chat im Messenger-Stil: eigene Nachrichten rechts in Eisen, andere links in Nebel, Tagestrenner,
  * Folgen derselben Person zusammengefasst. Gesendete Nachrichten erscheinen sofort (mit Uhr, bis
  * der Server sie bestätigt). Neue Nachrichten holt die Seite alle vier Sekunden, solange sie sichtbar ist.
+ * Ein Tipp auf eine Nachricht zeigt Löschen (eigene, oder als Verwaltung) und Melden (fremde).
  */
 export function ChatThread({
   chatId,
@@ -129,6 +133,8 @@ export function ChatThread({
           <ol aria-label="Nachrichten" className="space-y-0.5">
             {rows.map(({ message: m, dayLabel, firstInGroup, lastInGroup }) => {
               const deletable = m.isMe || canModerate;
+              const reportable = !m.isMe && !m.hidden;
+              const actionable = deletable || reportable;
               return (
                 <li key={m.id} className={cn(firstInGroup && "pt-2")}>
                   {dayLabel && (
@@ -142,9 +148,9 @@ export function ChatThread({
                     <div className="max-w-[80%] md:max-w-[65%]">
                       <button
                         type="button"
-                        disabled={!deletable || m.pending}
+                        disabled={!actionable || m.pending}
                         onClick={() => setSelected(selected === m.id ? null : m.id)}
-                        aria-expanded={deletable ? selected === m.id : undefined}
+                        aria-expanded={actionable ? selected === m.id : undefined}
                         className={cn(
                           "block w-full rounded-2xl px-3 py-2 text-left disabled:cursor-default",
                           m.isMe ? "bg-foreground text-primary-foreground" : "bg-muted text-foreground",
@@ -154,7 +160,14 @@ export function ChatThread({
                         {!m.isMe && firstInGroup && (
                           <span className="mb-0.5 block text-xs font-semibold">{m.name}</span>
                         )}
-                        <span className="break-words whitespace-pre-line">{m.body}</span>
+                        {m.hidden && !m.body ? (
+                          <span className="italic opacity-70">Ausgeblendet nach Meldungen</span>
+                        ) : (
+                          <span className="break-words whitespace-pre-line">{m.body}</span>
+                        )}
+                        {m.hidden && m.body && (
+                          <span className="block text-xs italic opacity-70">Für andere ausgeblendet nach Meldungen</span>
+                        )}
                         <span
                           className={cn(
                             "num float-right mt-1.5 ml-3 inline-flex items-center gap-1 text-[11px] leading-none",
@@ -170,13 +183,11 @@ export function ChatThread({
                             ))}
                         </span>
                       </button>
-                      {deletable && selected === m.id && !m.pending && (
-                        <DeleteMessage
-                          id={m.id}
-                          chatId={chatId}
-                          align={m.isMe ? "end" : "start"}
-                          onDone={() => setSelected(null)}
-                        />
+                      {selected === m.id && !m.pending && (
+                        <div className={cn("flex flex-wrap gap-x-4", m.isMe ? "justify-end" : "justify-start")}>
+                          {deletable && <DeleteMessage id={m.id} chatId={chatId} onDone={() => setSelected(null)} />}
+                          {reportable && <ReportMessage id={m.id} />}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -232,20 +243,10 @@ export function ChatThread({
   );
 }
 
-function DeleteMessage({
-  id,
-  chatId,
-  align,
-  onDone,
-}: {
-  id: string;
-  chatId: string;
-  align: "start" | "end";
-  onDone: () => void;
-}) {
+function DeleteMessage({ id, chatId, onDone }: { id: string; chatId: string; onDone: () => void }) {
   const [pending, setPending] = useState(false);
   return (
-    <p className={cn("flex", align === "end" ? "justify-end" : "justify-start")}>
+    <p>
       <button
         type="button"
         disabled={pending}
@@ -264,5 +265,72 @@ function DeleteMessage({
         Nachricht löschen
       </button>
     </p>
+  );
+}
+
+/** Melden mit einem Tipp auf die Art. Nach drei Meldungen verschiedener Personen ist die Nachricht ausgeblendet. */
+function ReportMessage({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<FormState | null>(null);
+
+  if (result?.message) {
+    return (
+      <p role="status" className="text-muted-foreground inline-flex min-h-11 items-center text-sm">
+        Gemeldet. Danke.
+      </p>
+    );
+  }
+  if (!open) {
+    return (
+      <p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        >
+          Melden
+        </button>
+      </p>
+    );
+  }
+
+  function send(category: ReportCategory) {
+    setPending(true);
+    const formData = new FormData();
+    formData.set("target", "message");
+    formData.set("id", id);
+    formData.set("category", category);
+    startTransition(async () => {
+      setResult(await report(initial, formData));
+      setPending(false);
+    });
+  }
+
+  return (
+    <div className="w-full py-1" role="group" aria-label="Nachricht melden als">
+      <p className="text-muted-foreground text-sm">Melden als</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        {REPORT_CATEGORIES.map((c, i) => (
+          <Button
+            key={c}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => send(c)}
+            // Der Link „Melden“ verschwindet beim Aufklappen; der Fokus geht zur ersten Art
+            autoFocus={i === 0}
+          >
+            {REPORT_CATEGORY_LABEL[c]}
+          </Button>
+        ))}
+      </div>
+      {result?.error && (
+        <p role="alert" className="text-destructive mt-1 text-sm">
+          {result.error}
+        </p>
+      )}
+    </div>
   );
 }

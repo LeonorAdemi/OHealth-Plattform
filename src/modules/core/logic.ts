@@ -43,6 +43,21 @@ export function groupTypeFor(kind: CommunityKind): "community" | "friends" | "co
   return kind === "public" ? "community" : kind === "coaching" ? "coaching" : "friends";
 }
 
+/** Arten einer Meldung (reports.category), in der Reihenfolge der Auswahl */
+export const REPORT_CATEGORIES = ["harassment", "spam", "inappropriate", "other"] as const;
+export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
+
+export const REPORT_CATEGORY_LABEL: Record<ReportCategory, string> = {
+  harassment: "Belästigung",
+  spam: "Spam",
+  inappropriate: "Unangemessen",
+  other: "Sonstiges",
+};
+
+/** Was gemeldet wird: eine Nachricht, ein Event, eine Person oder eine Community */
+export const REPORT_TARGETS = ["message", "meetup", "person", "community"] as const;
+export type ReportTarget = (typeof REPORT_TARGETS)[number];
+
 export const COMMUNITY_KIND_LABEL: Record<CommunityKind, string> = {
   public: "Öffentlich",
   private: "Privat",
@@ -769,4 +784,36 @@ export function meetupEndsAt(startsAt: string, durationMinutes: number | null): 
 export function canAnswerAttendance(startsAt: string, durationMinutes: number | null, now: Date): boolean {
   const ends = meetupEndsAt(startsAt, durationMinutes).getTime();
   return ends <= now.getTime() && ends >= now.getTime() - ATTENDANCE_DAYS * 24 * 60 * 60_000;
+}
+
+// ---------- Entdecken ----------
+
+/** Stadt, solange jemand keine Stadt gewählt hat oder die eigene noch nicht live ist (Pilot). */
+export const DEFAULT_CITY_ID = "muenchen";
+
+/** Wie weit „Entdecken“ vorausschaut */
+export const DISCOVER_DAYS = 14;
+
+/** Die Stadt für „Entdecken“: die eigene, wenn sie live ist, sonst München. */
+export function discoverCityId(ownCityId: string | null, liveCityIds: readonly string[]): string {
+  return ownCityId !== null && liveCityIds.includes(ownCityId) ? ownCityId : DEFAULT_CITY_ID;
+}
+
+/**
+ * Sportarten für den Filter: alle, die in den Events oder Communities vorkommen, die häufigsten
+ * zuerst, bei Gleichstand nach Name.
+ */
+export function sportFilterOptions(
+  items: readonly { sportId: string | null; sportName: string | null }[],
+): { id: string; name: string }[] {
+  const counts = new Map<string, { name: string; count: number }>();
+  for (const { sportId, sportName } of items) {
+    if (!sportId || !sportName) continue;
+    const entry = counts.get(sportId);
+    if (entry) entry.count += 1;
+    else counts.set(sportId, { name: sportName, count: 1 });
+  }
+  return [...counts.entries()]
+    .sort(([, a], [, b]) => b.count - a.count || a.name.localeCompare(b.name, "de-DE"))
+    .map(([id, { name }]) => ({ id, name }));
 }

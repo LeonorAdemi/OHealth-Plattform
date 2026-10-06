@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { TERMS_VERSION } from "@/lib/legal";
 import type { FormState } from "@/lib/result";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { createClient } from "@/lib/supabase/server";
@@ -18,12 +19,15 @@ import {
   MEETUP_LEVELS,
   meetupErrorMessage,
   normalizeSports,
+  REPORT_CATEGORIES,
+  REPORT_TARGETS,
   parseDistanceKm,
   parseDurationMinutes,
   parseElevation,
   parsePace,
   parseSpeed,
 } from "./logic";
+import { needsOnboarding } from "./queries";
 
 const credentials = z.object({
   email: z.email("Gib eine gültige E-Mail-Adresse ein."),
@@ -36,6 +40,7 @@ const registration = credentials.extend({
     .trim()
     .min(1, "Gib einen Namen ein.")
     .max(40, "Der Name darf höchstens 40 Zeichen haben."),
+  terms: z.literal("on", "Bestätige dein Alter und die Nutzungsbedingungen."),
 });
 
 function firstIssue(error: z.ZodError): string {
@@ -62,6 +67,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     email: formData.get("email"),
     password: formData.get("password"),
     displayName: formData.get("displayName"),
+    terms: formData.get("terms"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -72,7 +78,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.displayName },
+      // Die Datenbank hält die Zustimmung fest (Trigger on_auth_user_created_terms)
+      data: { display_name: parsed.data.displayName, terms_version: TERMS_VERSION },
       emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
@@ -146,9 +153,14 @@ export async function createCommunity(_prev: FormState, formData: FormData): Pro
     return { error: COMMUNITY_SAVE_FAILED };
   }
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data.id}`);
 }
+
+const BANNED = "Du wurdest aus dieser Community entfernt und kannst ihr gerade nicht wieder beitreten.";
+/** Sperre nach dem Entfernen (Trigger check_group_ban) */
+const isBanned = (error: { message: string } | null) => Boolean(error?.message.includes("gerade nicht beitreten"));
 
 /** Tritt einer öffentlichen Community bei. Private Communities gehen nur über den Link. */
 export async function joinPublicCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -161,10 +173,12 @@ export async function joinPublicCommunity(_prev: FormState, formData: FormData):
   if (!userId) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
 
   const { error } = await supabase.from("group_members").insert({ group_id: id.data, user_id: userId });
+  if (isBanned(error)) return { error: BANNED };
   // 23505: schon Mitglied, das ist kein Fehler.
   if (error && error.code !== "23505") return { error: "Beitreten hat nicht geklappt. Versuch es erneut." };
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${id.data}`);
 }
 
@@ -175,9 +189,11 @@ export async function joinWithCode(_prev: FormState, formData: FormData): Promis
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (isBanned(error)) return { error: BANNED };
   if (error || !data) return { error: "Dieser Einladungscode ist ungültig." };
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data}`);
 }
 
@@ -194,25 +210,81 @@ export async function leaveCommunity(_prev: FormState, formData: FormData): Prom
   const { error } = await supabase.rpc("leave_group", { gid: id.data });
   if (error) return { error: "Verlassen hat nicht geklappt. Versuch es erneut." };
 
-  revalidatePath("/community");
-  redirect("/community");
+  revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
+  redirect("/gruppen");
 }
 
-/** Meldet eine Community, zum Beispiel wegen eines unpassenden Namens. Der Betreiber prüft. */
-export async function reportCommunity(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = z
-    .object({
-      id: z.uuid(),
-      reason: z.string().trim().min(1, "Schreib kurz, was nicht passt.").max(500, "Höchstens 500 Zeichen."),
-    })
-    .safeParse({ id: formData.get("id"), reason: formData.get("reason") ?? "" });
+const reportSchema = z.object({
+  target: z.enum(REPORT_TARGETS),
+  id: z.uuid(),
+  category: z.enum(REPORT_CATEGORIES, "Wähl aus, was nicht passt."),
+  reason: z.string().trim().max(500, "Höchstens 500 Zeichen."),
+});
+
+/**
+ * Meldet eine Nachricht, ein Event, eine Person oder eine Community. Der Betreiber prüft. Was man
+ * nicht sieht oder selbst geschrieben hat, lässt sich nicht melden (Trigger check_report).
+ */
+export async function report(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = reportSchema.safeParse({
+    target: formData.get("target"),
+    id: formData.get("id"),
+    category: formData.get("category"),
+    reason: formData.get("reason") ?? "",
+  });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const { target, id, category, reason } = parsed.data;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("reports").insert({ group_id: parsed.data.id, reason: parsed.data.reason });
-  if (error) return { error: "Die Meldung konnte nicht gesendet werden. Versuch es erneut." };
-
+  const { error } = await supabase.from("reports").insert({
+    category,
+    reason: reason || null,
+    message_id: target === "message" ? id : null,
+    meetup_id: target === "meetup" ? id : null,
+    reported_user_id: target === "person" ? id : null,
+    group_id: target === "community" ? id : null,
+  });
+  if (error) {
+    if (error.code === "23505") return { error: "Das hast du schon gemeldet." };
+    if (error.code === "54000") return { error: "Du hast heute schon viel gemeldet. Versuch es morgen wieder." };
+    return { error: "Die Meldung konnte nicht gesendet werden. Versuch es erneut." };
+  }
   return { message: "Danke, die Meldung ist eingegangen. Wir sehen sie uns an." };
+}
+
+/** Entfernt ein Mitglied aus einer Community. Es kann 30 Tage lang nicht wieder beitreten. */
+export async function removeMember(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({ groupId: z.uuid(), userId: z.uuid() })
+    .safeParse({ groupId: formData.get("groupId"), userId: formData.get("userId") });
+  if (!parsed.success) return { error: "Dieses Mitglied gibt es nicht mehr." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_group_member", {
+    gid: parsed.data.groupId,
+    uid: parsed.data.userId,
+  });
+  if (error) {
+    if (error.code === "42501") return { error: "Nur Mitglieder ohne Verwaltungsrolle lassen sich entfernen." };
+    return { error: "Entfernen hat nicht geklappt. Versuch es erneut." };
+  }
+
+  revalidatePath(`/community/${parsed.data.groupId}`);
+  return { message: "Entfernt." };
+}
+
+/** Zustimmung zur aktuellen Fassung der Nutzungsbedingungen mit Bestätigung des Mindestalters. */
+export async function acceptTerms(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (formData.get("terms") !== "on") return { error: "Bestätige dein Alter und die Nutzungsbedingungen." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("accept_terms", { p_version: TERMS_VERSION });
+  if (error) return { error: "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/", "layout");
+  // Neue Konten (etwa über Google) haben noch keine Sportarten und Stadt: weiter zum Einstieg
+  redirect((await needsOnboarding()) ? "/willkommen" : "/");
 }
 
 // ---------- Geplante Trainings ----------
@@ -490,6 +562,7 @@ export async function joinPublicMeetup(_prev: FormState, formData: FormData): Pr
     if (error.message.includes("voll")) return { error: "Dieses Training ist schon voll." };
     if (error.message.includes("stattgefunden")) return { error: "Dieses Training hat schon stattgefunden." };
     if (error.message.includes("Nicht angemeldet")) return { error: "Du bist nicht mehr angemeldet. Melde dich erneut an." };
+    if (isBanned(error)) return { error: BANNED };
     if (error.code === "42501") return { error: "Zu diesem Training kannst du über den Link nicht zusagen." };
     return { error: MEETUP_FAILED };
   }
@@ -831,6 +904,34 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   redirect("/profil");
 }
 
+const onboardingSchema = z.object({
+  sports: z.array(z.string().trim().min(1).max(40)).max(5, "Wähl höchstens fünf Sportarten."),
+  cityId: z.string().regex(/^[a-z0-9_]{2,40}$/, "Wähl deine Stadt."),
+});
+
+/**
+ * Einstieg ohne Einladung: Sportarten und Stadt ins Profil. Läuft OHealth in der Stadt noch nicht,
+ * kommt die Person auf die Warteliste (save_onboarding, beides in einem Schritt). Danach geht es zu
+ * „Entdecken“.
+ */
+export async function saveOnboarding(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = onboardingSchema.safeParse({
+    sports: formData.getAll("sports").filter((v) => typeof v === "string"),
+    cityId: formData.get("cityId") ?? "",
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_onboarding", {
+    p_sports: normalizeSports(parsed.data.sports),
+    p_city: parsed.data.cityId,
+  });
+  if (error) return { error: error.code === "22023" ? "Wähl deine Stadt." : "Das hat nicht geklappt. Versuch es erneut." };
+
+  revalidatePath("/", "layout");
+  redirect("/entdecken");
+}
+
 const AVATAR_MAX_BYTES = 512 * 1024;
 
 /** Erkennt WebP und JPEG an den ersten Bytes, unabhängig davon, was der Browser angibt. */
@@ -1016,6 +1117,7 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_group", { code: code.data });
+  if (isBanned(error)) return { error: BANNED };
   if (error || !data) return { error: "Dieser Einladungslink ist ungültig." };
   // Herkunft nur bei neuen Konten (prüft die Datenbank); ein Fehler hier hält niemanden auf.
   await supabase.rpc("record_signup_source", {
@@ -1023,7 +1125,8 @@ export async function acceptInvite(_prev: FormState, formData: FormData): Promis
     p_campaign: campaignTag(String(formData.get("quelle") ?? "")) ?? undefined,
   });
 
-  revalidatePath("/community");
+  revalidatePath("/gruppen");
+  revalidatePath("/entdecken");
   redirect(`/community/${data}`);
 }
 

@@ -54,7 +54,7 @@ export function WorkoutFeed({ workouts, now, label }: { workouts: readonly FeedW
           <li key={workout.id} className="border-b">
             {workout.isMe ? (
               <Link
-                href={`/workouts/${workout.id}`}
+                href={`/aktivitaet/${workout.id}`}
                 className="hover:bg-accent -mx-2 block min-h-14 rounded-lg px-2 py-3 transition-colors duration-150 ease-out"
               >
                 {content}
