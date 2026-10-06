@@ -23,6 +23,7 @@ Begründete Abhängigkeiten außerhalb des Grundgerüsts:
 | --- | --- | --- | --- |
 | `@modelcontextprotocol/server` | MCP-Endpunkt `/api/mcp` | Offizielles SDK, das Protokoll mit Versionen und Transport ist zu umfangreich für Eigenbau | Nur Server, 0 kB im Browser |
 | `web-push` | Push-Versand in `/api/push` | Verschlüsselung der Inhalte (RFC 8291) und VAPID-Signatur (RFC 8292) sind fehleranfällig im Eigenbau; Standardbibliothek dafür | Nur Server, 0 kB im Browser |
+| `postgres` (nur Entwicklung) | Testdaten der Ende-zu-Ende-Tests per SQL in der lokalen Datenbank | Die Trigger brauchen das Schema `private`, das über die API zu Recht nicht erreichbar ist; kleiner Treiber ohne weitere Abhängigkeiten | Nur Tests, 0 kB im Browser |
 
 ## 3. Architektur
 
@@ -86,6 +87,8 @@ Regeln, die diese Ziele sichern:
 - **„Warst du dabei?“** Nach dem Ende eines Events (Beginn plus Dauer, ohne Dauer eine Stunde, `private.meetup_ends_at`) beantworten alle mit Zusage höchstens 14 Tage lang, ob sie dabei waren (`confirm_attendance`, Tabelle `meetup_attendance`). „Ja“ legt eine Aktivität mit Sportart, Dauer und Titel des Events an (`source = 'event'`, `workouts.meetup_id`, höchstens eine je Person und Event), die als Trainingstag und in Ranglisten zählt; „Nein“ nimmt sie zurück. Eine Aktivität lässt sich nur mit einem begonnenen Event verknüpfen, bei dem die Person zugesagt hat (Trigger `check_workout_meetup`). Wer plant, sieht über `meetup_attendance_names`, wer bestätigt hat; andere nur die eigene Antwort. Die entstandene Aktivität ist wie jede andere für Gruppen und Folgende sichtbar (mit dem Titel des Events) und für eine verbundene KI über `list_workouts`. Geschrieben wird `meetup_attendance` nur über `confirm_attendance`, die über `private.record_attendance` (security definer, prüft Zusage, Zeitfenster und Aktivität selbst) speichert; Schreibregeln gibt es keine. Der Job `attendance-questions` fragt alle 15 Minuten per Mitteilung `attendance` nach (Einstellung wie Erinnerungen). Eine KI darf nichts davon (Migration `meetup_attendance`, Test 28).
 - **Vertrauen und Recht.** Gemeldet werden Nachrichten, Events, Personen und Communities über `reports` mit `category` und optionalem Text. Der Trigger `private.check_report` prüft: genau ein Ziel, Nachrichten und Events nur, wenn sichtbar (`can_access_chat`, `can_see_meetup`), nichts Eigenes, jedes Ziel einmal je Person, höchstens 30 am Tag; bei Nachricht und Event trägt er `reported_user_id` selbst ein, bei Communities bleibt es leer. Ob es eine gemeldete Person gibt, verrät die Fehlermeldung nicht. Ab drei Meldungen von Konten, die älter als einen Tag sind, setzt `private.hide_reported_message` `chat_messages.hidden_at` (mit Zeilensperre gegen gleichzeitige Meldungen); Nachrichten der Verwaltung einer Community werden nie automatisch ausgeblendet. Den Text lesen dann nur, wer schrieb, und die Verwaltung (restriktive Regeln `chat_messages_hidden` und `meetup_messages_hidden`, `chat_messages_page` mit `hidden`); `my_chats`, `unread_chat_count` und `push_payload` lassen ausgeblendete Nachrichten weg. Bewusst offenes Risiko: Drei ältere Konten können in einer offenen Community Nachrichten von Mitgliedern ausblenden; der Betreiber sieht das in `reports` und prüft. Mitglieder ohne Verwaltungsrolle entfernt die Verwaltung nur über `remove_group_member` (direkt löscht man nur die eigene Mitgliedschaft): Dabei fallen die Zusagen zu kommenden fremden Events weg, die die Person nur über diese Community sah, und `group_bans` sperrt den Wiederbeitritt 30 Tage lang auf jedem Weg (Trigger `check_group_ban`). Die Zustimmung zu den Nutzungsbedingungen steht in `terms_acceptances`: nur die aktuelle Fassung (`private.current_terms_version`, gleich `TERMS_VERSION` in `src/lib/legal.ts`), bei der Registrierung aus den Metadaten (`on_auth_user_created_terms`), sonst über `accept_terms`. Geprüft wird sie bewusst nur in der Oberfläche: Das App-Layout leitet ohne Zustimmung nach `/zustimmung` (dort auch Abmelden und Konto löschen); Server Actions, Beitrittslinks und KI-Zugriff prüfen sie nicht, und eine offene App merkt eine neue Fassung erst beim nächsten vollständigen Laden. Neue Fassung: neue Migration für `private.current_terms_version` und `TERMS_VERSION` gleichzeitig ändern. Eine KI darf nichts davon (Migration `trust_and_safety`, Test 29).
 - **Entdecken und Einstieg.** `discover_meetups` und `discover_communities` (security definer, nur Angemeldete, keine KI) zeigen für eine Stadt (`groups.city_id`) nur, was auch der öffentliche Event-Link zeigt: kommende Events in öffentlichen, nicht ausgeblendeten Communities, je Event einmal über `private.public_group_of_meetup`, ohne Namen von Personen, ohne Events von Blockierten, höchstens 31 Tage voraus. Die Stadt für „Entdecken“ ist die eigene, wenn sie live ist, sonst München (`discoverCityId`). Je Reihe zeigt „Entdecken“ nur den nächsten Termin; Communities, aus denen man gerade entfernt ist, fehlen. Wer sich ohne Link registriert (Formular, oder über Google nach der Zustimmung auf `/zustimmung`), landet auf `/willkommen`, solange Sportarten, Stadt und Warteliste leer sind (`needsOnboarding`). `save_onboarding` schreibt Sportarten und Stadt ins Profil und die Warteliste `city_interest` (eine Zeile je Person, nur Städte mit Stand „geplant“) in einem Schritt. Die Sportarten aus dem Einstieg filtern „Entdecken“ nicht; der Filter ist bewusst eine Auswahl auf der Seite. Bewusst offen: Wer die Stadt später im Profil als Text ändert, bleibt auf der Warteliste, bis das Profil die Stadt aus dem Katalog wählt. Adressen: `/aktivitaet/[id]` statt `/workouts/[id]`, `/gruppen` statt `/community`; `next.config.ts` leitet alte Adressen dauerhaft weiter, Detailseiten der Communities bleiben unter `/community/[id]` (Migration `discover`, Test 30).
+- **Kennzahlen.** `private.pilot_metrics(tag)` liefert die Kennzahlen des Pilots für die Woche, in der der Tag liegt (Montag bis Sonntag, deutsche Zeit), in einer Zeile: aktive Gruppen, Zusagen pro Event (ohne die planende Person, nur geteilte Events), neue Nutzer und Anteil über einen Link (`private.signup_sources`), Bindung in Woche 4, Anteil der Aktiven mit Event- und eigenen Aktivitäten in den letzten vier Wochen (H4) und Anteil der Aktiven mit Push. Aktiv ist, wer in der Woche eine Aktivität gemacht, zugesagt oder geplant oder im Chat geschrieben hat. Nur Summen und Anteile, keine Personen; kein Tracking-Dienst. Abgelesen wird einmal pro Woche im SQL-Editor (`select * from private.pilot_metrics();`), ausführbar nur für den Betreiber, nicht für Angemeldete, Gäste, KI oder den Service-Schlüssel. Die Zahl mit Push gilt für den Zeitpunkt der Abfrage, weil Geräte keinen Verlauf haben. Die Kennzahl zur Bezahlung kommt aus den Gesprächen, nicht aus der Datenbank (Migration `pilot_metrics`, Test 31).
+- **Konto löschen mit eigenen Events.** Fallen kommende eigene Events mit dem Konto weg, bekommen alle mit Zusage die Absage ohne Verweis auf das gelöschte Profil, als „Jemand“ (Migration `cancel_on_account_deletion`, Test 32). Vorher scheiterte das Löschen in diesem Fall am Fremdschlüssel von `notifications.actor_id`.
 - Es werden nur Daten gespeichert, die eine Funktion brauchen.
 - Ändert sich die Datenverarbeitung, wird die Datenschutzseite im selben Schritt angepasst (siehe `docs/LEGAL.md`).
 - Jeder Nutzer kann sein Konto samt allen eigenen Daten selbst löschen. Neue Tabellen mit Nutzerdaten hängen deshalb per Fremdschlüssel mit Kaskade am Profil, und der Datenbanktest zum Konto-Löschen wird um sie ergänzt.
@@ -112,13 +115,16 @@ Getestet wird dort, wo Fehler teuer sind: Zugriffsschutz, Berechnungen und die K
 | Datenbank | pgTAP (`supabase test db`) | Jede RLS-Regel, jede Funktion, jede View | Immer bei Änderungen am Datenmodell |
 | Logik | Vitest | Reine Funktionen in `logic.ts`: Wochenzählung, Serien, Zahlenformat | Immer |
 | Komponenten | Vitest und Testing Library | Formulare mit Eingabeprüfung | Nur bei eigener Logik |
-| Abläufe | Playwright | Die drei Kernabläufe, je bei 390 px und 1280 px | Vor jedem Release |
+| Abläufe | Playwright (`e2e/`) | Die Kernabläufe, je bei 390 px und 1280 px | Immer, in der CI bei jedem Pull Request |
 
-Die drei Kernabläufe:
+Die Kernabläufe (Strategie-Review, N6; Anleitung in `e2e/README.md`):
 
-1. Registrieren und einer Gruppe per Einladungscode beitreten
-2. Ein Workout mit mehreren Sätzen loggen und speichern
-3. Das eigene Workout erscheint im Leaderboard der Gruppe
+1. Über einen Event-Link registrieren, danach ist man zugesagt und Mitglied der Community
+2. Ein Event mit wöchentlicher Wiederholung planen
+3. „Warst du dabei?“ bestätigen, das Training zählt in Wochenraster und Rangliste
+4. Eine Aktivität eintragen, sie zählt in Wochenraster und Rangliste
+
+Ende-zu-Ende-Tests laufen nur gegen die lokale Supabase und legen ihre Daten selbst an.
 
 Regeln:
 
@@ -129,7 +135,7 @@ Regeln:
 
 ## 8. Qualitätstore
 
-Vor jedem Merge laufen automatisch (`.github/workflows/ci.yml`): Typprüfung, Lint, Logik-Tests, Datenbanktests und Build. Ist ein Schritt rot, wird nicht gemergt. Es gibt keine Ausnahmen „nur dieses eine Mal".
+Vor jedem Merge laufen automatisch (`.github/workflows/ci.yml`): Typprüfung, Lint, Logik-Tests, Datenbanktests, Build und Ende-zu-Ende-Tests. Ist ein Schritt rot, wird nicht gemergt. Es gibt keine Ausnahmen „nur dieses eine Mal".
 
 Arbeitsablauf: ein Branch je Aufgabe, Pull Request nach `main`, Squash-Merge. `main` ist jederzeit auslieferbar.
 
