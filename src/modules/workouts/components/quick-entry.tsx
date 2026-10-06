@@ -114,14 +114,9 @@ export function QuickEntryButtons() {
 export function QuickPlanLink({ date, label }: { date: string; label: string }) {
   const open = useOpen();
   return (
-    <button
-      type="button"
-      onClick={() => open("plan", date)}
-      aria-label={`Training am ${label} planen`}
-      className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-    >
+    <Button variant="outline" onClick={() => open("plan", date)} aria-label={`Training am ${label} planen`}>
       Planen
-    </button>
+    </Button>
   );
 }
 

@@ -1,6 +1,7 @@
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { type PlanDay, type SportCategory } from "../logic";
@@ -84,7 +85,7 @@ export function WeekPlan({
             <li key={day.date} id={`tag-${day.date}`} className="flex scroll-mt-20 gap-3 border-b">
               <span
                 className={cn(
-                  "w-14 shrink-0 pt-3.5 text-sm",
+                  "w-14 shrink-0 pt-4 text-sm",
                   day.isToday ? "font-semibold underline underline-offset-4" : "text-muted-foreground",
                 )}
               >
@@ -92,19 +93,17 @@ export function WeekPlan({
                 {day.isToday ? "Heute" : day.label.replace(/(\d+)\.\d+\.$/, "$1.")}
               </span>
               {entries.length === 0 ? (
-                <span className="flex min-h-12 flex-1 items-center justify-between gap-3">
+                <span className="flex min-h-14 flex-1 items-center justify-between gap-3 py-2">
                   <span className="text-muted-foreground text-sm">frei</span>
                   {day.date >= minDate &&
                     (renderPlan ? (
                       renderPlan(day)
                     ) : (
-                      <Link
-                        href={`/plan/neu?tag=${day.date}`}
-                        aria-label={`Training am ${day.label} planen`}
-                        className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
-                      >
-                        Planen
-                      </Link>
+                      <Button asChild variant="outline">
+                        <Link href={`/plan/neu?tag=${day.date}`} aria-label={`Training am ${day.label} planen`}>
+                          Planen
+                        </Link>
+                      </Button>
                     ))}
                 </span>
               ) : (
