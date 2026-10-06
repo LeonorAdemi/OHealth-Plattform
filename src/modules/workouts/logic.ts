@@ -988,3 +988,71 @@ export function describeWeekProgress(sports: readonly WeekSport[]): string | nul
   if (closed === rings) return rings === 1 ? "Vorhaben dieser Woche geschafft." : "Alle Vorhaben dieser Woche geschafft.";
   return `${done} von ${total} Trainings geschafft. Noch ${total - done}.`;
 }
+
+// ---------- Schnell eintragen („Heute“) ----------
+
+/** Ein Tag in der Auswahl „Wann?“: Datum, Wochentag, Tag im Monat und ob es heute ist. */
+export type QuickDay = { date: string; weekday: string; day: number; isToday: boolean };
+
+const QUICK_WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"] as const;
+
+/**
+ * Sieben Tage zur Auswahl: Gemachtes reicht sechs Tage zurück bis heute, Geplantes von heute sechs
+ * Tage voraus. today ist der Kalendertag in deutscher Zeit ("JJJJ-MM-TT").
+ */
+export function quickEntryDays(today: string, mode: "done" | "plan"): QuickDay[] {
+  const [y, m, d] = today.split("-").map(Number);
+  const start = Date.UTC(y, m - 1, d) + (mode === "done" ? -6 : 0) * DAY_MS;
+  return Array.from({ length: 7 }, (_, i) => {
+    const at = new Date(start + i * DAY_MS);
+    const date = at.toISOString().slice(0, 10);
+    return { date, weekday: QUICK_WEEKDAYS[at.getUTCDay()], day: at.getUTCDate(), isToday: date === today };
+  });
+}
+
+/**
+ * Sportarten zur Auswahl, höchstens limit: erst die Vorhaben der Woche in ihrer Reihenfolge, dann
+ * die zuletzt genutzten. Vorgewählt ist das erste noch offene Vorhaben, sonst die zuletzt genutzte.
+ */
+export function quickEntrySports(
+  week: readonly WeekSport[],
+  recentSportIds: readonly string[],
+  limit = 6,
+): { sportIds: string[]; selected: string | null } {
+  const goals = week.filter((s) => s.times !== null);
+  const sportIds = [...new Set([...goals.map((s) => s.sportId), ...recentSportIds])].slice(0, limit);
+  const open = goals.find((s) => s.done < (s.times ?? 0));
+  return { sportIds, selected: open?.sportId ?? recentSportIds[0] ?? sportIds[0] ?? null };
+}
+
+/** Je Sportart die Dauer der jüngsten Aktivität mit Dauer. rows: neueste zuerst. */
+export function lastDurationBySport(
+  rows: readonly { sportId: string; durationMinutes: number | null }[],
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    if (row.durationMinutes && row.durationMinutes > 0 && !(row.sportId in result)) {
+      result[row.sportId] = row.durationMinutes;
+    }
+  }
+  return result;
+}
+
+const DURATION_CHOICES = [30, 45, 60, 90] as const;
+
+/** Dauern als Chips, aufsteigend; die zuletzt genutzte steht immer dabei. */
+export function durationChoices(last: number | undefined): number[] {
+  const choices: number[] = [...DURATION_CHOICES];
+  if (last && !choices.includes(last)) choices.push(last);
+  return choices.sort((a, b) => a - b);
+}
+
+/**
+ * Vorgeschlagene Uhrzeit fürs Planen: 18:00 Uhr. Ist es heute schon später, die nächste volle
+ * Stunde (höchstens 23:00 Uhr). now ist die Uhrzeit in deutscher Zeit ("HH:MM").
+ */
+export function defaultPlanTime(date: string, today: string, now: string): string {
+  if (date !== today) return "18:00";
+  const nextHour = Number(now.slice(0, 2)) + 1;
+  return nextHour <= 18 ? "18:00" : `${String(Math.min(nextHour, 23)).padStart(2, "0")}:00`;
+}

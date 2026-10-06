@@ -10,6 +10,7 @@ import type { AgentDataSource } from "./agent";
 import {
   buildBestRanking,
   buildLeaderboard,
+  lastDurationBySport,
   toTemplateVisibility,
   weekKeys,
   type ActivityDay,
@@ -95,6 +96,26 @@ export async function getMyRecentSportIds(limit = 6) {
     .limit(50);
   if (error) return [];
   return [...new Set(data.map((w) => w.sport_id))].slice(0, limit);
+}
+
+/**
+ * Für „Schnell eintragen“: zuletzt genutzte Sportarten und je Sportart die Dauer der jüngsten
+ * Aktivität, aus den letzten 50 Aktivitäten.
+ */
+export async function getMyRecentSportDurations(limit = 6) {
+  const { supabase, userId } = await requireUser();
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("sport_id, duration_minutes")
+    .eq("user_id", userId)
+    .order("performed_at", { ascending: false })
+    .limit(50);
+  if (error) return { sportIds: [], lastDurations: {} };
+  const rows = data.map((w) => ({ sportId: w.sport_id, durationMinutes: w.duration_minutes }));
+  return {
+    sportIds: [...new Set(rows.map((r) => r.sportId))].slice(0, limit),
+    lastDurations: lastDurationBySport(rows),
+  };
 }
 
 /** Eigene Aktivitäten in einem Zeitraum, für den Wochenplan. */

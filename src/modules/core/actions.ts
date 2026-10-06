@@ -444,7 +444,8 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   }
 
   revalidatePath("/", "layout");
-  redirect(`/plan/${data}`);
+  // Aus „Schnell eintragen“ auf „Heute“ bleiben, dort steht das Training in der Woche.
+  redirect(formData.get("von") === "heute" ? `/?geplant=${data}` : `/plan/${data}`);
 }
 
 /**

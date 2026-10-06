@@ -651,3 +651,35 @@ export function AttendanceQuestion({
     </form>
   );
 }
+
+/**
+ * Haken an einem geplanten Training auf „Heute“: ein Tipp beantwortet „Warst du dabei?“ mit Ja.
+ * Erscheint erst, wenn das Training vorbei ist (confirm_attendance).
+ */
+export function MarkDoneButton({ meetupId, title }: { meetupId: string; title: string }) {
+  const [state, action, pending] = useActionState(confirmAttendance, initial);
+  return (
+    <form action={action} className="flex shrink-0 flex-col items-end">
+      <input type="hidden" name="meetupId" value={meetupId} />
+      <input type="hidden" name="von" value="heute" />
+      <button
+        type="submit"
+        name="antwort"
+        value="ja"
+        disabled={pending}
+        aria-label={`${title} als erledigt eintragen`}
+        className="group focus-visible:outline-ring inline-flex size-11 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <span
+          aria-hidden
+          className="border-foreground group-hover:bg-accent size-6 rounded-full border-[1.5px] transition-colors duration-150 ease-out group-disabled:opacity-50"
+        />
+      </button>
+      {state.error && (
+        <p role="alert" className="text-destructive max-w-48 text-right text-sm">
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+}
