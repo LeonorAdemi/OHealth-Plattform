@@ -1,0 +1,359 @@
+# Index des Datenbankschemas
+
+Generiert von `tools/schema-index.mjs` (`npm run db:index`), nicht von Hand ändern. Je Objekt steht die Stelle seiner aktuellen Fassung (`Datei:Zeile`), bei mehreren Fassungen deren Zahl, bei Tabellen und Regeln die Migrationen, die sie später ändern. Gelesen wird nur die genannte Stelle, nicht alle Migrationen. Objekte, die gelöscht wurden, fehlen.
+
+## Tabellen
+
+- private.push_config → 20261004203926_push_and_reminders.sql:68; geändert in push_keys_in_db
+- private.signup_sources → 20261006150000_public_event_link.sql:23
+- public.blocks → 20261005100000_friends_and_direct_chats.sql:35
+- public.chat_messages → 20261004220000_chats.sql:32; geändert in trust_and_safety
+- public.chat_reads → 20261004220000_chats.sql:42
+- public.chats → 20261004220000_chats.sql:20; geändert in friends_and_direct_chats, follows
+- public.cities → 20261005160000_sports_and_cities.sql:83
+- public.city_interest → 20261007090000_discover.sql:98
+- public.exercises → 20261003084225_core_and_workouts.sql:42; geändert in exercise_catalog
+- public.follows → 20261005140000_follows.sql:27
+- public.group_bans → 20261006210000_trust_and_safety.sql:322
+- public.group_members → 20261003084225_core_and_workouts.sql:31
+- public.groups → 20261003084225_core_and_workouts.sql:19; geändert in public_communities, community_phase_a, sports_and_cities
+- public.meetup_attendance → 20261006180000_meetup_attendance.sql:59
+- public.meetup_messages → 20261004175505_planned_trainings_and_chat.sql:219
+- public.meetup_participants → 20261004173314_community_search_and_meetups.sql:91
+- public.meetup_series → 20261006120000_meetup_series.sql:31
+- public.meetup_shares → 20261004175505_planned_trainings_and_chat.sql:27
+- public.meetups → 20261004173314_community_search_and_meetups.sql:77; geändert in planned_trainings_and_chat, meetup_sports, meetup_series
+- public.notification_prefs → 20261004195928_notifications.sql:18; geändert in push_and_reminders, community_chat, friends_and_direct_chats
+- public.notifications → 20261004195928_notifications.sql:43; geändert in push_and_reminders, community_chat, friends_and_direct_chats, follows, meetup_series, meetup_attendance
+- public.profiles → 20261003084225_core_and_workouts.sql:9; geändert in profile_details, follows, sports_and_cities
+- public.push_subscriptions → 20261004203926_push_and_reminders.sql:20
+- public.reports → 20261003175019_public_communities.sql:173; geändert in trust_and_safety
+- public.sports → 20261005160000_sports_and_cities.sql:25; geändert in meetup_sports
+- public.template_version_exercises → 20261004111940_workout_templates.sql:47
+- public.template_versions → 20261004111940_workout_templates.sql:36
+- public.terms_acceptances → 20261006210000_trust_and_safety.sql:404
+- public.workout_sets → 20261003084225_core_and_workouts.sql:73; geändert in workout_edit_and_set_order, training_sessions
+- public.workout_templates → 20261004111940_workout_templates.sql:19
+- public.workouts → 20261003084225_core_and_workouts.sql:62; geändert in training_sessions, sports_and_cities, meetup_attendance
+
+## Views
+
+- public.v_exercise_bests → 20261003084225_core_and_workouts.sql:311
+- public.v_exercise_last_sessions → 20261004112401_training_sessions.sql:136
+- public.v_exercise_sessions → 20261004112401_training_sessions.sql:111
+- public.v_training_days → 20261003084236_training_days_and_log_workout.sql:11
+
+## Funktionen
+
+- private.accept_chat_by_reply → 20261005140000_follows.sql:481
+- private.accept_requests_when_public → 20261005140000_follows.sql:168
+- private.can_access_chat → 20261005140000_follows.sql:405; 3 Fassungen
+- private.can_manage_meetup → 20261004175505_planned_trainings_and_chat.sql:65; 2 Fassungen
+- private.can_moderate_chat → 20261005080000_community_chat.sql:13
+- private.can_see_meetup → 20261004175505_planned_trainings_and_chat.sql:49; 2 Fassungen
+- private.can_see_profile_content → 20261005140000_follows.sql:82
+- private.check_activity_fields → 20261005200000_activity_checks_invoker_and_squash.sql:14; 2 Fassungen
+- private.check_group_ban → 20261006210000_trust_and_safety.sql:347
+- private.check_meetup_capacity → 20261006150000_public_event_link.sql:140; 3 Fassungen
+- private.check_meetup_fields → 20261006090000_meetup_sports.sql:44
+- private.check_report → 20261006210000_trust_and_safety.sql:53
+- private.check_workout_meetup → 20261006180000_meetup_attendance.sql:29
+- private.city_for_text → 20261005160000_sports_and_cities.sql:156
+- private.create_attendance_questions → 20261006180000_meetup_attendance.sql:211
+- private.create_community_chat → 20261004220000_chats.sql:142
+- private.create_meetup_chat → 20261004220000_chats.sql:128
+- private.create_meetup_reminders → 20261004203926_push_and_reminders.sql:170
+- private.current_terms_version → 20261006210000_trust_and_safety.sql:423
+- private.delete_bridged_message → 20261004220000_chats.sql:258
+- private.display_name_of → 20261004195928_notifications.sql:114
+- private.extend_meetup_series → 20261006120000_meetup_series.sql:309
+- private.forget_follow_request → 20261005140000_follows.sql:153
+- private.forward_meetup_message → 20261004220000_chats.sql:234
+- private.has_follow_link → 20261005140000_follows.sql:67
+- private.has_public_template → 20261004111940_workout_templates.sql:69
+- private.hide_reported_message → 20261006210000_trust_and_safety.sql:123
+- private.insert_workout_sets → 20261004112401_training_sessions.sql:32; 2 Fassungen
+- private.is_agent → 20261003171441_agent_read_only.sql:18
+- private.is_blocked_between → 20261005100000_friends_and_direct_chats.sql:64
+- private.is_exercise_shared → 20261004111940_workout_templates.sql:79
+- private.is_following → 20261005140000_follows.sql:59
+- private.is_hidden_message → 20261006210000_trust_and_safety.sql:156
+- private.is_meetup_owner → 20261004175505_planned_trainings_and_chat.sql:43
+- private.is_meetup_participant → 20261004175505_planned_trainings_and_chat.sql:70
+- private.is_open_community → 20261003175019_public_communities.sql:29
+- private.is_public_profile → 20261005140000_follows.sql:76
+- private.join_own_meetup → 20261004173314_community_search_and_meetups.sql:168
+- private.legacy_activity_values → 20261005160000_sports_and_cities.sql:165
+- private.legacy_meetup_sport → 20261006090000_meetup_sports.sql:91
+- private.limit_chat_messages → 20261004220000_chats.sql:159
+- private.limit_communities → 20261003175019_public_communities.sql:70
+- private.limit_meetup_messages → 20261004175505_planned_trainings_and_chat.sql:245
+- private.limit_meetups → 20261006120000_meetup_series.sql:130; 3 Fassungen
+- private.limit_template_versions → 20261004111940_workout_templates.sql:200
+- private.limit_templates → 20261004111940_workout_templates.sql:187
+- private.limit_version_exercises → 20261004111940_workout_templates.sql:213
+- private.link_group_catalog → 20261005160000_sports_and_cities.sql:204
+- private.link_profile_city → 20261005160000_sports_and_cities.sql:225
+- private.meetup_ends_at → 20261006180000_meetup_attendance.sql:86
+- private.notify_cancelled → 20261007130000_cancel_on_account_deletion.sql:12; 3 Fassungen
+- private.notify_changed → 20261006120000_meetup_series.sql:420
+- private.notify_chat_message → 20261004220000_chats.sql:193
+- private.notify_community_message → 20261005080000_community_chat.sql:54
+- private.notify_direct_message → 20261005140000_follows.sql:493; 2 Fassungen
+- private.notify_follow → 20261005140000_follows.sql:127
+- private.notify_joined → 20261004195928_notifications.sql:154
+- private.notify_message → 20261004195928_notifications.sql:175
+- private.notify_new_training → 20261006120000_meetup_series.sql:378; 2 Fassungen
+- private.pilot_metrics → 20261007120000_pilot_metrics.sql:36
+- private.protect_group_columns → 20261003175019_public_communities.sql:53
+- private.protect_meetup_columns → 20261006120000_meetup_series.sql:111
+- private.protect_notification_columns → 20261004195928_notifications.sql:80
+- private.protect_template_columns → 20261004124327_agent_write_templates.sql:43; 2 Fassungen
+- private.public_group_of_meetup → 20261006150000_public_event_link.sql:64
+- private.queue_push → 20261004203926_push_and_reminders.sql:75
+- private.read_community_chat_on_join → 20261004230000_chat_inbox.sql:39
+- private.read_own_message → 20261004220000_chats.sql:177
+- private.record_attendance → 20261006180000_meetup_attendance.sql:97
+- private.record_terms_on_signup → 20261006210000_trust_and_safety.sql:452
+- private.shares_community → 20261004213000_profile_details.sql:40
+- private.sport_for_text → 20261005160000_sports_and_cities.sql:148
+- private.valid_sports → 20261004213000_profile_details.sql:20
+- private.wants_notification → 20261005100000_friends_and_direct_chats.sql:119; 4 Fassungen
+- private.weeks_later → 20261006120000_meetup_series.sql:146
+- public.accept_terms → 20261006210000_trust_and_safety.sql:431
+- public.add_creator_to_group → 20261003084225_core_and_workouts.sql:199
+- public.block_person → 20261005140000_follows.sql:259; 2 Fassungen
+- public.can_manage_group → 20261003084225_core_and_workouts.sql:105
+- public.can_view_data → 20261003084225_core_and_workouts.sql:122
+- public.can_view_profile → 20261003084225_core_and_workouts.sql:137
+- public.cancel_meetup_series → 20261006120000_meetup_series.sql:271
+- public.chat_messages_page → 20261006210000_trust_and_safety.sql:177; 2 Fassungen
+- public.community_bests → 20261003175019_public_communities.sql:121
+- public.community_directory → 20261003175019_public_communities.sql:142
+- public.community_link_preview → 20261004132801_community_phase_a.sql:32
+- public.community_search → 20261004173314_community_search_and_meetups.sql:17
+- public.community_training_days → 20261003175019_public_communities.sql:100
+- public.confirm_attendance → 20261006180000_meetup_attendance.sql:122
+- public.copy_template → 20261004111940_workout_templates.sql:328
+- public.delete_own_account → 20261003171441_agent_read_only.sql:97; 2 Fassungen
+- public.discover_communities → 20261007090000_discover.sql:67
+- public.discover_meetups → 20261007090000_discover.sql:18
+- public.follow_person → 20261005140000_follows.sql:184
+- public.group_invite_preview → 20261003171441_agent_read_only.sql:172; 2 Fassungen
+- public.handle_new_user → 20261003084248_profile_name_private_relay.sql:6; 3 Fassungen
+- public.is_friends_group → 20261003084225_core_and_workouts.sql:114
+- public.is_group_member → 20261003084225_core_and_workouts.sql:96
+- public.join_group → 20261004173314_community_search_and_meetups.sql:50; 3 Fassungen
+- public.join_public_meetup → 20261006150000_public_event_link.sql:105
+- public.leave_group → 20261004132801_community_phase_a.sql:48
+- public.log_activity → 20261005180000_log_activity.sql:40
+- public.log_training → 20261004112401_training_sessions.sql:55
+- public.log_workout → 20261003105802_workout_edit_and_set_order.sql:40; 2 Fassungen
+- public.mark_chat_read → 20261004220000_chats.sql:296
+- public.meetup_attendance_names → 20261006180000_meetup_attendance.sql:184
+- public.meetup_chat → 20261004175505_planned_trainings_and_chat.sql:265
+- public.meetup_feed → 20261006120000_meetup_series.sql:453; 3 Fassungen
+- public.meetup_participant_names → 20261004173314_community_search_and_meetups.sql:216
+- public.my_chats → 20261006210000_trust_and_safety.sql:202; 4 Fassungen
+- public.my_communities → 20261004132801_community_phase_a.sql:15
+- public.my_follows → 20261005140000_follows.sql:274
+- public.my_open_attendance → 20261006180000_meetup_attendance.sql:166
+- public.open_direct_chat → 20261005140000_follows.sql:427; 2 Fassungen
+- public.people_search → 20261005140000_follows.sql:295
+- public.plan_meetup → 20261006120000_meetup_series.sql:151
+- public.profile_stats → 20261005140000_follows.sql:325
+- public.public_meetup_preview → 20261006150000_public_event_link.sql:76
+- public.push_forget → 20261004203926_push_and_reminders.sql:132
+- public.push_payload → 20261006210000_trust_and_safety.sql:279; 8 Fassungen
+- public.record_signup_source → 20261006150000_public_event_link.sql:37
+- public.remove_follower → 20261005140000_follows.sql:249
+- public.remove_group_member → 20261006210000_trust_and_safety.sql:370
+- public.respond_chat_request → 20261005140000_follows.sql:457
+- public.respond_follow_request → 20261005140000_follows.sql:228
+- public.save_onboarding → 20261007090000_discover.sql:136
+- public.save_push_subscription → 20261004203926_push_and_reminders.sql:44
+- public.save_template → 20261004124327_agent_write_templates.sql:64; 2 Fassungen
+- public.unblock_person → 20261005100000_friends_and_direct_chats.sql:230
+- public.unfollow_person → 20261005140000_follows.sql:217
+- public.unread_chat_count → 20261006210000_trust_and_safety.sql:251; 4 Fassungen
+- public.update_activity → 20261005180000_log_activity.sql:73
+- public.update_meetup → 20261006120000_meetup_series.sql:205
+- public.update_workout → 20261003105802_workout_edit_and_set_order.sql:76
+
+## Regeln (RLS)
+
+- public.blocks: agent_blocks_none → 20261005100000_friends_and_direct_chats.sql:57
+- public.blocks: blocks_select → 20261005100000_friends_and_direct_chats.sql:50
+- public.chat_messages: agent_chat_messages_none → 20261004220000_chats.sql:95
+- public.chat_messages: chat_messages_delete → 20261004220000_chats.sql:84
+- public.chat_messages: chat_messages_delete_moderator → 20261005080000_community_chat.sql:26
+- public.chat_messages: chat_messages_hidden → 20261006210000_trust_and_safety.sql:169
+- public.chat_messages: chat_messages_insert → 20261004220000_chats.sql:82
+- public.chat_messages: chat_messages_select → 20261004220000_chats.sql:80
+- public.chat_reads: agent_chat_reads_none → 20261004220000_chats.sql:99
+- public.chat_reads: chat_reads_select → 20261004220000_chats.sql:88
+- public.chats: agent_chats_none → 20261004220000_chats.sql:91
+- public.chats: chats_select → 20261004220000_chats.sql:77
+- public.cities: cities_select → 20261005160000_sports_and_cities.sql:111
+- public.city_interest: agent_city_interest_none → 20261007090000_discover.sql:127
+- public.city_interest: city_interest_delete → 20261007090000_discover.sql:125
+- public.city_interest: city_interest_insert → 20261007090000_discover.sql:114
+- public.city_interest: city_interest_select → 20261007090000_discover.sql:112
+- public.city_interest: city_interest_update → 20261007090000_discover.sql:119
+- public.exercises: agent_exercises_no_delete → 20261003171441_agent_read_only.sql:70
+- public.exercises: agent_exercises_no_insert → 20261003171441_agent_read_only.sql:64
+- public.exercises: agent_exercises_no_update → 20261003171441_agent_read_only.sql:67
+- public.exercises: agent_exercises_select → 20261003171441_agent_read_only.sql:42
+- public.exercises: exercises_delete → 20261003084225_core_and_workouts.sql:264; geändert in rls_performance
+- public.exercises: exercises_insert → 20261003084225_core_and_workouts.sql:259; geändert in rls_performance
+- public.exercises: exercises_select → 20261003084225_core_and_workouts.sql:257; geändert in rls_performance, workout_templates, select_policies_initplan
+- public.exercises: exercises_update → 20261003084225_core_and_workouts.sql:261; geändert in rls_performance
+- public.follows: agent_follows_none → 20261005140000_follows.sql:44
+- public.follows: follows_select → 20261005140000_follows.sql:41
+- public.friendships: agent_friendships_none → 20261005100000_friends_and_direct_chats.sql:53
+- public.friendships: friendships_select → 20261005100000_friends_and_direct_chats.sql:48
+- public.group_bans: agent_group_bans_none → 20261006210000_trust_and_safety.sql:341
+- public.group_bans: group_bans_select → 20261006210000_trust_and_safety.sql:339
+- public.group_members: agent_members_none → 20261003171441_agent_read_only.sql:53
+- public.group_members: members_delete → 20261003084225_core_and_workouts.sql:253; geändert in rls_performance, trust_and_safety
+- public.group_members: members_insert_community → 20261003175019_public_communities.sql:88
+- public.group_members: members_select → 20261003084225_core_and_workouts.sql:244; geändert in rls_performance
+- public.group_members: members_update → 20261003084225_core_and_workouts.sql:251
+- public.groups: agent_groups_none → 20261003171441_agent_read_only.sql:48
+- public.groups: groups_delete → 20261003084225_core_and_workouts.sql:239
+- public.groups: groups_insert → 20261003084225_core_and_workouts.sql:235; geändert in rls_performance, public_communities
+- public.groups: groups_select → 20261003084225_core_and_workouts.sql:233; geändert in rls_performance, public_communities
+- public.groups: groups_update → 20261003084225_core_and_workouts.sql:237
+- public.meetup_attendance: agent_meetup_attendance_none → 20261006180000_meetup_attendance.sql:80
+- public.meetup_attendance: meetup_attendance_select → 20261006180000_meetup_attendance.sql:75
+- public.meetup_messages: agent_meetup_messages_none → 20261004175505_planned_trainings_and_chat.sql:238
+- public.meetup_messages: meetup_messages_delete → 20261004175505_planned_trainings_and_chat.sql:235
+- public.meetup_messages: meetup_messages_hidden → 20261006210000_trust_and_safety.sql:164
+- public.meetup_messages: meetup_messages_insert → 20261004175505_planned_trainings_and_chat.sql:233
+- public.meetup_messages: meetup_messages_select → 20261004175505_planned_trainings_and_chat.sql:231
+- public.meetup_participants: agent_meetup_participants_none → 20261004173314_community_search_and_meetups.sql:145
+- public.meetup_participants: meetup_participants_delete → 20261004173314_community_search_and_meetups.sql:137
+- public.meetup_participants: meetup_participants_insert → 20261004173314_community_search_and_meetups.sql:135
+- public.meetup_participants: meetup_participants_select → 20261004173314_community_search_and_meetups.sql:133
+- public.meetup_series: agent_meetup_series_none → 20261006120000_meetup_series.sql:60
+- public.meetup_series: meetup_series_insert → 20261006120000_meetup_series.sql:48
+- public.meetup_series: meetup_series_select → 20261006120000_meetup_series.sql:45
+- public.meetup_series: meetup_series_update → 20261006120000_meetup_series.sql:53
+- public.meetup_shares: agent_meetup_shares_none → 20261004175505_planned_trainings_and_chat.sql:115
+- public.meetup_shares: meetup_shares_delete → 20261004175505_planned_trainings_and_chat.sql:112
+- public.meetup_shares: meetup_shares_insert → 20261004175505_planned_trainings_and_chat.sql:109
+- public.meetup_shares: meetup_shares_select → 20261004175505_planned_trainings_and_chat.sql:107
+- public.meetups: agent_meetups_none → 20261004173314_community_search_and_meetups.sql:141
+- public.meetups: meetups_delete → 20261004173314_community_search_and_meetups.sql:130; geändert in planned_trainings_and_chat
+- public.meetups: meetups_insert → 20261004173314_community_search_and_meetups.sql:124; geändert in planned_trainings_and_chat, meetup_series
+- public.meetups: meetups_select → 20261004173314_community_search_and_meetups.sql:122; geändert in planned_trainings_and_chat
+- public.meetups: meetups_update → 20261006120000_meetup_series.sql:95
+- public.notification_prefs: agent_notification_prefs_none → 20261004195928_notifications.sql:38
+- public.notification_prefs: notification_prefs_insert → 20261004195928_notifications.sql:32
+- public.notification_prefs: notification_prefs_select → 20261004195928_notifications.sql:30
+- public.notification_prefs: notification_prefs_update → 20261004195928_notifications.sql:34
+- public.notifications: agent_notifications_none → 20261004195928_notifications.sql:73
+- public.notifications: notifications_delete → 20261004195928_notifications.sql:70
+- public.notifications: notifications_select → 20261004195928_notifications.sql:64
+- public.notifications: notifications_update → 20261004195928_notifications.sql:67
+- public.profiles: agent_profiles_no_update → 20261003171441_agent_read_only.sql:60
+- public.profiles: agent_profiles_select → 20261003171441_agent_read_only.sql:31
+- public.profiles: profiles_select → 20261003084225_core_and_workouts.sql:227; geändert in rls_performance, workout_templates, select_policies_initplan, profile_details, friends_and_direct_chats, follows
+- public.profiles: profiles_update → 20261003084225_core_and_workouts.sql:229; geändert in rls_performance
+- public.push_subscriptions: agent_push_subscriptions_none → 20261004203926_push_and_reminders.sql:38
+- public.push_subscriptions: push_subscriptions_delete → 20261004203926_push_and_reminders.sql:34
+- public.push_subscriptions: push_subscriptions_select → 20261004203926_push_and_reminders.sql:32
+- public.reports: agent_reports_none → 20261003175019_public_communities.sql:194
+- public.reports: reports_insert → 20261003175019_public_communities.sql:189
+- public.reports: reports_select → 20261003175019_public_communities.sql:191
+- public.sports: sports_select → 20261005160000_sports_and_cities.sql:110
+- public.template_version_exercises: agent_version_exercises_insert_own → nur geändert; geändert in agent_write_templates
+- public.template_version_exercises: agent_version_exercises_no_insert → 20261004111940_workout_templates.sql:162; geändert in agent_write_templates
+- public.template_version_exercises: version_exercises_insert → 20261004111940_workout_templates.sql:119
+- public.template_version_exercises: version_exercises_select → 20261004111940_workout_templates.sql:116
+- public.template_versions: agent_versions_insert_own → nur geändert; geändert in agent_write_templates
+- public.template_versions: agent_versions_no_insert → 20261004111940_workout_templates.sql:159; geändert in agent_write_templates
+- public.template_versions: versions_insert → 20261004111940_workout_templates.sql:111
+- public.template_versions: versions_select → 20261004111940_workout_templates.sql:109
+- public.terms_acceptances: agent_terms_acceptances_none → 20261006210000_trust_and_safety.sql:417
+- public.terms_acceptances: terms_acceptances_select → 20261006210000_trust_and_safety.sql:415
+- public.workout_sets: agent_sets_no_delete → 20261003171441_agent_read_only.sql:90
+- public.workout_sets: agent_sets_no_insert → 20261003171441_agent_read_only.sql:84
+- public.workout_sets: agent_sets_no_update → 20261003171441_agent_read_only.sql:87
+- public.workout_sets: sets_delete → 20261003084225_core_and_workouts.sql:291; geändert in rls_performance
+- public.workout_sets: sets_insert → 20261003084225_core_and_workouts.sql:280; geändert in rls_performance
+- public.workout_sets: sets_select → 20261003084225_core_and_workouts.sql:278
+- public.workout_sets: sets_update → 20261003084225_core_and_workouts.sql:284; geändert in rls_performance
+- public.workout_templates: agent_templates_insert_private → nur geändert; geändert in agent_write_templates
+- public.workout_templates: agent_templates_no_delete → 20261004111940_workout_templates.sql:154
+- public.workout_templates: agent_templates_no_insert → 20261004111940_workout_templates.sql:148; geändert in agent_write_templates
+- public.workout_templates: agent_templates_no_update → 20261004111940_workout_templates.sql:151; geändert in agent_write_templates
+- public.workout_templates: agent_templates_select → 20261004111940_workout_templates.sql:145
+- public.workout_templates: agent_templates_update_own → nur geändert; geändert in agent_write_templates
+- public.workout_templates: templates_delete → 20261004111940_workout_templates.sql:104
+- public.workout_templates: templates_insert → 20261004111940_workout_templates.sql:99
+- public.workout_templates: templates_select → 20261004111940_workout_templates.sql:97
+- public.workout_templates: templates_update → 20261004111940_workout_templates.sql:101
+- public.workouts: agent_workouts_no_delete → 20261003171441_agent_read_only.sql:80
+- public.workouts: agent_workouts_no_insert → 20261003171441_agent_read_only.sql:74
+- public.workouts: agent_workouts_no_update → 20261003171441_agent_read_only.sql:77
+- public.workouts: agent_workouts_select → 20261003171441_agent_read_only.sql:35
+- public.workouts: workouts_delete → 20261003084225_core_and_workouts.sql:274; geändert in rls_performance
+- public.workouts: workouts_insert → 20261003084225_core_and_workouts.sql:270; geändert in rls_performance
+- public.workouts: workouts_select → 20261003084225_core_and_workouts.sql:268; geändert in rls_performance
+- public.workouts: workouts_update → 20261003084225_core_and_workouts.sql:272; geändert in rls_performance
+- storage.objects: avatars_delete_own → 20261004213000_profile_details.sql:78
+- storage.objects: avatars_insert_own → 20261004213000_profile_details.sql:71
+- storage.objects: avatars_select_own → 20261004213000_profile_details.sql:68
+
+## Trigger
+
+- accept_chat_by_reply → 20261005140000_follows.sql:490
+- accept_requests_when_public → 20261005140000_follows.sql:179
+- check_activity_fields → 20261005180000_log_activity.sql:34
+- check_group_ban → 20261006210000_trust_and_safety.sql:360
+- check_meetup_capacity → 20261004173314_community_search_and_meetups.sql:209
+- check_meetup_fields → 20261006090000_meetup_sports.sql:80
+- check_report → 20261006210000_trust_and_safety.sql:111
+- check_workout_meetup → 20261006180000_meetup_attendance.sql:46
+- check_workout_meetup_update → 20261006180000_meetup_attendance.sql:49
+- create_community_chat → 20261004220000_chats.sql:153
+- create_meetup_chat → 20261004220000_chats.sql:139
+- delete_bridged_message → 20261004220000_chats.sql:266
+- forget_follow_request → 20261005140000_follows.sql:164
+- forward_meetup_message → 20261004220000_chats.sql:253
+- hide_reported_message → 20261006210000_trust_and_safety.sql:148
+- join_own_meetup → 20261004173314_community_search_and_meetups.sql:176
+- limit_chat_messages → 20261004220000_chats.sql:173
+- limit_communities → 20261003175019_public_communities.sql:83
+- limit_meetup_messages → 20261004175505_planned_trainings_and_chat.sql:259
+- limit_meetups → 20261004173314_community_search_and_meetups.sql:164
+- limit_template_versions → 20261004111940_workout_templates.sql:210
+- limit_templates → 20261004111940_workout_templates.sql:197
+- limit_version_exercises → 20261004111940_workout_templates.sql:223
+- link_group_catalog → 20261005160000_sports_and_cities.sql:222
+- link_profile_city → 20261005160000_sports_and_cities.sql:237
+- notify_cancelled → 20261004195928_notifications.sql:226
+- notify_changed → 20261006120000_meetup_series.sql:444
+- notify_chat_message → 20261004220000_chats.sql:227
+- notify_community_message → 20261005080000_community_chat.sql:85
+- notify_direct_message → 20261005100000_friends_and_direct_chats.sql:384
+- notify_follow → 20261005140000_follows.sql:149
+- notify_joined → 20261004195928_notifications.sql:170
+- notify_new_training → 20261004195928_notifications.sql:149
+- on_auth_user_created → 20261003084225_core_and_workouts.sql:194
+- on_auth_user_created_terms → 20261006210000_trust_and_safety.sql:465
+- on_group_created → 20261003084225_core_and_workouts.sql:211
+- protect_group_columns → 20261003175019_public_communities.sql:66
+- protect_meetup_columns → 20261006120000_meetup_series.sql:123
+- protect_notification_columns → 20261004195928_notifications.sql:95
+- protect_template_columns → 20261004111940_workout_templates.sql:184
+- queue_push → 20261004203926_push_and_reminders.sql:100
+- read_community_chat_on_join → 20261004230000_chat_inbox.sql:49
+- read_own_message → 20261004220000_chats.sql:188
+
+## Jobs (pg_cron)
+
+- attendance-questions → 20261006180000_meetup_attendance.sql:241
+- extend-meetup-series → 20261006120000_meetup_series.sql:373
+- meetup-reminders → 20261004203926_push_and_reminders.sql:192

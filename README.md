@@ -75,11 +75,15 @@ Werkzeuge: `get_profile`, `list_workouts`, `get_consistency`, `get_personal_best
 | `npm run test:db` | Datenbanktests (pgTAP, braucht `supabase start`) |
 | `npm run test:e2e` | Ende-zu-Ende-Tests (Playwright, braucht `supabase start`, siehe `e2e/README.md`) |
 | `npm run build` | Produktions-Build |
+| `npm run check` | Typprüfung, Lint, Logik-Tests und Schema-Index in einem Schritt, mit knapper Ausgabe |
+| `npm run db:index` | `supabase/SCHEMA_INDEX.md` aus den Migrationen neu erzeugen (nach jeder neuen Migration) |
 
 ## Dokumente
 
 - `docs/DESIGN.md`: verbindliche Gestaltungsregeln
 - `docs/ENGINEERING.md`: verbindliche Regeln für Architektur, Performance, Sicherheit und Tests
+- `docs/bereiche/`: verbindliche Regeln je Funktion (Chats, Events, Folgen …), Daten und Oberfläche zusammen; Index in `docs/ENGINEERING.md`, Abschnitt 5
+- `supabase/SCHEMA_INDEX.md`: generierter Index, wo die aktuelle Fassung jeder Tabelle, Funktion und Regel in den Migrationen steht
 - `docs/strategie/`: Strategie (Option C), Umsetzungsplan und Strategie-Review mit den Arbeitspaketen N0 bis N6
 - `docs/ROADMAP.md`: Reihenfolge und Stand der Weiterentwicklung
 - `docs/LEGAL.md`: Stand der Rechtstexte und was vor echten Nutzern zu klären ist

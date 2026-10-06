@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "supabase test db",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:index": "node tools/schema-index.mjs",
+    "check": "tsc --noEmit && eslint --quiet && vitest run --reporter=dot --silent && node tools/schema-index.mjs --check"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.0",

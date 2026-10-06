@@ -1,6 +1,6 @@
 # Mitarbeiten an OHealth
 
-Kurzfassung für alle, die in diesem Repo mitarbeiten, Menschen wie KI-Assistenten. Verbindlich sind `docs/ENGINEERING.md` und `docs/DESIGN.md`, dieses Dokument fasst den Ablauf zusammen.
+Kurzfassung für alle, die in diesem Repo mitarbeiten, Menschen wie KI-Assistenten. Verbindlich sind `docs/ENGINEERING.md`, `docs/DESIGN.md` und die Bereichsdateien unter `docs/bereiche/`, dieses Dokument fasst den Ablauf zusammen.
 
 ## Einstieg
 
@@ -13,7 +13,7 @@ Kurzfassung für alle, die in diesem Repo mitarbeiten, Menschen wie KI-Assistent
 
 1. **Issue:** Die Aufgabe steht als GitHub Issue. Wer sie übernimmt, weist sich das Issue zu, damit nicht zwei Personen dasselbe bauen.
 2. **Branch:** Von aktuellem `main` einen Branch anlegen, zum Beispiel `feat/gruppen-chat` oder `fix/login-facebook`.
-3. **Arbeiten:** Kleine Commits. Vor dem Push laufen `npm run typecheck`, `npm run lint`, `npm test` und `npm run build`, bei Datenbankänderungen auch `npm run test:db`. Bei Änderungen an den Kernabläufen zusätzlich `npm run test:e2e` (siehe `e2e/README.md`); die CI führt die Ende-zu-Ende-Tests bei jedem Pull Request aus.
+3. **Arbeiten:** Kleine Commits. Vor dem Push laufen `npm run check` (Typprüfung, Lint, Logik-Tests, Schema-Index) und `npm run build`, bei Datenbankänderungen auch `npm run db:index` und `npm run test:db`. Bei Änderungen an den Kernabläufen zusätzlich `npm run test:e2e` (siehe `e2e/README.md`); die CI führt die Ende-zu-Ende-Tests bei jedem Pull Request aus.
 4. **Preview:** Jeder Push erzeugt bei Vercel eine Preview-Adresse. Dort wird die Änderung geprüft, bei Oberflächen bei 390 px und 1280 px.
 5. **Pull Request:** Nach `main`, mit Verweis auf das Issue (`Closes #12`). Die Beschreibung sagt, was sich ändert, wie es getestet wurde und was nicht geprüft werden konnte.
 6. **Review:** Die andere Person prüft und gibt ein Approval. Fragen und Änderungswünsche stehen als Kommentare im Pull Request.

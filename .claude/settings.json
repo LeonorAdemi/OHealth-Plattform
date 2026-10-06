@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(**/package-lock.json)",
+      "Read(**/.claude/skills/vercel-react-best-practices/AGENTS.md)",
+      "Read(**/public/exercises/**)",
+      "Read(**/*.woff2)",
+      "Read(**/.next/**)",
+      "Read(**/node_modules/**/*.min.js)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
