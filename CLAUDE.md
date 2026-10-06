@@ -6,8 +6,9 @@ Plattform für Workout-Tracking und Vergleich in Gruppen, später erweitert um P
 
 - `docs/ENGINEERING.md` vor jeder Änderung am Code. Verbindlich.
 - `docs/DESIGN.md` vor jeder Änderung an der Oberfläche. Verbindlich.
+- Aus `docs/bereiche/` nur die Datei des Bereichs, an dem gearbeitet wird (Index in `docs/ENGINEERING.md`, Abschnitt 5). Ebenso verbindlich.
 
-Widerspricht eine Aufgabe einem der beiden Dokumente: nachfragen, nicht stillschweigend abweichen.
+Widerspricht eine Aufgabe einem dieser Dokumente: nachfragen, nicht stillschweigend abweichen.
 
 ## Die wichtigsten Regeln in Kürze
 
@@ -25,7 +26,8 @@ Widerspricht eine Aufgabe einem der beiden Dokumente: nachfragen, nicht stillsch
 ## Befehle
 
 - `npm run dev` startet die App lokal (braucht `.env.local`, siehe `.env.example`).
-- `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` müssen vor jedem Abschluss grün sein.
+- `npm run check` prüft Typen, Lint, Logik-Tests und den Schema-Index mit knapper Ausgabe. Dazu `npm run build`; beides muss vor jedem Abschluss grün sein.
+- `npm run db:index` nach jeder neuen Migration ausführen und `supabase/SCHEMA_INDEX.md` mit committen.
 - `npm run test:db` führt die Datenbanktests aus (braucht `supabase start`).
 
 ## Werkzeuge
@@ -34,10 +36,17 @@ Widerspricht eine Aufgabe einem der beiden Dokumente: nachfragen, nicht stillsch
 - MCP-Server aus `.mcp.json`: Context7 für aktuelle Bibliotheks-Dokumentation, Playwright zum Prüfen der Oberfläche im Browser.
 - `web-design-guidelines` prüft Technik und Zugänglichkeit. Bei Gestaltungsfragen hat `docs/DESIGN.md` Vorrang.
 
+## Sparsam lesen
+
+- Den aktuellen Stand einer Tabelle, Funktion oder Regel in `supabase/SCHEMA_INDEX.md` per grep suchen und nur die genannte Stelle lesen, nicht alle Migrationen.
+- `src/lib/database.types.ts` nie ganz lesen, nur gezielt per grep.
+- Große Dateien abschnittsweise lesen; für breite Suchen über viele Dateien einen Explore-Agenten nutzen.
+- Neue Fachregeln gehören in die passende Datei unter `docs/bereiche/` (oder eine neue, dann im Index eintragen), nicht in die Kerndokumente.
+
 ## Arbeitsweise
 
 - Bei Aufgaben über mehr als eine Datei zuerst einen Plan zeigen.
-- Nach UI-Änderungen die Seite bei 390 px und 1280 px im Browser ansehen und gegen `docs/DESIGN.md` prüfen.
+- Nach UI-Änderungen die geänderte Seite bei 390 px und 1280 px im Browser ansehen und gegen `docs/DESIGN.md` prüfen. Dafür Screenshots nehmen; den Accessibility-Snapshot nur, wenn etwas angeklickt werden muss.
 - Tests selbst ausführen und das Ergebnis melden. Was nicht geprüft werden konnte, ausdrücklich nennen.
 - Vor Abschluss die Liste „Fertig heißt" in `docs/ENGINEERING.md`, Abschnitt 10, durchgehen.
 

@@ -141,15 +141,7 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 
 - **Ecken:** 8 px für Buttons, Eingaben und Overlays. Zeilen, Tabellen und Trennlinien haben keine Rundung. Vollrund nur Avatare.
 - **Profilbild:** Rund, 32 px oben rechts, 96 px auf dem Profil. Ohne Bild stehen die Initialen in Stein auf Nebel. Eingebunden nur über `Avatar` aus `src/components/ui/avatar.tsx`. Es steht dort, wo es um die Person geht (Kopfzeile, Profil, später Chat), nicht als Schmuck in Ranglisten.
-- **Profil:** Oben Profilbild, Name als Titel, darunter Stadt und Sportarten in Stein, dann der Kurztext. Danach „Profil bearbeiten" (Umriss) und „Einstellungen" (Text), darunter der Verlauf. Das Profil anderer Personen zeigt nur Bild, Name, Angaben und Kurztext.
-- **Profil wie bei Instagram, aber ohne Bilder:** Oben Profilbild, Name als Titel, Stadt und Sportarten in Stein, darunter „Follower“ und „Folgt“ als Zahl (Tabellenziffern, halbfett) mit Wort in Stein, dann der Kurztext. Darunter genau eine Hauptaktion als gefüllter Button: „Folgen“, „Zurückfolgen“ oder, wenn man folgt, „Nachricht“. „Gefolgt“ steht als Umriss mit Häkchen. „Nicht mehr folgen“, „Als Follower entfernen“ und „Blockieren“ sind Textlinks mit Rückfrage. Statt eines Bildrasters folgen Abschnitte: zuerst die Großzahl „Trainingstage diese Woche“ mit Wochenraster und daneben die Serie in Wochen als Zahl, dann „Bestwerte“ als Zeilen, „Kommende Events“ mit Datumsblock wie auf der Pinnwand und „Communities“. Bei privaten Konten ohne Folgen steht statt der Abschnitte ein Satz.
-- **Follower und Menschen finden:** „Follower“ mit den Reitern Follower, Folgt und Anfragen; Anfragen mit „Bestätigen“ (gefüllt, klein) und „Löschen“ (Umriss) in der Zeile. „Menschen finden“ mit Namenssuche und Vorschlägen aus den eigenen Communities, je Zeile Profilbild, Name, Angaben und rechts der Stand in Stein (Gefolgt, Angefragt, Folgt dir, Privat).
-- **Nachrichtenanfragen:** In „Chats“ oben ein eigener Abschnitt „Nachrichtenanfragen“. Im Chat steht über den Nachrichten eine Leiste mit „Annehmen“ (gefüllt) und „Ablehnen“ (Umriss). Eigene offene Anfragen tragen statt der Uhrzeit „Angefragt“.
 - **Auswahl-Chips** (zum Beispiel Sportarten): Umriss mit 8 px Rundung. Gewählt: Rahmen und Schrift in Eisen mit Häkchen, nicht gefüllt. Nicht gewählt: Rahmen in Linie, Schrift in Stein.
-- **Aktivität eintragen:** Die Hauptaktion auf „Heute“. Oben die zuletzt genutzten Sportarten als Chips, darunter „Alle Sportarten“ mit Suche und den Gruppen des Katalogs. Dann Datum, Dauer in Stunden und Minuten und nur bei passenden Sportarten Distanz und Höhenmeter, danach „Wie anstrengend?“ als Chips und eine Notiz. Drei Tipps reichen: Sportart, Dauer, Speichern. In Listen steht die Aktivität als Titel oder Sportart, darunter „Laufen · 45 min · 8,2 km“. Übungen mit Sätzen bleiben ein eigener Weg: Wer eine Sportart mit Sätzen wählt (Krafttraining, Calisthenics, CrossFit), sieht unter der Auswahl die eigenen Vorlagen als Zeilen und startet eine davon mit einem Tipp, daneben „Ohne Vorlage: Sätze nachtragen“.
-- **Training planen (Event):** Zuerst die Sportart mit derselben Auswahl wie bei „Aktivität eintragen“; aus einer Community heraus ist deren Sportart vorbelegt. Danach erscheinen nur die Felder, die zur Sportart passen: bei Kraft die Vorlage, bei Ausdauer Distanz, Höhenmeter und Tempo (Laufen in min/km, Rad in km/h). Für alle gibt es Tag, Uhrzeit, Dauer (vorbelegt mit 1 Stunde), das Niveau als Auswahl-Chips („Einsteiger willkommen“, „Gemischtes Niveau“, „Fortgeschritten“) und einen optionalen Titel; ohne Titel heißt das Event wie die Vorlage oder die Sportart. In Listen steht unter dem Titel „Laufen · 1 h 00 min · 10,0 km · 6:00 min/km · Einsteiger willkommen“, die Sportart nur, wenn der Titel sie nicht schon nennt. Auf der Seite des Events steht die Uhrzeit von Beginn bis Ende („18:30–19:30 Uhr“) und je Angabe eine Zeile. Auswahl-Chips kommen immer aus `ChoiceChip` in `src/components/ui/choice-chip.tsx`. Unter Tag und Uhrzeit steht „Jede Woche wiederholen“ als Häkchen mit einem Satz, was passiert. In Listen trägt ein Termin einer Reihe „jede Woche“ in der zweiten Zeile, die Seite des Events zeigt „Jeden Dienstag, 18:30 Uhr“ unter dem Datum. Wer plant, sieht dort „Bearbeiten“ als Umriss-Button; dasselbe Formular ist vorbelegt und fragt bei einer Reihe „Ändern für“: „Nur diesen Termin“ oder „Diesen und alle folgenden Termine“. „Absagen“ fragt bei einer Reihe ebenso, was abgesagt wird.
-- **Öffentlicher Event-Link (`/e/[id]`):** Im Rahmen der Anmeldeseiten (Logo oben, Rechtliches unten). Oben der Name der Community in Stein, dann Datumsblock, Titel, Zeit von Beginn bis Ende und bei Reihen „Jeden Dienstag, 18:30 Uhr“. Darunter die Angaben als Zeilen wie auf der Seite des Events, mit „Zusagen“ als Zahl, aber ohne Namen. Ohne Konto ein gefüllter Button „Konto erstellen und zusagen“ und darunter „Ich habe schon ein Konto“ als Textlink, mit Konto „Ich bin dabei“. Nach der Zusage zeigt die Seite des Events einmal „Zusage gespeichert.“ mit dem Link „In den Kalender eintragen“ und dem Hinweis auf Home-Bildschirm und Mitteilungen, zwischen zwei Linien. Die Notiz eines Events steht auf dem öffentlichen Link nicht. Wer dabei ist, findet dort „Link teilen“ als Umriss-Button.
-- **„Warst du dabei?“:** Auf „Heute“ unter dem Wochenraster ein Abschnitt mit dieser Überschrift, je offenes Training eine Zeile mit Datumsblock, Titel, Sportart und Zeit, darunter „Ja, war dabei“ (Umriss) und „Nein“ (Text). Der eine gefüllte Button der Ansicht bleibt „Aktivität eintragen“. Auf der Seite des Trainings dieselbe Frage nach dem Ende, nach „Ja“ der Satz „Als Trainingstag gezählt.“ mit Link zur Aktivität. Wer plant, sieht dort „War dabei“ mit Zahl der Bestätigungen, Zahl ohne Antwort und den Namen als Zeilen.
 - **Schatten:** keine. Einzige Ausnahme sind Overlays (Dialog, Drawer, Menü) mit einem einzigen weichen Schatten.
 - **Buttons:** Pro Ansicht genau ein gefüllter Button (Eisen auf Weiß). Alle weiteren sind Umriss oder reiner Text. Höhe 48 px am Handy, 40 px am Desktop. Beschriftung ist ein Verb und sagt genau, was passiert: „Aktivität speichern".
 - **Eingaben:** Beschriftung steht immer über dem Feld. Zahlenfelder für Gewicht und Wiederholungen sind groß (Zahl-Stil), rechtsbündig und öffnen die Zifferntastatur.
@@ -158,37 +150,7 @@ Basis sind die Bausteine aus Origin UI in `src/components/ui/`. Sie werden über
 - **Icons:** Nur in Navigation und an Bedienelementen, nie als Schmuck neben Überschriften. Strichstärke 1,5, Größe 20 px, Farbe wie der zugehörige Text. Die Icons der Muskelgruppen folgen derselben Regel (Abschnitt 15).
 - **Diagramme:** Dünne Linie in Eisen, eigener Wert in Moos, keine Flächenfüllung, keine Gitterlinien außer einer Grundlinie.
 - **Leere Zustände:** Ein Satz, der sagt, was hier erscheinen wird, und ein Button. Keine Illustrationen.
-
-### Chat-Liste
-
-Unter „Chats“ stehen alle Chats als Zeilen, die neueste Nachricht zuerst:
-
-- Links beim Training derselbe Datumsblock wie auf der Pinnwand, bei einer Community die Initialen im runden Feld wie beim Profilbild.
-- Titel in Text, darunter die letzte Nachricht in Klein mit Namen davor („Du: …“), eine Zeile, gekürzt.
-- Rechts oben der Zeitpunkt (heute die Uhrzeit, gestern „Gestern“, sonst das Datum), darunter die Zahl ungelesener Nachrichten in einem Kreis in Eisen. Mit ungelesenen Nachrichten stehen Zeitpunkt und Vorschau in Eisen statt Stein. Kein Moos.
-
-### Chat-Zeilen
-
-- Auf der Community-Seite steht über den Reitern eine Zeile „Chat der Community“ mit Sprechblasen-Icon, letzter Nachricht und Zahl ungelesener Nachrichten. Dieselbe Zeile führt auf der Seite eines Trainings zu seinem Chat.
-- In Listen von Trainings (Pinnwand, „Gemeinsam trainieren“) steht unter Titel und Angaben eine kurze Chat-Zeile in Klein: Icon (16 px), letzte Nachricht, Zahl ungelesener Nachrichten. Wer nicht zugesagt hat, liest dort „Chat nach Zusage“.
-- In einem Community-Chat kann die Verwaltung auch fremde Nachrichten antippen und löschen. Das „Nachricht löschen“ steht dann unter der Blase auf der Seite der Blase.
-
-### Chat
-
-Der Chat eines Trainings oder einer Community folgt bewusst dem Muster bekannter Messenger, weil es dort jeder sofort bedienen kann. Das ist die einzige Stelle mit Flächen statt Linien:
-
-- Eigene Nachrichten rechts in Eisen mit weißer Schrift, andere links in Nebel. Kein Moos.
-- Sprechblasen mit 16 px Rundung, die letzte einer Folge an der Seite des Absenders mit 6 px.
-- Name nur über der ersten Nachricht einer Folge (gleiche Person, höchstens fünf Minuten Abstand).
-- Uhrzeit klein in der Blase, bei eigenen Nachrichten mit Uhr (wird gesendet) oder Häkchen (gesendet).
-- Tagestrenner („Heute“, „Gestern“, „Do, 1. Okt.“) als kleine Fläche in Nebel, mittig.
-- Eingabe unten fest, rundes Feld und runder Senden-Button in Eisen. Am Rechner sendet Enter.
-- Ein Tipp auf eine Nachricht zeigt darunter die möglichen Aktionen als Textlinks: „Nachricht löschen“ (eigene, oder als Verwaltung) und „Melden“ (fremde). „Melden“ klappt die Arten als Umriss-Buttons auf, ein Tipp sendet.
-- Ausgeblendete Nachrichten bleiben als Blase stehen, kursiv und gedämpft: „Ausgeblendet nach Meldungen“. Wer sie geschrieben hat oder die Community verwaltet, sieht den Text mit dem Hinweis „Für andere ausgeblendet nach Meldungen“.
-
-### Melden
-
-Melden steht immer unten auf der Seite als gedämpfter Textlink („Training melden“, „Name melden“, „Community melden“) und klappt auf: Art als `ChoiceChip`, ein freiwilliger Satz, „Meldung senden“ als Umriss-Button. Nach dem Senden bleibt nur die Bestätigung stehen. Entfernen eines Mitglieds fragt einmal nach („Wirklich entfernen“, „Abbrechen“).
+- **Bereiche:** Die Ansichten einzelner Funktionen (Profil und Folgen, Aktivität eintragen, Events, Chats, Melden) sind in den Dateien unter `docs/bereiche/` beschrieben, Index in `docs/ENGINEERING.md`, Abschnitt 5. Der Chat ist die einzige Stelle mit Flächen statt Linien (`docs/bereiche/chats.md`).
 
 ## 10. Sprache
 
@@ -244,37 +206,7 @@ Die App spricht Deutsch, duzt und bleibt sachlich.
 
 ## 15. Übungs-Icons und Übungsskizzen
 
-Icons und Skizzen helfen, eine Übung schneller zu erkennen und richtig auszuführen. Sie sind die einzige Bildsprache der App.
-
-### Figurensprache
-
-Icons und Skizzen teilen eine Sprache, damit sie zusammen wie aus einer Hand wirken:
-
-- Kopf als gefüllter Punkt, Glieder als Linien mit runden Enden.
-- Keine Gesichter, keine Muskeln, keine Schatten, keine Verläufe.
-- Feste Proportionen für alle Figuren (Rumpf 36, Oberarm 21, Unterarm 19, Oberschenkel 26, Unterschenkel 25). Sie stehen in `tools/exercise-art/kit.py` und werden nicht pro Übung verändert.
-
-### Icons je Muskelgruppe
-
-- Neun Icons, eins je Muskelgruppe, 20 px, Strich 1,5, `currentColor`, also wie alle Icons nach Abschnitt 9.
-- Sie stehen nur an Bedienelementen: am Einstieg über die Muskelgruppen und in den Treffern der Übungssuche. Neben Überschriften stehen sie nicht.
-- Eingebunden nur über `MuscleGroupIcon` in `src/modules/workouts/components/muscle-group-icon.tsx`.
-
-### Skizzen je Übung
-
-- Eine SVG-Datei je Katalogübung in `public/exercises/`, Format 3 : 2 (240 × 160).
-- Seitenansicht, Blick nach rechts. Ausnahmen in Vorderansicht nur, wo die Bewegung seitlich verläuft (Seitheben, Butterfly, Kabelzug-Fliegende, Adduktoren und Abduktoren).
-- Bewegte Übungen zeigen zwei Lagen nebeneinander: links hell die Ausgangslage, rechts in Eisen die Endlage, dazwischen ein Winkel in Stein. Haltende Übungen (Plank, Wandsitzen) und Ausdauer zeigen eine Lage.
-- Farben nur aus den Tokens: Figur Eisen, Geräte Stein, Ausgangslage und ferne Gliedmaßen `#B4BCB7` (Token `input`), Boden in Linie.
-- Moos kommt in Icons und Skizzen nie vor. Es bleibt „du" und „Fortschritt" vorbehalten.
-- Beim Loggen steht die Skizze hinter „Ausführung zeigen" unter dem Namen der Übung. Sie wird erst geladen, wenn jemand sie aufklappt.
-- Eingebunden nur über `ExerciseSketch` und `exerciseImage(name)` aus `src/modules/workouts/exercise-images.ts`. Ein Test stellt sicher, dass jede Übung aus dem Katalog eine Skizze hat.
-- Die Farben stehen als feste Werte in den SVG-Dateien. Ändern sich die Tokens, werden die Skizzen mit dem Generator neu erzeugt.
-- Eigene Übungen haben keine Skizze. Dann entfällt die Fläche ganz, es gibt keinen Platzhalter.
-
-### Neue Übung
-
-Pose in `tools/exercise-art/` ergänzen, `python3 tools/exercise-art/build.py` ausführen, Slug in `src/modules/workouts/exercise-images.ts` eintragen, Ergebnis im Browser bei 320 px prüfen.
+Die einzige Bildsprache der App. Regeln für Figuren, Icons je Muskelgruppe und Skizzen je Übung stehen in `docs/bereiche/uebungen.md`. Kurz: kein Moos, Farben nur aus den Tokens, Icons nur an Bedienelementen über `MuscleGroupIcon`, Skizzen nur über `ExerciseSketch`.
 
 ## 16. Noch offen
 

@@ -49,6 +49,10 @@ jobs:
       - if: steps.check.outputs.ready == 'true'
         run: npm run typecheck
 
+      # Der Schema-Index muss zu den Migrationen passen (npm run db:index).
+      - if: steps.check.outputs.ready == 'true'
+        run: node tools/schema-index.mjs --check
+
       - if: steps.check.outputs.ready == 'true'
         run: npm run lint
 
