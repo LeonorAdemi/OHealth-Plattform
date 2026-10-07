@@ -251,7 +251,7 @@ export function trackedFields(sport: { hasDistance: boolean; hasElevation: boole
 }
 
 // ---------- Suchen und Filtern ----------
-// „Alle Pläne und Einheiten“: Filter mit Trefferzahlen, Startansicht nach Ziel und Sportart,
+// „Alle Pläne und Einheiten“: Filter mit Trefferzahlen,
 // Vorschläge beim Tippen (docs/bereiche/plaene.md).
 
 export const CATALOG_PATH = "/entdecken/plaene";
@@ -374,11 +374,6 @@ export function catalogHref(query: CatalogQuery, change: Partial<CatalogQuery> =
 /** Wie viele Filter gewählt sind (ohne Suche und Reihenfolge), für den Knopf „Filter“. */
 export function activeFilterCount(query: CatalogQuery): number {
   return [query.kind, query.sportId, query.goalId, query.duration, query.intensity].filter(Boolean).length;
-}
-
-/** Ohne Suche und Filter zeigt die Seite die Übersicht nach Ziel und Sportart statt einer Liste. */
-export function isStartView(query: CatalogQuery): boolean {
-  return query.q === "" && activeFilterCount(query) === 0;
 }
 
 /** „1 Plan · 6 Einheiten“, leer ohne Treffer. */

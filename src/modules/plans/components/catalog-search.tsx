@@ -150,7 +150,7 @@ export function CatalogSearch({ query, keep }: { query: string; keep: readonly [
             autoComplete="off"
             value={value}
             maxLength={MAX_QUERY}
-            placeholder="z. B. 10 km, Kniebeuge"
+            placeholder="z. B. 10 km"
             enterKeyHint="search"
             onChange={(e) => {
               setValue(e.target.value);
