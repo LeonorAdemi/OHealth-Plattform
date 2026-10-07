@@ -17,6 +17,8 @@ import {
   planSportIds,
   planWeeks,
   plansWithUnit,
+  searchCatalog,
+  searchWords,
   toCatalogKind,
   trackedFields,
   visibleCatalog,
@@ -183,6 +185,66 @@ describe("Alle Pläne und Einheiten", () => {
 
   it("Eine Einheit kennt die Pläne, in denen sie vorkommt", () => {
     expect(plansWithUnit(CATALOG, "ganzkoerper-a").map((p) => p.slug)).toEqual(["10-km", "kraft-aufbauen"]);
+  });
+});
+
+describe("Suche", () => {
+  const sports = new Map([
+    ["laufen", { name: "Laufen", category: "ausdauer" as const, aliases: ["Joggen", "Running"] }],
+    ["krafttraining", { name: "Krafttraining", category: "kraft" as const, aliases: ["Gym", "Fitnessstudio"] }],
+  ]);
+  const all = { plans: CATALOG.plans, units: CATALOG.units };
+  const search = (q: string) => searchCatalog(CATALOG, all, q, sports);
+  const slugs = (r: { plans: readonly { slug: string }[]; units: readonly { slug: string }[] }) => ({
+    plans: r.plans.map((p) => p.slug),
+    units: r.units.map((u) => u.slug),
+  });
+
+  it("Ohne Suchwort bleibt alles in der Reihenfolge des Katalogs", () => {
+    expect(slugs(search("  "))).toEqual(slugs(all));
+  });
+
+  it("Groß- und Kleinschreibung und Umlaute spielen keine Rolle", () => {
+    expect(slugs(search("GANZKORPER")).units).toEqual(["ganzkoerper-a", "ganzkoerper-b"]);
+    expect(slugs(search("ganzkörper")).units).toEqual(["ganzkoerper-a", "ganzkoerper-b"]);
+  });
+
+  it("Suchbegriffe der Sportart finden ihre Pläne und Einheiten", () => {
+    const r = slugs(search("joggen"));
+    expect(r.units).toContain("langer-lauf");
+    expect(r.units).not.toContain("ganzkoerper-a");
+    expect(r.plans).toEqual(["erste-5-km", "10-km"]);
+  });
+
+  it("Eine Übung im Ablauf findet die Einheit und die Pläne, die sie enthalten", () => {
+    const r = slugs(search("Kniebeuge"));
+    expect(r.units).toEqual(["ganzkoerper-a"]);
+    expect(r.plans).toEqual(["10-km", "kraft-aufbauen"]);
+  });
+
+  it("Bei mehreren Wörtern muss jedes vorkommen", () => {
+    expect(slugs(search("langer lauf")).units).toEqual(["langer-lauf"]);
+    expect(slugs(search("langer kniebeuge")).units).toEqual([]);
+  });
+
+  it("„5km“ findet „5 km“, Treffer im Titel stehen oben", () => {
+    expect(searchWords("5km")).toEqual(["5", "km"]);
+    expect(slugs(search("5km")).plans[0]).toBe("erste-5-km");
+    expect(slugs(search("10 km")).plans[0]).toBe("10-km");
+  });
+
+  it("Suchbegriffe ohne Wort im Text finden den Plan", () => {
+    expect(slugs(search("couch to 5k")).plans).toEqual(["erste-5-km"]);
+  });
+
+  it("Die Suche wirkt nur auf die übergebene Auswahl", () => {
+    const onlyUnits = searchCatalog(CATALOG, { plans: [], units: CATALOG.units }, "kniebeuge", sports);
+    expect(slugs(onlyUnits)).toEqual({ plans: [], units: ["ganzkoerper-a"] });
+  });
+
+  it("Lange Suchen werden gekürzt, höchstens acht Wörter", () => {
+    expect(searchWords("a b c d e f g h i j")).toHaveLength(8);
+    expect(searchWords("x".repeat(100))[0]).toHaveLength(60);
   });
 });
 

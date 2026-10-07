@@ -13,6 +13,8 @@ export type Unit = {
   intensity: Intensity;
   steps: readonly { amount: string; text: string }[];
   why: string;
+  /** Suchbegriffe, die nicht im Text stehen (etwa „Couch to 5k“) */
+  keywords?: readonly string[];
   draft?: boolean;
 };
 
@@ -35,6 +37,8 @@ export type Plan = {
   milestones: readonly { week: number; text: string }[];
   basis: string;
   sources: readonly string[];
+  /** Suchbegriffe, die nicht im Text stehen (etwa „Couch to 5k“) */
+  keywords?: readonly string[];
   draft?: boolean;
 };
 
@@ -197,6 +201,7 @@ const PLANS: readonly Plan[] = [
     ],
     basis: "Wer neu anfängt, steigert langsam: Der Wochenumfang wächst um höchstens 10 % pro Woche.",
     sources: ["Nielsen u. a. 2014, J Orthop Sports Phys Ther"],
+    keywords: ["Anfänger", "Laufanfänger", "Couch to 5k"],
     draft: true,
   },
   {
@@ -270,6 +275,7 @@ const PLANS: readonly Plan[] = [
     basis:
       "Jede Muskelgruppe zweimal pro Woche, 10 bis 20 Sätze je Muskel und Woche, zwei Wiederholungen vor dem Muskelversagen aufhören.",
     sources: ["Schoenfeld u. a. 2016, Sports Med", "Schoenfeld u. a. 2017, J Sports Sci"],
+    keywords: ["Anfänger", "Muskelaufbau", "Ganzkörperplan"],
     draft: true,
   },
 ];
