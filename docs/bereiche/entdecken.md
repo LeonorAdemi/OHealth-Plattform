@@ -2,7 +2,7 @@
 
 „Entdecken“ je Stadt, Onboarding `/willkommen`, Warteliste, alte Adressen. Verbindlich wie `docs/ENGINEERING.md` und `docs/DESIGN.md`; die allgemeinen Regeln dort gelten weiter.
 
-Betrifft: Migration `discover`, Test 30.
+Betrifft: Migration `discover`, Test 30. Pläne und Einheiten oben auf „Entdecken“ stehen in `docs/bereiche/plaene.md`.
 
 ## Daten und Regeln
 

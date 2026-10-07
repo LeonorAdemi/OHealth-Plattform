@@ -92,6 +92,7 @@ Regeln, die diese Ziele sichern:
   | `docs/bereiche/ki-zugriff.md` | Verbundene KI-Apps über `/api/mcp`: was eine KI lesen und schreiben darf. |
   | `docs/bereiche/heute.md` | Seite „Heute“: Vorhaben je Sportart als Kreise mit Animation, Kennzahlen der Woche, Als Nächstes, Kalender mit Wochenstreifen, neue Bestwerte, Heatmap. |
   | `docs/bereiche/uebungen.md` | Figurensprache, Icons je Muskelgruppe, Skizzen je Übung, neue Übung anlegen. |
+  | `docs/bereiche/plaene.md` | Pläne und Einheiten: Katalog im Code, Weg zum Ziel auf „Entdecken“, Entwürfe nur in Previews, Seiten je Plan und Einheit. |
 
 - Es werden nur Daten gespeichert, die eine Funktion brauchen.
 - Ändert sich die Datenverarbeitung, wird die Datenschutzseite im selben Schritt angepasst (siehe `docs/LEGAL.md`).
