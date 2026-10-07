@@ -5,7 +5,17 @@ import { describe, expect, it } from "vitest";
 
 import { CATALOG, type Catalog, type Plan } from "./catalog";
 import {
+  activeFilterCount,
+  browseCatalog,
+  catalogHref,
+  catalogIndex,
   catalogSportIds,
+  countLabel,
+  EMPTY_QUERY,
+  highlight,
+  isStartView,
+  parseCatalogQuery,
+  suggestCatalog,
   countSessions,
   describePath,
   describePerWeek,
@@ -245,6 +255,167 @@ describe("Suche", () => {
   it("Lange Suchen werden gekürzt, höchstens acht Wörter", () => {
     expect(searchWords("a b c d e f g h i j")).toHaveLength(8);
     expect(searchWords("x".repeat(100))[0]).toHaveLength(60);
+  });
+});
+
+const SPORTS = new Map([
+  ["laufen", { name: "Laufen", category: "ausdauer" as const, aliases: ["Joggen", "Running"] }],
+  ["krafttraining", { name: "Krafttraining", category: "kraft" as const, aliases: ["Gym", "Fitnessstudio"] }],
+]);
+
+describe("Suche und Filter aus der Adresse", () => {
+  it("Unbekannte Werte fallen weg, Dauer und Intensität nur passend zur Art", () => {
+    expect(parseCatalogQuery({ sport: "schach", ziel: "mond", sortierung: "x", anzahl: "abc" }, CATALOG)).toEqual(
+      EMPTY_QUERY,
+    );
+    expect(parseCatalogQuery({ dauer: "bis-6" }, CATALOG).duration).toBeNull();
+    expect(parseCatalogQuery({ art: "plaene", dauer: "bis-30" }, CATALOG).duration).toBeNull();
+    expect(parseCatalogQuery({ art: "plaene", dauer: "7-12" }, CATALOG).duration).toBe("7-12");
+    expect(parseCatalogQuery({ art: "plaene", intensitaet: "hart" }, CATALOG).intensity).toBeNull();
+    expect(parseCatalogQuery({ art: "einheiten", intensitaet: "hart" }, CATALOG).intensity).toBe("hart");
+  });
+
+  it("Die Anzahl ist ein Vielfaches von 20, mindestens 20 und höchstens 500", () => {
+    expect(parseCatalogQuery({ anzahl: "41" }, CATALOG).shown).toBe(60);
+    expect(parseCatalogQuery({ anzahl: "-5" }, CATALOG).shown).toBe(20);
+    expect(parseCatalogQuery({ anzahl: "99999" }, CATALOG).shown).toBe(500);
+  });
+
+  it("Lange Suchen werden gekürzt, mehrfache Parameter zählen einmal", () => {
+    expect(parseCatalogQuery({ q: ` ${"x".repeat(100)} ` }, CATALOG).q).toHaveLength(60);
+    expect(parseCatalogQuery({ art: ["einheiten", "plaene"] }, CATALOG).kind).toBe("einheiten");
+  });
+
+  it("Jede Änderung zeigt wieder die ersten 20, eine andere Art setzt Dauer und Intensität zurück", () => {
+    const q = { ...EMPTY_QUERY, q: "lauf", kind: "einheiten" as const, duration: "bis-30", intensity: "hart" as const, shown: 60 };
+    expect(catalogHref(q)).toBe("/entdecken/plaene?q=lauf&art=einheiten&dauer=bis-30&intensitaet=hart");
+    expect(catalogHref(q, { kind: "plaene" })).toBe("/entdecken/plaene?q=lauf&art=plaene");
+    expect(catalogHref(q, { shown: 80 })).toContain("anzahl=80");
+    expect(catalogHref(EMPTY_QUERY)).toBe("/entdecken/plaene");
+    expect(catalogHref(EMPTY_QUERY, { sort: "kurz" })).toBe("/entdecken/plaene?sortierung=kurz");
+  });
+
+  it("Ohne Suche und Filter ist es die Startansicht, die Reihenfolge zählt nicht als Filter", () => {
+    expect(isStartView(EMPTY_QUERY)).toBe(true);
+    expect(isStartView({ ...EMPTY_QUERY, sort: "kurz" })).toBe(true);
+    expect(isStartView({ ...EMPTY_QUERY, q: "lauf" })).toBe(false);
+    expect(activeFilterCount({ ...EMPTY_QUERY, kind: "plaene", sportId: "laufen" })).toBe(2);
+  });
+});
+
+describe("Filter mit Trefferzahlen", () => {
+  const browse = (params: Record<string, string>) =>
+    browseCatalog(CATALOG, parseCatalogQuery(params, CATALOG), SPORTS);
+  const count = (options: { id: string; count: number }[], id: string) => options.find((o) => o.id === id)?.count;
+
+  it("Ohne Filter sind alle Pläne und Einheiten Treffer", () => {
+    const r = browse({});
+    expect(r.plans).toHaveLength(CATALOG.plans.length);
+    expect(r.units).toHaveLength(CATALOG.units.length);
+  });
+
+  it("Die Zahl einer Option rechnet mit den anderen Filtern, aber ohne den eigenen", () => {
+    const r = browse({ sport: "laufen" });
+    // Bei Laufen: Art zählt nur Laufen
+    expect(count(r.facets.kind, "plaene")).toBe(r.plans.length);
+    expect(count(r.facets.kind, "einheiten")).toBe(r.units.length);
+    // Sportart zählt ohne die eigene Auswahl, Krafttraining bleibt wählbar
+    expect(count(r.facets.sport, "krafttraining")).toBe(
+      browse({ sport: "krafttraining" }).plans.length + browse({ sport: "krafttraining" }).units.length,
+    );
+  });
+
+  it("Jede Option führt zu genau so vielen Treffern, wie sie ankündigt", () => {
+    const r = browse({ q: "lauf" });
+    for (const o of r.facets.goal) {
+      const chosen = browse({ q: "lauf", ziel: o.id });
+      expect(chosen.plans.length + chosen.units.length).toBe(o.count);
+    }
+  });
+
+  it("Die Art zählt ohne Dauer und Intensität, weil ein Wechsel sie zurücksetzt", () => {
+    const r = browse({ art: "einheiten", dauer: "bis-30", intensitaet: "locker" });
+    expect(count(r.facets.kind, "plaene")).toBe(CATALOG.plans.length);
+  });
+
+  it("Dauer und Intensität gibt es erst mit gewählter Art", () => {
+    expect(browse({}).facets.duration).toBeNull();
+    expect(browse({ art: "plaene" }).facets.intensity).toBeNull();
+    const units = browse({ art: "einheiten", dauer: "bis-30" });
+    expect(units.units.every((u) => u.minutes <= 30)).toBe(true);
+    expect(units.plans).toEqual([]);
+    expect(units.facets.intensity?.map((i) => i.id)).toEqual(["locker", "mittel", "hart"]);
+  });
+
+  it("Kürzeste und längste zuerst sortieren nach Wochen und Minuten", () => {
+    const short = browse({ sortierung: "kurz" });
+    expect(short.units.map((u) => u.minutes)).toEqual([...short.units.map((u) => u.minutes)].sort((a, b) => a - b));
+    const long = browse({ sortierung: "lang" });
+    expect(long.plans[0].weeks).toBe(Math.max(...CATALOG.plans.map((p) => p.weeks)));
+  });
+
+  it("Zu sehen sind die ersten Treffer, Pläne vor Einheiten", () => {
+    const r = browseCatalog(CATALOG, { ...EMPTY_QUERY, shown: 4 }, SPORTS);
+    expect(r.shown.plans).toHaveLength(CATALOG.plans.length);
+    expect(r.shown.units).toHaveLength(4 - CATALOG.plans.length);
+  });
+
+  it("Die Übersicht zählt je Ziel und Sportart", () => {
+    const index = catalogIndex(CATALOG);
+    const tenK = index.goals.find((g) => g.id === "10-km")!;
+    expect(tenK).toMatchObject({ plans: 2, units: 3, sportIds: ["laufen", "krafttraining"] });
+    expect(index.sports.map((s) => s.id)).toEqual(["laufen", "krafttraining"]);
+    expect(countLabel(1, 6)).toBe("1 Plan · 6 Einheiten");
+    expect(countLabel(2, 0)).toBe("2 Pläne");
+    expect(countLabel(0, 0)).toBe("");
+  });
+});
+
+describe("Vorschläge beim Tippen", () => {
+  const labels = (q: string) =>
+    Object.fromEntries(suggestCatalog(CATALOG, q, SPORTS).groups.map((g) => [g.label, g.items.map((i) => i.label)]));
+
+  it("Erst ab zwei Zeichen", () => {
+    expect(suggestCatalog(CATALOG, "k", SPORTS).groups).toEqual([]);
+  });
+
+  it("Ziele, Sportarten, Pläne und Einheiten getrennt, Sportarten auch über Suchbegriffe", () => {
+    expect(labels("joggen")).toMatchObject({ Sportarten: ["Laufen"] });
+    expect(labels("10 km").Ziele).toEqual(["10 km laufen"]);
+    // Titel zuerst; „Erste 5 km“ folgt, weil es auf dem Weg zu 10 km liegt
+    expect(labels("10 km").Pläne).toEqual(["10 km", "Erste 5 km"]);
+    expect(labels("kniebeuge")).toEqual({ Pläne: ["10 km", "Kraft aufbauen"], Einheiten: ["Ganzkörper A"] });
+  });
+
+  it("Höchstens drei je Gruppe, die Gesamtzahl zählt alle", () => {
+    const r = suggestCatalog(CATALOG, "lauf", SPORTS);
+    expect(r.groups.every((g) => g.items.length <= 3)).toBe(true);
+    const all = searchCatalog(CATALOG, CATALOG, "lauf", SPORTS);
+    expect(r.total).toBe(all.plans.length + all.units.length);
+  });
+
+  it("Ziele und Sportarten führen in die gefilterte Liste", () => {
+    const r = suggestCatalog(CATALOG, "kraft", SPORTS);
+    const hrefs = r.groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).toContain("/entdecken/plaene?ziel=kraft");
+    expect(hrefs).toContain("/entdecken/plaene?sport=krafttraining");
+  });
+});
+
+describe("Suchwörter hervorheben", () => {
+  const marked = (text: string, q: string) =>
+    highlight(text, searchWords(q))
+      .filter((p) => p.match)
+      .map((p) => p.text);
+
+  it("Ohne Rücksicht auf Groß- und Kleinschreibung und Umlaute, mit den Zeichen des Originals", () => {
+    expect(marked("Ganzkörper A", "ganzkorper")).toEqual(["Ganzkörper"]);
+    expect(marked("Fußball", "fuss")).toEqual(["Fuß"]);
+    expect(marked("Erste 5 km", "5km")).toEqual(["5", "km"]);
+  });
+
+  it("Ohne Treffer bleibt der Text ein Stück", () => {
+    expect(highlight("Langer Lauf", ["xyz"])).toEqual([{ text: "Langer Lauf", match: false }]);
   });
 });
 

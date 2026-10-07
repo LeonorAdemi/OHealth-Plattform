@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SportDot } from "@/modules/core/components/sport-dot";
 
 import type { Plan, Unit } from "../catalog";
-import { describePerWeek, INTENSITY_LABEL, planSportIds, type SportLookup } from "../logic";
+import { describePerWeek, highlight, INTENSITY_LABEL, planSportIds, type SportLookup } from "../logic";
 
 export function sportNames(ids: readonly string[], sports: SportLookup): string {
   return ids.map((id) => sports.get(id)?.name ?? id).join(" und ");
@@ -17,6 +17,20 @@ export function SportDots({ ids, sports }: { ids: readonly string[]; sports: Spo
         <SportDot key={id} category={sports.get(id)?.category} />
       ))}
     </span>
+  );
+}
+
+/** Text mit unterstrichenen Suchwörtern; ohne Suchwörter der Text selbst. */
+export function Highlighted({ text, words }: { text: string; words?: readonly string[] }) {
+  if (!words?.length) return text;
+  return highlight(text, words).map((part, i) =>
+    part.match ? (
+      <mark key={i} className="text-inherit bg-transparent underline decoration-1 underline-offset-4">
+        {part.text}
+      </mark>
+    ) : (
+      part.text
+    ),
   );
 }
 
@@ -34,7 +48,18 @@ const ROW =
   "hover:bg-accent -mx-2 flex min-h-16 items-center gap-4 rounded-lg px-2 py-3 transition-colors duration-150 ease-out";
 
 /** Ein Plan als Zeile: Wochen, Name mit Sportfarben, darunter Sportarten, Einheiten pro Woche und Niveau. */
-export function PlanRow({ plan, units, sports }: { plan: Plan; units: readonly Unit[]; sports: SportLookup }) {
+export function PlanRow({
+  plan,
+  units,
+  sports,
+  words,
+}: {
+  plan: Plan;
+  units: readonly Unit[];
+  sports: SportLookup;
+  /** Suchwörter, die im Titel unterstrichen werden */
+  words?: readonly string[];
+}) {
   const ids = planSportIds(plan, units);
   return (
     <li className="border-b">
@@ -43,7 +68,9 @@ export function PlanRow({ plan, units, sports }: { plan: Plan; units: readonly U
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 font-medium break-words">
             <SportDots ids={ids} sports={sports} />
-            {plan.title}
+            <span>
+              <Highlighted text={plan.title} words={words} />
+            </span>
           </span>
           <span className="text-muted-foreground block text-sm">
             <span className="sr-only">{plan.weeks} Wochen · </span>
@@ -61,7 +88,17 @@ export function PlanRow({ plan, units, sports }: { plan: Plan; units: readonly U
  * Eine Einheit als Zeile: Minuten, Name mit Sportfarbe, darunter Sportart und wie anstrengend.
  * Mit day steht links der Wochentag statt der Minuten (Woche eines Plans).
  */
-export function UnitRow({ unit, sports, day }: { unit: Unit; sports: SportLookup; day?: string }) {
+export function UnitRow({
+  unit,
+  sports,
+  day,
+  words,
+}: {
+  unit: Unit;
+  sports: SportLookup;
+  day?: string;
+  words?: readonly string[];
+}) {
   const sport = sports.get(unit.sportId);
   return (
     <li className="border-b">
@@ -70,7 +107,9 @@ export function UnitRow({ unit, sports, day }: { unit: Unit; sports: SportLookup
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 font-medium break-words">
             <SportDot category={sport?.category} />
-            {unit.title}
+            <span>
+              <Highlighted text={unit.title} words={words} />
+            </span>
           </span>
           <span className="text-muted-foreground block text-sm">
             <span className="sr-only">{day ? `${day}: ` : `${unit.minutes} min · `}</span>
