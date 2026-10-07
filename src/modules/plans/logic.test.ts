@@ -13,7 +13,6 @@ import {
   countLabel,
   EMPTY_QUERY,
   highlight,
-  isStartView,
   parseCatalogQuery,
   suggestCatalog,
   countSessions,
@@ -295,10 +294,8 @@ describe("Suche und Filter aus der Adresse", () => {
     expect(catalogHref(EMPTY_QUERY, { sort: "kurz" })).toBe("/entdecken/plaene?sortierung=kurz");
   });
 
-  it("Ohne Suche und Filter ist es die Startansicht, die Reihenfolge zählt nicht als Filter", () => {
-    expect(isStartView(EMPTY_QUERY)).toBe(true);
-    expect(isStartView({ ...EMPTY_QUERY, sort: "kurz" })).toBe(true);
-    expect(isStartView({ ...EMPTY_QUERY, q: "lauf" })).toBe(false);
+  it("Die Reihenfolge zählt nicht als Filter", () => {
+    expect(activeFilterCount({ ...EMPTY_QUERY, sort: "kurz" })).toBe(0);
     expect(activeFilterCount({ ...EMPTY_QUERY, kind: "plaene", sportId: "laufen" })).toBe(2);
   });
 });

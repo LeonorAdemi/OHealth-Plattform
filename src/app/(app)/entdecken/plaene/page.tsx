@@ -4,7 +4,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getSports } from "@/modules/core/queries";
 import { ActiveFilters, CatalogFilterList } from "@/modules/plans/components/catalog-filters";
-import { CatalogIndexView } from "@/modules/plans/components/catalog-index";
 import { CatalogSearch } from "@/modules/plans/components/catalog-search";
 import { FilterSheet } from "@/modules/plans/components/filter-sheet";
 import { PlanRow, UnitRow } from "@/modules/plans/components/plan-rows";
@@ -13,10 +12,8 @@ import {
   activeFilterCount,
   browseCatalog,
   catalogHref,
-  catalogIndex,
   countLabel,
   EMPTY_QUERY,
-  isStartView,
   PAGE_SIZE,
   parseCatalogQuery,
   searchWords,
@@ -28,8 +25,8 @@ import { getCatalog } from "@/modules/plans/queries";
 
 export const metadata: Metadata = { title: "Pläne und Einheiten" };
 
-// Alle Pläne und Einheiten: Suche mit Vorschlägen, Filter mit Trefferzahlen, ohne Suche und Filter
-// eine Übersicht nach Ziel und Sportart. Alles steht in der Adresse und wird auf dem Server gerechnet
+// Alle Pläne und Einheiten: Suche mit Vorschlägen, Filter mit Trefferzahlen, direkt alle Pläne und
+// Einheiten als Liste. Alles steht in der Adresse und wird auf dem Server gerechnet
 // (docs/bereiche/plaene.md).
 export default async function PlansPage({
   searchParams,
@@ -67,11 +64,7 @@ export default async function PlansPage({
           <div className="mt-6">
             <CatalogSearch key={query.q} query={query.q} keep={keep} />
           </div>
-          {isStartView(query) ? (
-            <CatalogIndexView index={catalogIndex(catalog)} sports={sports} />
-          ) : (
-            <Results query={query} catalog={catalog} sports={sports} />
-          )}
+          <Results query={query} catalog={catalog} sports={sports} />
         </>
       )}
     </>
