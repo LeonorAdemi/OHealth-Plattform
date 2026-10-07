@@ -1,6 +1,7 @@
 // Katalog der Pläne und Einheiten (docs/bereiche/plaene.md). Für alle gleich und deshalb im Code,
 // nicht in der Datenbank: Änderungen laufen als Pull Request durch die Prüfung. Einträge mit
-// draft sind Beispiele ohne geprüfte Quelle und erscheinen nicht in Produktion.
+// draft erscheinen nicht in Produktion. Die drei Pläne hier sind Beispiele, deren Quellen noch
+// geprüft werden; sie sind bewusst schon in Produktion sichtbar und werden in Schritt 3b ersetzt.
 
 export type Intensity = "locker" | "mittel" | "hart";
 
@@ -80,7 +81,6 @@ const UNITS: readonly Unit[] = [
       { amount: "5 min", text: "Gehen" },
     ],
     why: "Der Körper gewöhnt sich an die Belastung, bevor Sehnen und Knochen überlastet werden.",
-    draft: true,
   },
   {
     slug: "lockerer-dauerlauf",
@@ -95,7 +95,6 @@ const UNITS: readonly Unit[] = [
       },
     ],
     why: "Der größte Teil jedes Laufplans. Baut Ausdauer auf, ohne müde zu machen.",
-    draft: true,
   },
   {
     slug: "tempodauerlauf-3x10",
@@ -112,7 +111,6 @@ const UNITS: readonly Unit[] = [
       { amount: "10 min", text: "Auslaufen" },
     ],
     why: "Verschiebt die Schwelle, ab der es sauer wird. Höchstens einmal pro Woche.",
-    draft: true,
   },
   {
     slug: "langer-lauf",
@@ -125,7 +123,6 @@ const UNITS: readonly Unit[] = [
       { amount: "10 min", text: "Etwas zügiger, wenn es sich gut anfühlt" },
     ],
     why: "Grundlage für längere Strecken. Die Dauer zählt, nicht das Tempo.",
-    draft: true,
   },
   {
     slug: "ganzkoerper-a",
@@ -142,7 +139,6 @@ const UNITS: readonly Unit[] = [
       { amount: "3 × 30 s", text: "Unterarmstütz" },
     ],
     why: "Zwei Wiederholungen vor dem Muskelversagen aufhören. Gelingen alle Sätze am oberen Ende, beim nächsten Mal 2,5 kg mehr.",
-    draft: true,
   },
   {
     slug: "ganzkoerper-b",
@@ -158,7 +154,6 @@ const UNITS: readonly Unit[] = [
       { amount: "3 × 10–12", text: "Liegestütze" },
     ],
     why: "Ergänzt Ganzkörper A, damit jede Muskelgruppe zweimal pro Woche drankommt.",
-    draft: true,
   },
 ];
 
@@ -202,7 +197,6 @@ const PLANS: readonly Plan[] = [
     basis: "Wer neu anfängt, steigert langsam: Der Wochenumfang wächst um höchstens 10 % pro Woche.",
     sources: ["Nielsen u. a. 2014, J Orthop Sports Phys Ther"],
     keywords: ["Anfänger", "Laufanfänger", "Couch to 5k"],
-    draft: true,
   },
   {
     slug: "10-km",
@@ -242,7 +236,6 @@ const PLANS: readonly Plan[] = [
     basis:
       "Erst die Dauer, dann das Tempo. Etwa 80 % der Zeit locker, ein harter Lauf pro Woche reicht. Der Wochenumfang wächst um höchstens 10 % pro Woche.",
     sources: ["Seiler 2010, Int J Sports Physiol Perform", "Nielsen u. a. 2014, J Orthop Sports Phys Ther"],
-    draft: true,
   },
   {
     slug: "kraft-aufbauen",
@@ -276,7 +269,6 @@ const PLANS: readonly Plan[] = [
       "Jede Muskelgruppe zweimal pro Woche, 10 bis 20 Sätze je Muskel und Woche, zwei Wiederholungen vor dem Muskelversagen aufhören.",
     sources: ["Schoenfeld u. a. 2016, Sports Med", "Schoenfeld u. a. 2017, J Sports Sci"],
     keywords: ["Anfänger", "Muskelaufbau", "Ganzkörperplan"],
-    draft: true,
   },
 ];
 
